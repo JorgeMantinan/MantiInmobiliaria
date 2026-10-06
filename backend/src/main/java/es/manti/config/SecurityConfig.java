@@ -99,7 +99,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/logout",
                                 "/api/v1/auth/oauth2/token").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
-                        .requestMatchers("/api/v1/public/**").permitAll()
+                        // /api/v1/public/** queda sin abrir hasta que exista el
+                        // módulo de contenido público con consumidores reales.
                         .requestMatchers("/actuator/health").permitAll()
                         // springdoc: /v3/api-docs (+ .yaml/.yml/.json y swagger-config)
                         .requestMatchers("/v3/api-docs", "/v3/api-docs.*", "/v3/api-docs/**",
