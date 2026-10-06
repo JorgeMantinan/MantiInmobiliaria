@@ -95,5 +95,15 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Tests frontend
+        run: npm test
+
+      - name: Audit producción
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Build
         run: npm run build
+        env:
+          # lib/auth.ts exige NEXT_PUBLIC_API_URL en producción y hace fallar el
+          # build si falta; en CI sólo comprobamos que compila con un valor dummy.
+          NEXT_PUBLIC_API_URL: http://localhost:8080
