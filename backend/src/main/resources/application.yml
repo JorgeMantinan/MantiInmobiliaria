@@ -32,8 +32,13 @@ server:
   port: 8080
 
 springdoc:
+  # Se pueden apagar en prod con SPRINGDOC_ENABLED=false (recomendado junto al
+  # perfil prod que se creará en una fase posterior).
+  api-docs:
+    enabled: ${SPRINGDOC_ENABLED:true}
   swagger-ui:
     path: /swagger-ui.html
+    enabled: ${SPRINGDOC_ENABLED:true}
 
 management:
   endpoints:

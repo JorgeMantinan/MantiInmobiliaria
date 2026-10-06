@@ -69,9 +69,10 @@ public class AuthController {
             @ApiResponse(responseCode = "400", description = "Validación fallida (ProblemDetail)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "409", description = "Email ya registrado",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "429", description = "Demasiados intentos (rate limit)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
-    public ResponseEntity<AuthResponse> registrar(@Valid @RequestBody RegistroRequest request,
-                                                  HttpServletResponse response) {
+    public ResponseEntity<AuthResponse> registrar(@Valid @RequestBody RegistroRequest request) {
         AuthResult result = authService.registrar(
                 new RegistroCommand(request.nombre(), request.email(), request.password()));
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -88,8 +89,7 @@ public class AuthController {
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "429", description = "Demasiados intentos (rate limit)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request,
-                                              HttpServletResponse response) {
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         AuthResult result = authService.login(request.email(), request.password());
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookieSesion(result.refreshToken()).toString())
@@ -107,7 +107,7 @@ public class AuthController {
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "403", description = "Falta la cabecera X-Requested-With",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
-    public ResponseEntity<AuthResponse> refrescar(HttpServletRequest request, HttpServletResponse response) {
+    public ResponseEntity<AuthResponse> refrescar(HttpServletRequest request) {
         String token = leerCookieSesion(request);
         if (token == null) {
             throw new TokenInvalidoException();
@@ -161,10 +161,12 @@ public class AuthController {
                     + "código opaco de un solo uso recibido en /auth/google/callback.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Código válido; sesión emitida"),
+            @ApiResponse(responseCode = "400", description = "Código ausente o inválido (ProblemDetail)",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "401", description = "Código inválido o caducado",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     public ResponseEntity<AuthResponse> canjearCodigoGoogle(
-            @Valid @RequestBody OAuth2TokenRequest body, HttpServletResponse response) {
+            @Valid @RequestBody OAuth2TokenRequest body) {
         AuthResult result = authService.canjearCodigoGoogle(body.code());
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookieSesion(result.refreshToken()).toString())
