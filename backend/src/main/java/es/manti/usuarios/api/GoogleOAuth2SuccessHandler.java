@@ -1,0 +1,90 @@
+package es.manti.usuarios.api;
+
+import es.manti.usuarios.application.AuthProperties;
+import es.manti.usuarios.application.AuthService;
+import es.manti.usuarios.domain.CuentaGoogleConflictivaException;
+import es.manti.usuarios.domain.UsuarioInactivoException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+
+/**
+ * Handler propio del callback de Google: crea/vincula la usuario, genera un
+ * código opaco de un solo uso y redirige al frontend
+ * ({@code ${FRONTEND_URL}/auth/google/callback?code=...}), que lo canjeará con
+ * {@code POST /api/v1/auth/oauth2/token}.
+ */
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler {
+
+    private final AuthService authService;
+    private final AuthProperties properties;
+
+    @Override
+    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
+                                        Authentication authentication) throws IOException {
+        try {
+            OidcUser oidc = usuarioOidc(authentication);
+            String codigo = authService.crearCodigoGoogle(
+                    oidc.getSubject(),
+                    oidc.getEmail(),
+                    oidc.getFullName() != null ? oidc.getFullName() : oidc.getPreferredUsername());
+            response.sendRedirect(consultaFrontend("code=" + URLEncoder.encode(codigo, StandardCharsets.UTF_8)));
+        } catch (MissingEmailException e) {
+            log.warn("Login con Google incompleto: {}", e.getMessage());
+            response.sendRedirect(consultaFrontend("error=missing_email"));
+        } catch (NonOidcException e) {
+            log.warn("Login con Google con principal no OIDC: {}", e.getMessage());
+            response.sendRedirect(consultaFrontend("error=unsupported"));
+        } catch (UsuarioInactivoException e) {
+            log.warn("Login con Google de cuenta desactivada");
+            response.sendRedirect(consultaFrontend("error=account_disabled"));
+        } catch (CuentaGoogleConflictivaException e) {
+            log.warn("Login con Google rechazado por conflicto de vinculación");
+            response.sendRedirect(consultaFrontend("error=account_conflict"));
+        }
+    }
+
+    private static OidcUser usuarioOidc(Authentication authentication) {
+        if (!(authentication.getPrincipal() instanceof OidcUser oidc)) {
+            throw new NonOidcException();
+        }
+        if (oidc.getSubject() == null || oidc.getEmail() == null || oidc.getEmail().isBlank()) {
+            throw new MissingEmailException();
+        }
+        return oidc;
+    }
+
+    private String consultaFrontend(String query) {
+        String base = properties.oauth2().google().frontendUrl();
+        while (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        return base + "/auth/google/callback?" + query;
+    }
+
+    /** Falta el claim de email en el token de Google. */
+    private static final class MissingEmailException extends RuntimeException {
+        private MissingEmailException() {
+            super("token Google sin email");
+        }
+    }
+
+    /** El principal no es un usuario OIDC (scope openid ausente). */
+    private static final class NonOidcException extends RuntimeException {
+        private NonOidcException() {
+            super("principal no OIDC");
+        }
+    }
+}
