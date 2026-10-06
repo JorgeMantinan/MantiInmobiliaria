@@ -105,11 +105,17 @@ async function peticionRefresh(): Promise<ResultadoRefresh> {
   }
 
   try {
-    const sesion = (await respuesta.json()) as AuthResponse;
+    const sesion = (await respuesta.json()) as AuthResponse | null;
+    if (sesion === null || typeof sesion.accessToken !== "string") {
+      // 200 con payload inválido: fallo de protocolo. `status: 0` para no
+      // fabricar un `ApiError(200)` imposible ni revocar la sesión.
+      return { ok: false, status: 0 };
+    }
     guardarSesion(sesion);
     return { ok: true, sesion };
   } catch {
-    return { ok: false, status: respuesta.status };
+    // JSON ilegible o vacío: mismo tratamiento que un fallo de red.
+    return { ok: false, status: 0 };
   }
 }
 
@@ -126,10 +132,13 @@ export function realizarRefresh(): Promise<ResultadoRefresh> {
   if (typeof navigator !== "undefined" && "locks" in navigator && navigator.locks !== undefined) {
     // lib.dom tipa `request<T>` con T = retorno del callback, así que aquí
     // inferiría `Promise<Promise<…>>`; el runtime aplana la promesa y el
-    // `.then(identity)` deja el tipo correcto.
-    return navigator.locks.request(NOMBRE_LOCK, () => peticionRefresh()).then(
-      (resultado) => resultado,
-    );
+    // `.then(identity)` deja el tipo correcto. Si el LOCK rechaza (AbortError,
+    // soporte parcial…) se degrada al camino sin lock: `realizarRefresh` nunca
+    // debe lanzar una excepción cruda.
+    return navigator.locks
+      .request(NOMBRE_LOCK, () => peticionRefresh())
+      .then((resultado) => resultado)
+      .catch(() => peticionRefresh());
   }
   return peticionRefresh();
 }

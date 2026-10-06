@@ -158,6 +158,31 @@ describe('refresh', () => {
     expect(cabeceras(0)['X-Requested-With']).toBe('XMLHttpRequest');
   });
 
+  it('si_el_lock_de_web_locks_rechaza_degrada_al_camino_sin_lock', async () => {
+    vi.stubGlobal('navigator', {
+      locks: {
+        request: () => Promise.reject(new DOMException('The operation was aborted', 'AbortError')),
+      },
+    });
+    fetchMock.mockResolvedValueOnce(json(SESION));
+
+    // No debe escapar una excepción cruda: se degrada y el refresh acaba bien.
+    await expect(bootstrapSession()).resolves.toEqual(SESION);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(haySesion()).toBe(true);
+  });
+
+  it('un_refresh_con_payload_invalido_no_produce_un_ApiError_200', async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(new Response('esto-no-es-json', { status: 200 }));
+
+    await expect(apiFetch('/api/v1/inmuebles')).rejects.toMatchObject({
+      status: 0,
+      title: 'Error de conexión',
+    });
+  });
+
   it('bootstrap_devuelve_null_cuando_no_hay_sesion', async () => {
     fetchMock.mockResolvedValueOnce(problem(401, 'no-autenticado', 'Sesión inválida o caducada'));
 
