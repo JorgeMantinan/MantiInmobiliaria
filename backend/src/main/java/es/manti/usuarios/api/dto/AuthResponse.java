@@ -13,5 +13,5 @@ public record AuthResponse(
         @Schema(description = "Segundos hasta la expiración del access token", example = "900")
         long expiresIn,
         @Schema(description = "Usuario autenticado")
-        UserSummary user) {
+        UsuarioSummary user) {
 }

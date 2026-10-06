@@ -6,7 +6,7 @@ import java.time.Instant;
 
 /** Resumen público de un usuario (jamás expone password_hash ni google_id). */
 @Schema(description = "Resumen del usuario autenticado")
-public record UserSummary(
+public record UsuarioSummary(
         @Schema(description = "Identificador", example = "1")
         Long id,
         @Schema(description = "Email", example = "ana@example.com")

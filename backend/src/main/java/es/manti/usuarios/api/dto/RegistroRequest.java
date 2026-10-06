@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Size;
 
 /** Alta de usuario email/password. */
 @Schema(description = "Datos de registro de un usuario")
-public record RegisterRequest(
+public record RegistroRequest(
         @NotBlank @Size(max = 120)
         @Schema(description = "Nombre visible", example = "Ana Pérez", maxLength = 120)
         String nombre,

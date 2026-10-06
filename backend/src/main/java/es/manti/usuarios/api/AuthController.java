@@ -4,8 +4,8 @@ import es.manti.usuarios.api.dto.AuthMapper;
 import es.manti.usuarios.api.dto.AuthResponse;
 import es.manti.usuarios.api.dto.LoginRequest;
 import es.manti.usuarios.api.dto.OAuth2TokenRequest;
-import es.manti.usuarios.api.dto.RegisterRequest;
-import es.manti.usuarios.api.dto.UserSummary;
+import es.manti.usuarios.api.dto.RegistroRequest;
+import es.manti.usuarios.api.dto.UsuarioSummary;
 import es.manti.usuarios.application.AuthProperties;
 import es.manti.usuarios.application.AuthResult;
 import es.manti.usuarios.application.AuthService;
@@ -70,7 +70,7 @@ public class AuthController {
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "409", description = "Email ya registrado",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
-    public ResponseEntity<AuthResponse> registrar(@Valid @RequestBody RegisterRequest request,
+    public ResponseEntity<AuthResponse> registrar(@Valid @RequestBody RegistroRequest request,
                                                   HttpServletResponse response) {
         AuthResult result = authService.registrar(
                 new RegistroCommand(request.nombre(), request.email(), request.password()));
@@ -107,7 +107,7 @@ public class AuthController {
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "403", description = "Falta la cabecera X-Requested-With",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
-    public ResponseEntity<AuthResponse> refresh(HttpServletRequest request, HttpServletResponse response) {
+    public ResponseEntity<AuthResponse> refrescar(HttpServletRequest request, HttpServletResponse response) {
         String token = leerCookieSesion(request);
         if (token == null) {
             throw new TokenInvalidoException();
@@ -126,7 +126,7 @@ public class AuthController {
             @ApiResponse(responseCode = "204", description = "Sesión cerrada (siempre, aunque el token fuera inválido)"),
             @ApiResponse(responseCode = "403", description = "Falta la cabecera X-Requested-With",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
-    public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+    public ResponseEntity<Void> cerrarSesion(HttpServletRequest request, HttpServletResponse response) {
         authService.logout(leerCookieSesion(request));
         // Sesión fantasma: el flujo JWT no necesita JSESSIONID persistente
         // (sólo se crea durante el baile OAuth2 de Google), así que al cerrar
@@ -147,11 +147,11 @@ public class AuthController {
             @ApiResponse(responseCode = "200", description = "Usuario autenticado"),
             @ApiResponse(responseCode = "401", description = "Sin token o token caducado",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
-    public ResponseEntity<UserSummary> me(
+    public ResponseEntity<UsuarioSummary> usuarioActual(
             @Parameter(description = "Access token JWT", required = true)
             @AuthenticationPrincipal Jwt jwt) {
         Usuario usuario = authService.obtener(idDesdeToken(jwt));
-        return ResponseEntity.ok(mapper.toUserSummary(usuario));
+        return ResponseEntity.ok(mapper.toUsuarioSummary(usuario));
     }
 
     @PostMapping("/oauth2/token")

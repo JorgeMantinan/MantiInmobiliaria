@@ -13,7 +13,7 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface AuthMapper {
 
-    UserSummary toUserSummary(Usuario usuario);
+    UsuarioSummary toUsuarioSummary(Usuario usuario);
 
     @Mapping(source = "usuario", target = "user")
     AuthResponse toResponse(AuthResult result);
