@@ -20,7 +20,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RegisterRequest"
+              $ref: "#/components/schemas/RegistroRequest"
         required: true
       responses:
         "201":
@@ -41,6 +41,12 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+        "429":
+          description: Demasiados intentos (rate limit)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
       security: []
   /api/v1/auth/refresh:
     post:
@@ -49,7 +55,7 @@ paths:
       summary: Rota el refresh token de la cookie y emite un nuevo access token
       description: "Requiere la cookie httpOnly de refresh y la cabecera `X-Requested-With:\
         \ XMLHttpRequest` (protección CSRF elegida)."
-      operationId: refresh
+      operationId: refrescar
       responses:
         "200":
           description: Sesión renovada
@@ -91,6 +97,12 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Código ausente o inválido (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
         "401":
           description: Código inválido o caducado
           content:
@@ -105,7 +117,7 @@ paths:
       summary: Invalida el refresh token y borra la cookie
       description: "Requiere la cabecera `X-Requested-With: XMLHttpRequest` (protecció\
         n CSRF elegida)."
-      operationId: logout
+      operationId: cerrarSesion
       responses:
         "204":
           description: "Sesión cerrada (siempre, aunque el token fuera inválido)"
@@ -153,14 +165,14 @@ paths:
       tags:
       - Auth
       summary: Devuelve el usuario autenticado (access token requerido)
-      operationId: me
+      operationId: usuarioActual
       responses:
         "200":
           description: Usuario autenticado
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/UserSummary"
+                $ref: "#/components/schemas/UsuarioSummary"
         "401":
           description: Sin token o token caducado
           content:
@@ -171,7 +183,7 @@ paths:
       - bearerAuth: []
 components:
   schemas:
-    RegisterRequest:
+    RegistroRequest:
       type: object
       description: Datos de registro de un usuario
       properties:
@@ -232,9 +244,9 @@ components:
           description: Segundos hasta la expiración del access token
           example: 900
         user:
-          $ref: "#/components/schemas/UserSummary"
+          $ref: "#/components/schemas/UsuarioSummary"
           description: Usuario autenticado
-    UserSummary:
+    UsuarioSummary:
       type: object
       description: Resumen del usuario autenticado
       properties:
