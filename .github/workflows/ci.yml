@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: read
+  # gitleaks-action necesita leer los commits del PR (pulls: read) en eventos pull_request
+  pull-requests: read
 
 jobs:
   # Escaneo de secretos en todo el historial del push/PR.
