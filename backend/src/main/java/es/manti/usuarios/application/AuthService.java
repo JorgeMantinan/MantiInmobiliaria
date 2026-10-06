@@ -1,9 +1,6 @@
 package es.manti.usuarios.application;
 
-import es.manti.usuarios.domain.CodigoInvalidoException;
-import es.manti.usuarios.domain.CodigoOAuth2Port;
 import es.manti.usuarios.domain.CredencialesInvalidasException;
-import es.manti.usuarios.domain.CuentaGoogleConflictivaException;
 import es.manti.usuarios.domain.EmailYaRegistradoException;
 import es.manti.usuarios.domain.Rol;
 import es.manti.usuarios.domain.Usuario;
@@ -26,10 +23,9 @@ public class AuthService {
 
     private final UsuarioRepository usuarios;
     private final RefreshTokenService refreshTokens;
-    private final CodigoOAuth2Port codigos;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
-    private final AuthProperties properties;
+    private final CuentaGoogleService cuentaGoogle;
 
     /**
      * Hash BCrypt de un password inexistente, precalculado UNA sola vez al
@@ -44,14 +40,13 @@ public class AuthService {
     private final String passwordHashDummy;
 
     public AuthService(UsuarioRepository usuarios, RefreshTokenService refreshTokens,
-                       CodigoOAuth2Port codigos, JwtService jwtService,
-                       PasswordEncoder passwordEncoder, AuthProperties properties) {
+                       JwtService jwtService, PasswordEncoder passwordEncoder,
+                       CuentaGoogleService cuentaGoogle) {
         this.usuarios = usuarios;
         this.refreshTokens = refreshTokens;
-        this.codigos = codigos;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
-        this.properties = properties;
+        this.cuentaGoogle = cuentaGoogle;
         this.passwordHashDummy = passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
@@ -114,62 +109,13 @@ public class AuthService {
     }
 
     // ------------------------------------------------------------------
-    // Google (OAuth2 + OIDC)
+    // Google (OAuth2 + OIDC): la orquestación vive en CuentaGoogleService
     // ------------------------------------------------------------------
 
-    /**
-     * Crea o actualiza la cuenta a partir del perfil de Google y devuelve un
-     * código opaco de un solo uso (TTL corto) que el frontend canjeará por la
-     * sesión vía {@code POST /api/v1/auth/oauth2/token}.
-     */
-    @Transactional
-    public String crearCodigoGoogle(String googleId, String email, String nombre) {
-        String emailNormalizado = normalizarEmail(email);
-        Usuario usuario = usuarios.findByGoogleId(googleId)
-                .orElseGet(() -> vincularOCrear(googleId, emailNormalizado, nombre));
-        if (!usuario.isActivo()) {
-            throw new UsuarioInactivoException();
-        }
-        return codigos.crear(usuario.getId(), properties.oauth2().google().codeTtl());
-    }
-
-    /** Canjea el código de un solo uso por la sesión completa (como login). */
+    /** Canjea el código de un solo uso de Google por la sesión completa (como login). */
     @Transactional
     public AuthResult canjearCodigoGoogle(String codigo) {
-        Long usuarioId = codigos.consumir(codigo).orElseThrow(CodigoInvalidoException::new);
-        Usuario usuario = usuarios.findById(usuarioId).orElseThrow(CodigoInvalidoException::new);
-        if (!usuario.isActivo()) {
-            throw new UsuarioInactivoException();
-        }
-        return emitirSesion(usuario);
-    }
-
-    private Usuario vincularOCrear(String googleId, String email, String nombre) {
-        return usuarios.findByEmail(email)
-                .map(existente -> vincular(existente, googleId, nombre))
-                .orElseGet(() -> crearDesdeGoogle(googleId, email, nombre));
-    }
-
-    private Usuario vincular(Usuario existente, String googleId, String nombre) {
-        if (existente.getGoogleId() != null && !existente.getGoogleId().equals(googleId)) {
-            throw new CuentaGoogleConflictivaException();
-        }
-        existente.setGoogleId(googleId);
-        if ((existente.getNombre() == null || existente.getNombre().isBlank())
-                && nombre != null && !nombre.isBlank()) {
-            existente.setNombre(nombre.trim());
-        }
-        return usuarios.save(existente);
-    }
-
-    private Usuario crearDesdeGoogle(String googleId, String email, String nombre) {
-        Usuario usuario = new Usuario();
-        usuario.setEmail(email);
-        usuario.setNombre(nombre == null || nombre.isBlank() ? email : nombre.trim());
-        usuario.setGoogleId(googleId);
-        usuario.setRol(Rol.USER);
-        usuario.setActivo(true);
-        return usuarios.save(usuario);
+        return emitirSesion(cuentaGoogle.usuarioPorCodigo(codigo));
     }
 
     private AuthResult emitirSesion(Usuario usuario) {

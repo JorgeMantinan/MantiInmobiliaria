@@ -1,7 +1,7 @@
 package es.manti.usuarios.api;
 
 import es.manti.usuarios.application.AuthProperties;
-import es.manti.usuarios.application.AuthService;
+import es.manti.usuarios.application.CuentaGoogleService;
 import es.manti.usuarios.domain.CuentaGoogleConflictivaException;
 import es.manti.usuarios.domain.UsuarioInactivoException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,7 +30,7 @@ import java.nio.charset.StandardCharsets;
 @RequiredArgsConstructor
 public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
-    private final AuthService authService;
+    private final CuentaGoogleService cuentaGoogle;
     private final AuthProperties properties;
 
     @Override
@@ -38,7 +38,7 @@ public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler 
                                         Authentication authentication) throws IOException {
         try {
             OidcUser oidc = usuarioOidc(authentication);
-            String codigo = authService.crearCodigoGoogle(
+            String codigo = cuentaGoogle.crearCodigoGoogle(
                     oidc.getSubject(),
                     oidc.getEmail(),
                     oidc.getFullName() != null ? oidc.getFullName() : oidc.getPreferredUsername());

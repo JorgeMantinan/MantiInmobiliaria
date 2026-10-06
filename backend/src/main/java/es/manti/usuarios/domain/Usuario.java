@@ -60,4 +60,24 @@ public class Usuario {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    /**
+     * Vincula la cuenta de Google al usuario (o la re-vincula si es el mismo
+     * google_id). Si la cuenta ya estaba vinculada a OTRO google_id, se
+     * rechaza con {@link CuentaGoogleConflictivaException}.
+     *
+     * @param googleId       identificador (sub) de Google
+     * @param nombreSugerido nombre del perfil de Google; sólo se usa si el
+     *                       usuario no tiene nombre propio
+     */
+    public void vincularGoogle(String googleId, String nombreSugerido) {
+        if (this.googleId != null && !this.googleId.equals(googleId)) {
+            throw new CuentaGoogleConflictivaException();
+        }
+        this.googleId = googleId;
+        if ((this.nombre == null || this.nombre.isBlank())
+                && nombreSugerido != null && !nombreSugerido.isBlank()) {
+            this.nombre = nombreSugerido.trim();
+        }
+    }
 }

@@ -1,7 +1,7 @@
 package es.manti.usuarios.api;
 
 import es.manti.usuarios.application.AuthProperties;
-import es.manti.usuarios.application.AuthService;
+import es.manti.usuarios.application.CuentaGoogleService;
 import es.manti.usuarios.domain.CuentaGoogleConflictivaException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,34 +27,34 @@ import static org.mockito.Mockito.when;
  */
 class GoogleOAuth2SuccessHandlerTest {
 
-    private AuthService authService;
+    private CuentaGoogleService cuentaGoogle;
     private GoogleOAuth2SuccessHandler handler;
     private MockHttpServletResponse response;
 
     @BeforeEach
     void setUp() {
-        authService = mock(AuthService.class);
+        cuentaGoogle = mock(CuentaGoogleService.class);
         AuthProperties properties = new AuthProperties(
                 null,
                 null,
                 new AuthProperties.Oauth2(new AuthProperties.Google(
                         "http://localhost:3000/", Duration.ofMinutes(2))),
                 null);
-        handler = new GoogleOAuth2SuccessHandler(authService, properties);
+        handler = new GoogleOAuth2SuccessHandler(cuentaGoogle, properties);
         response = new MockHttpServletResponse();
     }
 
     @Test
     void alAutenticarConGoogle_redirigeAlFrontendConCodigoDeUnSoloUso() throws Exception {
         OidcUser oidc = oidcUser("google-id-123", "ana@example.com", "Ana Pérez");
-        when(authService.crearCodigoGoogle("google-id-123", "ana@example.com", "Ana Pérez"))
+        when(cuentaGoogle.crearCodigoGoogle("google-id-123", "ana@example.com", "Ana Pérez"))
                 .thenReturn("CODIGO-DE-UN-SOLO-USO");
 
         handler.onAuthenticationSuccess(new MockHttpServletRequest(), response, autenticacion(oidc));
 
         assertThat(response.getRedirectedUrl())
                 .isEqualTo("http://localhost:3000/auth/google/callback?code=CODIGO-DE-UN-SOLO-USO");
-        verify(authService).crearCodigoGoogle("google-id-123", "ana@example.com", "Ana Pérez");
+        verify(cuentaGoogle).crearCodigoGoogle("google-id-123", "ana@example.com", "Ana Pérez");
     }
 
     @Test
@@ -70,7 +70,7 @@ class GoogleOAuth2SuccessHandlerTest {
     @Test
     void alAutenticarConGoogleConConflictoDeVinculacion_redirigeConError() throws Exception {
         OidcUser oidc = oidcUser("google-id-789", "otra@example.com", "Otra Persona");
-        when(authService.crearCodigoGoogle(anyString(), anyString(), anyString()))
+        when(cuentaGoogle.crearCodigoGoogle(anyString(), anyString(), anyString()))
                 .thenThrow(new CuentaGoogleConflictivaException());
 
         handler.onAuthenticationSuccess(new MockHttpServletRequest(), response, autenticacion(oidc));
@@ -82,7 +82,7 @@ class GoogleOAuth2SuccessHandlerTest {
     @Test
     void alAutenticarConGoogle_invalidaLaSesionDelNavegador() throws Exception {
         OidcUser oidc = oidcUser("google-id-000", "sesion@example.com", "Sin Sesión");
-        when(authService.crearCodigoGoogle("google-id-000", "sesion@example.com", "Sin Sesión"))
+        when(cuentaGoogle.crearCodigoGoogle("google-id-000", "sesion@example.com", "Sin Sesión"))
                 .thenReturn("CODIGO-UN-USO");
         MockHttpServletRequest peticion = new MockHttpServletRequest();
         MockHttpSession sesion = new MockHttpSession();
