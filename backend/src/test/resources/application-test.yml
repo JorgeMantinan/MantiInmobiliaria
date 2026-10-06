@@ -1,0 +1,16 @@
+# Perfil activo en los tests (@ActiveProfiles("test")).
+# Proporciona valores de PRUEBA (no son secretos reales) para que el build
+# funcione también en CI, donde no existe el .env de la raíz.
+
+JWT_SECRET: manti-test-only-secret-000000000000000000000000000000000000000000
+GOOGLE_CLIENT_ID: test-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET: test-client-secret
+FRONTEND_URL: http://localhost:3000
+ALLOWED_ORIGINS: http://localhost:3000
+
+# Los tests MockMvc comparten la misma IP de origen; se suben los límites para
+# no interferir con el rate limiting (que se testea en una clase propia).
+auth:
+  rate-limit:
+    login-per-minute: 100000
+    register-per-minute: 100000
