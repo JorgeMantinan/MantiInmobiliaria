@@ -19,6 +19,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -59,12 +60,14 @@ public class AuthController {
     private final AuthProperties properties;
 
     @PostMapping("/register")
+    @SecurityRequirements   // endpoint público: security: [] en la spec
     @Operation(summary = "Registra un usuario y le devuelve la sesión (auto-login)")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Usuario creado; sesión emitida"),
             @ApiResponse(responseCode = "400", description = "Validación fallida (ProblemDetail)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
-            @ApiResponse(responseCode = "409", description = "Email ya registrado")})
+            @ApiResponse(responseCode = "409", description = "Email ya registrado",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     public ResponseEntity<AuthResponse> registrar(@Valid @RequestBody RegisterRequest request,
                                                   HttpServletResponse response) {
         AuthResult result = authService.registrar(
@@ -75,12 +78,14 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @SecurityRequirements   // endpoint público: security: [] en la spec
     @Operation(summary = "Autentica con email y password")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Credenciales válidas; sesión emitida"),
             @ApiResponse(responseCode = "401", description = "Credenciales incorrectas (ProblemDetail)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
-            @ApiResponse(responseCode = "429", description = "Demasiados intentos (rate limit)")})
+            @ApiResponse(responseCode = "429", description = "Demasiados intentos (rate limit)",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request,
                                               HttpServletResponse response) {
         AuthResult result = authService.login(request.email(), request.password());
@@ -90,6 +95,7 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
+    @SecurityRequirements   // autenticado por cookie: security: [] en la spec
     @Operation(summary = "Rota el refresh token de la cookie y emite un nuevo access token",
             description = "Requiere la cookie httpOnly de refresh y la cabecera "
                     + "`X-Requested-With: XMLHttpRequest` (protección CSRF elegida).")
@@ -97,7 +103,8 @@ public class AuthController {
             @ApiResponse(responseCode = "200", description = "Sesión renovada"),
             @ApiResponse(responseCode = "401", description = "Refresh token inválido o caducado",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
-            @ApiResponse(responseCode = "403", description = "Falta la cabecera X-Requested-With")})
+            @ApiResponse(responseCode = "403", description = "Falta la cabecera X-Requested-With",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     public ResponseEntity<AuthResponse> refresh(HttpServletRequest request, HttpServletResponse response) {
         String token = leerCookieSesion(request);
         if (token == null) {
@@ -110,9 +117,13 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
+    @SecurityRequirements   // autenticado por cookie: security: [] en la spec
     @Operation(summary = "Invalida el refresh token y borra la cookie",
             description = "Requiere la cabecera `X-Requested-With: XMLHttpRequest` (protección CSRF elegida).")
-    @ApiResponse(responseCode = "204", description = "Sesión cerrada (siempre, aunque el token fuera inválido)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Sesión cerrada (siempre, aunque el token fuera inválido)"),
+            @ApiResponse(responseCode = "403", description = "Falta la cabecera X-Requested-With",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         authService.logout(leerCookieSesion(request));
         response.addHeader(HttpHeaders.SET_COOKIE, cookieBorrada().toString());
@@ -134,6 +145,7 @@ public class AuthController {
     }
 
     @PostMapping("/oauth2/token")
+    @SecurityRequirements   // endpoint público: security: [] en la spec
     @Operation(summary = "Canjea el código del callback de Google por la sesión",
             description = "Segundo paso del flujo Google: el frontend intercambia aquí el "
                     + "código opaco de un solo uso recibido en /auth/google/callback.")

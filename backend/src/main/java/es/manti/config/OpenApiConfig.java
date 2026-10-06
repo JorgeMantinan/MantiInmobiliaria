@@ -20,7 +20,6 @@ public class OpenApiConfig {
                         .description("API del portal inmobiliario MantiInmobiliaria"))
                 .components(new Components().addSecuritySchemes("bearerAuth",
                         new SecurityScheme()
-                                .name("bearerAuth")
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")
