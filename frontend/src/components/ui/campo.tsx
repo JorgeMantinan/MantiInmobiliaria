@@ -23,7 +23,7 @@ export function Campo({ id, etiqueta, error, ...props }: CampoProps) {
         className="rounded-md border border-borde bg-superficie px-3 py-2 text-texto outline-none transition-colors focus:ring-2 focus:ring-acento-nogal"
       />
       {error !== undefined ? (
-        <p id={`${id}-error`} className="text-sm text-acento-hover">
+        <p id={`${id}-error`} role="alert" className="text-sm text-acento-hover">
           {error}
         </p>
       ) : null}

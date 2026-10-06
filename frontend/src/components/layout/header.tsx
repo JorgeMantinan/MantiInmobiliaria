@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { Boton } from '@/components/ui/boton';
 import { useSesion } from '@/features/auth/session';
 
-const ENLACE = 'rounded-md px-2 py-1 text-sm text-texto transition-colors hover:bg-superficie-alta focus:ring-2 focus:ring-acento-nogal';
+const ENLACE =
+  'rounded-md px-2 py-1 text-sm text-texto transition-colors outline-none hover:bg-superficie-alta focus:ring-2 focus:ring-acento-nogal';
 
 /** Cabecera del portal con el widget de sesión (anónimo o identificado). */
 export function Header() {
@@ -13,7 +14,10 @@ export function Header() {
   return (
     <header className="border-b border-borde bg-superficie">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <Link href="/" className="rounded-md font-display text-xl text-texto focus:ring-2 focus:ring-acento-nogal">
+        <Link
+          href="/"
+          className="rounded-md font-display text-xl text-texto outline-none focus:ring-2 focus:ring-acento-nogal"
+        >
           MantiInmobiliaria
         </Link>
         <nav aria-label="Cuenta" className="flex items-center gap-2">
