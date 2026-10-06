@@ -158,6 +158,15 @@ class AuthFlowTest {
     }
 
     @Test
+    void refresh_conPathParamsSinCabeceraXRequestedWith_devuelve403() throws Exception {
+        // Regresión de seguridad: ';params' no evade la protección CSRF de /refresh.
+        mockMvc.perform(post("/api/v1/auth/refresh;x")
+                        .cookie(new Cookie("refresh_token", "cualquiera")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.detail").value(containsString("X-Requested-With")));
+    }
+
+    @Test
     void logout_sinCabeceraXRequestedWith_devuelve403() throws Exception {
         mockMvc.perform(post("/api/v1/auth/logout")
                         .cookie(new Cookie("refresh_token", "cualquiera")))

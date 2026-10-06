@@ -41,27 +41,30 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        Integer limite = limitePara(request);
+        String ruta = AuthRequestPath.normalizar(request);
+        Integer limite = limitePara(request.getMethod(), ruta);
         if (limite == null) {
             filterChain.doFilter(request, response);
             return;
         }
-        String clave = request.getRequestURI() + '|' + ipDe(request);
+        // La clave usa la ruta normalizada: si usara la cruda, cada
+        // variante ";x=1", "%6C..." tendría su propia ventana y se evade el límite.
+        String clave = ruta + '|' + ipDe(request);
         if (!permitido(clave, limite)) {
             ProblemResponseWriter.write(response, HttpStatus.TOO_MANY_REQUESTS,
                     "rate-limit", "Demasiadas peticiones",
                     "Límite de peticiones alcanzado; inténtelo de nuevo en un minuto",
-                    request.getRequestURI());
+                    ruta);
             return;
         }
         filterChain.doFilter(request, response);
     }
 
-    private Integer limitePara(HttpServletRequest request) {
-        if (!"POST".equals(request.getMethod())) {
+    private Integer limitePara(String metodo, String rutaNormalizada) {
+        if (!"POST".equals(metodo)) {
             return null;
         }
-        return switch (request.getRequestURI()) {
+        return switch (rutaNormalizada) {
             case "/api/v1/auth/login" -> properties.rateLimit().loginPerMinute();
             case "/api/v1/auth/register" -> properties.rateLimit().registerPerMinute();
             default -> null;

@@ -16,6 +16,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.GrantedAuthority;
@@ -60,12 +61,23 @@ public class SecurityConfig {
     private final AuthProperties authProperties;
     private final CorsProperties corsProperties;
 
+    /**
+     * Firewall con {@code ;} permitido SÓLO bajo {@code /api/v1/auth/}:
+     * los filtros de auth normalizan la ruta (ver {@link AuthPathParamsHttpFirewall}),
+     * de modo que {@code /login;foo=1} y variantes percent-encoded caen en la
+     * misma lógica de rate limit/CSRF que la ruta canónica. El resto de la app
+     * conserva StrictHttpFirewall por defecto.
+     */
+    @Bean
+    WebSecurityCustomizer authPathParamsFirewall() {
+        return web -> web.httpFirewall(new AuthPathParamsHttpFirewall());
+    }
+
     // Los handlers se inyectan como parámetros del @Bean (no en el constructor
     // de la configuración) para evitar un ciclo: SecurityConfig → handler →
     // AuthService → PasswordEncoder (@Bean de esta misma clase).
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                            GoogleOAuth2SuccessHandler googleSuccessHandler,
+    SecurityFilterChain securityFilterChain(HttpSecurity http,                                            GoogleOAuth2SuccessHandler googleSuccessHandler,
                                             GoogleOAuth2FailureHandler googleFailureHandler)
             throws Exception {
         ProblemAuthenticationEntryPoint authenticationEntryPoint =

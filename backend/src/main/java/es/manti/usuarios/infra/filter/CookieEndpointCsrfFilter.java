@@ -38,7 +38,7 @@ public class CookieEndpointCsrfFilter extends OncePerRequestFilter {
             ProblemResponseWriter.write(response, HttpStatus.FORBIDDEN, "csrf",
                     "CSRF denegado",
                     "Falta la cabecera " + CABECERA + ": " + VALOR_ESPERADO,
-                    request.getRequestURI());
+                    AuthRequestPath.normalizar(request));
             return;
         }
         filterChain.doFilter(request, response);
@@ -46,7 +46,7 @@ public class CookieEndpointCsrfFilter extends OncePerRequestFilter {
 
     private boolean requiereCabecera(HttpServletRequest request) {
         return "POST".equals(request.getMethod())
-                && ENDPOINTS_CON_COOKIE.contains(request.getRequestURI())
+                && ENDPOINTS_CON_COOKIE.contains(AuthRequestPath.normalizar(request))
                 && !VALOR_ESPERADO.equalsIgnoreCase(request.getHeader(CABECERA));
     }
 }
