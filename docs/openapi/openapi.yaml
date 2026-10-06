@@ -1,0 +1,316 @@
+openapi: 3.1.0
+info:
+  title: MantiInmobiliaria API
+  description: API del portal inmobiliario MantiInmobiliaria
+  version: v1
+servers:
+- url: http://localhost:8080
+  description: Generated server url
+tags:
+- name: Auth
+  description: "Registro, login email/password, refresh y login con Google"
+paths:
+  /api/v1/auth/register:
+    post:
+      tags:
+      - Auth
+      summary: Registra un usuario y le devuelve la sesión (auto-login)
+      operationId: registrar
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegistroRequest"
+        required: true
+      responses:
+        "201":
+          description: Usuario creado; sesión emitida
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validación fallida (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Email ya registrado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "429":
+          description: Demasiados intentos (rate limit)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security: []
+  /api/v1/auth/refresh:
+    post:
+      tags:
+      - Auth
+      summary: Rota el refresh token de la cookie y emite un nuevo access token
+      description: "Requiere la cookie httpOnly de refresh y la cabecera `X-Requested-With:\
+        \ XMLHttpRequest` (protección CSRF elegida)."
+      operationId: refrescar
+      responses:
+        "200":
+          description: Sesión renovada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Refresh token inválido o caducado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Falta la cabecera X-Requested-With
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security: []
+  /api/v1/auth/oauth2/token:
+    post:
+      tags:
+      - Auth
+      summary: Canjea el código del callback de Google por la sesión
+      description: "Segundo paso del flujo Google: el frontend intercambia aquí el\
+        \ código opaco de un solo uso recibido en /auth/google/callback."
+      operationId: canjearCodigoGoogle
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OAuth2TokenRequest"
+        required: true
+      responses:
+        "200":
+          description: Código válido; sesión emitida
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Código ausente o inválido (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Código inválido o caducado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security: []
+  /api/v1/auth/logout:
+    post:
+      tags:
+      - Auth
+      summary: Invalida el refresh token y borra la cookie
+      description: "Requiere la cabecera `X-Requested-With: XMLHttpRequest` (protecció\
+        n CSRF elegida)."
+      operationId: cerrarSesion
+      responses:
+        "204":
+          description: "Sesión cerrada (siempre, aunque el token fuera inválido)"
+        "403":
+          description: Falta la cabecera X-Requested-With
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security: []
+  /api/v1/auth/login:
+    post:
+      tags:
+      - Auth
+      summary: Autentica con email y password
+      operationId: login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+        required: true
+      responses:
+        "200":
+          description: Credenciales válidas; sesión emitida
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Credenciales incorrectas (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "429":
+          description: Demasiados intentos (rate limit)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security: []
+  /api/v1/auth/me:
+    get:
+      tags:
+      - Auth
+      summary: Devuelve el usuario autenticado (access token requerido)
+      operationId: usuarioActual
+      responses:
+        "200":
+          description: Usuario autenticado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UsuarioSummary"
+        "401":
+          description: Sin token o token caducado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+      - bearerAuth: []
+components:
+  schemas:
+    RegistroRequest:
+      type: object
+      description: Datos de registro de un usuario
+      properties:
+        nombre:
+          type: string
+          description: Nombre visible
+          example: Ana Pérez
+          maxLength: 120
+          minLength: 0
+        email:
+          type: string
+          format: email
+          description: Email único
+          example: ana@example.com
+          maxLength: 255
+          minLength: 0
+        password:
+          type: string
+          description: "Contraseña: 8-72 caracteres"
+          example: secreto123
+          maxLength: 72
+          minLength: 8
+      required:
+      - email
+      - nombre
+      - password
+    ProblemDetail:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+        properties:
+          type: object
+          additionalProperties: {}
+    AuthResponse:
+      type: object
+      description: "Sesión emitida: access token en body + refresh token en cookie\
+        \ httpOnly"
+      properties:
+        accessToken:
+          type: string
+          description: "Access token JWT (HS256, 15 min)"
+          example: eyJhbGciOiJIUzI1NiJ9...
+        expiresIn:
+          type: integer
+          format: int64
+          description: Segundos hasta la expiración del access token
+          example: 900
+        user:
+          $ref: "#/components/schemas/UsuarioSummary"
+          description: Usuario autenticado
+    UsuarioSummary:
+      type: object
+      description: Resumen del usuario autenticado
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identificador
+          example: 1
+        email:
+          type: string
+          description: Email
+          example: ana@example.com
+        nombre:
+          type: string
+          description: Nombre visible
+          example: Ana Pérez
+        rol:
+          type: string
+          description: Rol
+          example: USER
+        activo:
+          type: boolean
+          description: Cuenta activa
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          description: Fecha de alta (ISO-8601)
+          example: 2026-01-01T10:00:00Z
+    OAuth2TokenRequest:
+      type: object
+      description: Código de un solo uso devuelto por el callback de Google
+      properties:
+        code:
+          type: string
+          description: Código opaco de un solo uso
+          example: Y29kaWdvLW9wYXF1ZQ
+          maxLength: 255
+          minLength: 0
+      required:
+      - code
+    LoginRequest:
+      type: object
+      description: Credenciales de login
+      properties:
+        email:
+          type: string
+          format: email
+          description: Email del usuario
+          example: ana@example.com
+          maxLength: 255
+          minLength: 0
+        password:
+          type: string
+          description: Contraseña en claro
+          example: secreto123
+          maxLength: 72
+          minLength: 0
+      required:
+      - email
+      - password
+  securitySchemes:
+    bearerAuth:
+      type: http
+      description: "Access token JWT (HS256, 15 min) devuelto por /api/v1/auth/login"
+      scheme: bearer
+      bearerFormat: JWT

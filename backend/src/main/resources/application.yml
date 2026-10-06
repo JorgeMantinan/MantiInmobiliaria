@@ -1,6 +1,12 @@
 spring:
   application:
     name: manti-backend
+  # Carga de secretos locales desde la raíz del monorepo (gitignored). En prod
+  # las mismas variables vienen del entorno del hosting (mayor precedencia).
+  config:
+    import:
+      - optional:file:./.env[.properties]
+      - optional:file:./../.env[.properties]
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5433/manti}
     username: ${DB_USER:manti}
@@ -11,16 +17,60 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:}
+            client-secret: ${GOOGLE_CLIENT_SECRET:}
+            scope: openid,profile,email
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
 
 server:
   port: 8080
 
 springdoc:
+  # Se pueden apagar en prod con SPRINGDOC_ENABLED=false (recomendado junto al
+  # perfil prod que se creará en una fase posterior).
+  api-docs:
+    enabled: ${SPRINGDOC_ENABLED:true}
   swagger-ui:
     path: /swagger-ui.html
+    enabled: ${SPRINGDOC_ENABLED:true}
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+
+# ---------------------------------------------------------------------------
+# Autenticación (FASE 1). Los secretos sólo existen como variables de entorno
+# (ver .env.example); nunca se escriben literales aquí.
+# ---------------------------------------------------------------------------
+auth:
+  jwt:
+    secret: ${JWT_SECRET}                    # HS256, mínimo 32 caracteres
+    access-token-ttl: 15m
+    refresh-token-ttl: 7d
+  cookie:
+    name: refresh_token
+    path: /api/v1/auth
+    # Local: Lax. Producción cross-site (front y API en dominios distintos):
+    # COOKIE_SAMESITE=None + COOKIE_SECURE=true (obligatorio None con Secure).
+    same-site: ${COOKIE_SAMESITE:Lax}
+    secure: ${COOKIE_SECURE:false}
+  oauth2:
+    google:
+      frontend-url: ${FRONTEND_URL:http://localhost:3000}
+      code-ttl: 2m
+  rate-limit:
+    login-per-minute: ${AUTH_RATE_LOGIN_PER_MINUTE:10}
+    register-per-minute: ${AUTH_RATE_REGISTER_PER_MINUTE:5}
+
+manti:
+  cors:
+    # Allowlist explícita (nunca '*'): separada por comas.
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000}
