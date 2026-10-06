@@ -4,8 +4,8 @@ import { esApiError } from '@/lib/api';
 export const MENSAJE_RATE_LIMIT =
   'Demasiados intentos. Espera un minuto y vuelve a intentarlo.';
 
-/** Clase compartida de los avisos de error de formulario (paleta madera). */
-export const AVISO_ERROR = 'text-sm text-acento-hover';
+/** Clase de los avisos de error: vive en las primitivas de UI, aquí sólo se reexporta. */
+export { AVISO_ERROR } from '@/components/ui/avisos';
 
 /** Traduce cualquier error del cliente API a un mensaje mostrable al usuario. */
 export function mensajeDeError(error: unknown): string {
