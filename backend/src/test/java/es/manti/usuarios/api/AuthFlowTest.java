@@ -208,6 +208,27 @@ class AuthFlowTest {
     }
 
     @Test
+    void rutaInexistente_conTokenDevuelve404ProblemDetail() throws Exception {
+        Sesion sesion = registrar(emailNuevo());
+
+        mockMvc.perform(get("/api/v1/inmuebles/999")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + sesion.accessToken()))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("No encontrado"));
+    }
+
+    @Test
+    void login_conContentTypeTextPlain_devuelve415() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("email=ana@example.com"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Tipo de contenido no soportado"));
+    }
+
+    @Test
     void apiDocs_sinToken_devuelve200() throws Exception {
         mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())

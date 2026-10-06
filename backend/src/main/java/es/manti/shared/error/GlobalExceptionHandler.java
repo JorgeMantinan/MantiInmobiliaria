@@ -11,17 +11,21 @@ import es.manti.usuarios.domain.UsuarioNoEncontradoException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.net.URI;
 import java.util.List;
@@ -69,6 +73,40 @@ public class GlobalExceptionHandler {
     public ProblemDetail parametroIncorrecto(HttpServletRequest request) {
         return problema(HttpStatus.BAD_REQUEST, "parametro-invalido",
                 "Parámetro inválido", "Valor de parámetro incorrecto", request);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ProblemDetail parametroFaltante(HttpServletRequest request) {
+        return problema(HttpStatus.BAD_REQUEST, "parametro-faltante",
+                "Parámetro obligatorio ausente", "Falta un parámetro obligatorio", request);
+    }
+
+    // ------------------------------------------------------------------
+    // Recursos y tipos (404 / 415 / 409)
+    // ------------------------------------------------------------------
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ProblemDetail recursoNoEncontrado(HttpServletRequest request) {
+        return problema(HttpStatus.NOT_FOUND, "no-encontrado",
+                "No encontrado", "La ruta solicitada no existe", request);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ProblemDetail tipoNoSoportado(HttpServletRequest request) {
+        return problema(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "tipo-no-soportado",
+                "Tipo de contenido no soportado", "Content-Type no soportado para este recurso", request);
+    }
+
+    /**
+     * Carrera en el registro único de email: {@code existsByEmail} devuelve
+     * falso y el INSERT posterior choca con la constraint UNIQUE
+     * ({@code uq_usuarios_email}) cuando dos peticiones llegan a la vez.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ProblemDetail violacionDeIntegridad(HttpServletRequest request) {
+        log.warn("Violación de integridad de datos en {} {}", request.getMethod(), request.getRequestURI());
+        return problema(HttpStatus.CONFLICT, "conflicto-integridad",
+                "Conflicto", "Los datos entran en conflicto con el estado actual", request);
     }
 
     // ------------------------------------------------------------------
