@@ -89,7 +89,9 @@ public class SecurityConfig {
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         .requestMatchers("/api/v1/public/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // springdoc: /v3/api-docs (+ .yaml/.yml/.json y swagger-config)
+                        .requestMatchers("/v3/api-docs", "/v3/api-docs.*", "/v3/api-docs/**",
+                                "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
                         .loginPage("/oauth2/authorization/google")

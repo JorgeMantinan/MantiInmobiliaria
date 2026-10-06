@@ -172,6 +172,13 @@ class AuthFlowTest {
     }
 
     @Test
+    void apiDocs_sinToken_devuelve200() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/api/v1/auth/login']").exists());
+    }
+
+    @Test
     void me_conTokenFalso_devuelve401() throws Exception {
         mockMvc.perform(get("/api/v1/auth/me")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer token-falso"))
