@@ -150,6 +150,33 @@ class AuthFlowTest {
     }
 
     @Test
+    void refresh_reusoDeTokenRotado_revocaLaSesionCompleta() throws Exception {
+        String email = emailNuevo();
+        Sesion registro = registrar(email);
+
+        // Rota el refresh original: queda revocado y se emite uno nuevo
+        Sesion refrescada = sesionDesde(mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(registro.refreshCookie())
+                        .header(CABECERA_CSRF, "XMLHttpRequest"))
+                .andExpect(status().isOk())
+                .andReturn());
+
+        // Reuso del refresh antiguo: 401 y, además, revoca TODA la familia
+        // (la revocación debe persistir aunque la transacción haga rollback)
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(registro.refreshCookie())
+                        .header(CABECERA_CSRF, "XMLHttpRequest"))
+                .andExpect(status().isUnauthorized());
+
+        // El refresh recién emitido (nunca tocado) TAMBIÉN devuelve 401:
+        // la sesión entera quedó cerrada por el reuso.
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(refrescada.refreshCookie())
+                        .header(CABECERA_CSRF, "XMLHttpRequest"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void refresh_sinCabeceraXRequestedWith_devuelve403() throws Exception {
         mockMvc.perform(post("/api/v1/auth/refresh")
                         .cookie(new Cookie("refresh_token", "cualquiera")))

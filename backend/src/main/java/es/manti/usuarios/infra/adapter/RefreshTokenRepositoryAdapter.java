@@ -4,6 +4,7 @@ import es.manti.usuarios.domain.RefreshToken;
 import es.manti.usuarios.domain.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
@@ -25,8 +26,14 @@ public class RefreshTokenRepositoryAdapter implements RefreshTokenRepository {
         return jpaRepository.save(refreshToken);
     }
 
+    /**
+     * REQUIRES_NEW: la revocación de familia debe persistir aunque la
+     * transacción que detectó el reuso haga rollback (validarYRotar lanza
+     * TokenInvalidoException inmediatamente después, lo que cancelaría una
+     * transacción compartida y dejaría la sesión abierta).
+     */
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public long revokeAllFromUsuario(Long usuarioId) {
         return jpaRepository.revocarTodosDeUsuario(usuarioId);
     }

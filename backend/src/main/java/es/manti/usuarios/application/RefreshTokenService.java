@@ -6,6 +6,7 @@ import es.manti.usuarios.domain.TokenInvalidoException;
 import es.manti.usuarios.domain.Usuario;
 import es.manti.usuarios.domain.UsuarioInactivoException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,7 @@ import java.util.HexFormat;
  * viaja en la cookie httpOnly. La fila anterior queda marcada como revocada,
  * lo que permite detectar reutilización (reuso ⇒ se revoca toda la sesión).
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RefreshTokenService {
@@ -55,8 +57,14 @@ public class RefreshTokenService {
         RefreshToken token = repository.findByTokenHash(sha256(tokenEnClaro))
                 .orElseThrow(TokenInvalidoException::new);
         if (token.isRevoked()) {
-            // Reutilización de un token ya rotado: posible robo, se cierra la sesión completa.
-            repository.revokeAllFromUsuario(token.getUsuario().getId());
+            // Reutilización de un token ya rotado: posible robo, se cierra la
+            // sesión completa. La revocación usa REQUIRES_NEW en el adaptador:
+            // se persiste aunque esta transacción acabe en rollback por la
+            // excepción que lanzamos justo después.
+            Long usuarioId = token.getUsuario().getId();
+            long revocados = repository.revokeAllFromUsuario(usuarioId);
+            log.warn("Seguridad: reutilización de refresh token rotado detectada; "
+                    + "sesión completa revocada para el usuario {} ({} tokens)", usuarioId, revocados);
             throw new TokenInvalidoException();
         }
         if (token.estaExpirado()) {
