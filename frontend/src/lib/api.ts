@@ -9,7 +9,7 @@
  *   servidor (401/403) se anuncia la pérdida de sesión; si falla la RED (0)
  *   la sesión en memoria se conserva.
  */
-import type { ErrorCampo } from "@/features/auth/types";
+import type { ErrorCampo } from "@/lib/tipos";
 import {
   API_BASE,
   anunciarPerdidaDeSesion,

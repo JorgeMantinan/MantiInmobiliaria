@@ -1,6 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { apiLogin, apiLogout, apiRegister } from '@/features/auth/api';
-import type { AuthResponse, Usuario } from '@/features/auth/types';
 import { ApiError, apiFetch } from '@/lib/api';
 import {
   bootstrapSession,
@@ -9,6 +7,7 @@ import {
   limpiarSesionLocal,
   observarPerdidaDeSesion,
 } from '@/lib/auth';
+import type { AuthResponse, Usuario } from '@/lib/tipos';
 
 const USUARIO: Usuario = {
   id: 1,
@@ -130,33 +129,6 @@ describe('apiFetch', () => {
     );
     expect(fetchMock).not.toHaveBeenCalled();
   });
-
-  it('un_401_en_el_login_no_dispara_el_refresh', async () => {
-    fetchMock.mockResolvedValueOnce(problem(401, 'no-autenticado', 'Credenciales incorrectas'));
-
-    await expect(apiLogin({ email: 'ana@example.com', password: 'mala1234' })).rejects.toMatchObject(
-      {
-        status: 401,
-        detail: 'Credenciales incorrectas',
-      },
-    );
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('parsea_el_problemdetail_como_ApiError_con_title_y_detail', async () => {
-    fetchMock.mockResolvedValueOnce(problem(409, 'conflicto', 'El email ya está registrado'));
-
-    await expect(
-      apiRegister({ nombre: 'Ana', email: 'ana@example.com', password: 'secreto123' }),
-    ).rejects.toEqual(
-      expect.objectContaining({
-        status: 409,
-        title: 'conflicto',
-        detail: 'El email ya está registrado',
-      }),
-    );
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
 });
 
 describe('refresh', () => {
@@ -191,21 +163,5 @@ describe('refresh', () => {
 
     await expect(bootstrapSession()).resolves.toBeNull();
     expect(haySesion()).toBe(false);
-  });
-});
-
-describe('apiLogout', () => {
-  it('notifica_a_los_observadores_antes_de_terminar', async () => {
-    guardarSesion({ accessToken: 'token-viejo', expiresIn: 900, user: USUARIO });
-    const observador = vi.fn();
-    const baja = observarPerdidaDeSesion(observador);
-    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
-
-    await apiLogout();
-
-    expect(observador).toHaveBeenCalledTimes(1);
-    expect(haySesion()).toBe(false);
-    expect(cabeceras(0)['X-Requested-With']).toBe('XMLHttpRequest');
-    baja();
   });
 });

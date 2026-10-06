@@ -1,28 +1,16 @@
 /**
- * Tipos del contrato de autenticación, ajustados EXACTOS a
- * `docs/openapi/openapi.yaml` (`UsuarioSummary`, `AuthResponse`, …).
+ * Tipos del contrato de autenticación.
  *
- * Módulo hoja: sólo tipos, sin imports (evita ciclos entre `lib/api.ts`
- * y `lib/auth.ts`).
+ * `Usuario`, `AuthResponse` y `ErrorCampo` se declaran en `lib/tipos.ts` (los
+ * usa la capa `lib/` y ésta no puede importar de `features/`); aquí se
+ * reexportan para no romper a los consumidores del feature.
+ *
+ * Ajustados EXACTOS a `docs/openapi/openapi.yaml` (`UsuarioSummary`,
+ * `AuthResponse`, `RegistroRequest`, `LoginRequest`).
  */
 
-export type Usuario = Readonly<{
-  id: number;
-  email: string;
-  nombre: string;
-  rol: string;
-  activo: boolean;
-  createdAt: string;
-}>;
-
-export type AuthResponse = Readonly<{
-  accessToken: string;
-  expiresIn: number;
-  user: Usuario;
-}>;
+export type { AuthResponse, ErrorCampo, Usuario } from '@/lib/tipos';
 
 export type Credenciales = Readonly<{ email: string; password: string }>;
 
 export type DatosRegistro = Readonly<{ nombre: string; email: string; password: string }>;
-
-export type ErrorCampo = Readonly<{ field?: string; message: string }>;

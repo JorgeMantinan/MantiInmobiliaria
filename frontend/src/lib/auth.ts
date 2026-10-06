@@ -7,7 +7,7 @@
  * - Módulo HOJA: sólo importa tipos. `lib/api.ts` depende de aquí (api → auth),
  *   nunca al revés, para no crear un ciclo de imports.
  */
-import type { AuthResponse } from "@/features/auth/types";
+import type { AuthResponse } from "@/lib/tipos";
 
 // ---------------------------------------------------------------------------
 // URL base de la API (definida aquí: el refresh necesita el origen)
