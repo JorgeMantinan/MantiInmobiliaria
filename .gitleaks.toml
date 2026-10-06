@@ -1,0 +1,9 @@
+# Configuración de gitleaks (v8) — https://github.com/gitleaks/gitleaks
+#
+# .env.example sólo documenta los NOMBRES de las variables necesarias (sin
+# valores reales: los secretos viven en el .env gitignored). Sus placeholders
+# de ejemplo disparan falsos positivos de la regla generic-api-key, así que se
+# allowlista EXCLUSIVAMENTE esa ruta; el resto del repositorio se escanea con
+# la configuración por defecto.
+[allowlist]
+paths = ['''(^|/)\.env\.example$''']
