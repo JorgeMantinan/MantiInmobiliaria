@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: read
+  # gitleaks-action necesita leer los commits del PR (pulls: read) en eventos pull_request
+  pull-requests: read
 
 jobs:
   # Escaneo de secretos en todo el historial del push/PR.
@@ -27,6 +29,9 @@ jobs:
 
   backend:
     runs-on: ubuntu-latest
+    env:
+      # En CI el Postgres del service container expone 5432; en local (Docker) usamos 5433
+      DB_URL: jdbc:postgresql://localhost:5432/manti
     services:
       postgres:
         image: postgres:18-alpine
