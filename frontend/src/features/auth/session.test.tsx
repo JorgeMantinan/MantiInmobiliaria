@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiLogout, apiMe } from '@/features/auth/api';
 import { ProveedorSesion, useSesion } from '@/features/auth/session';
 import type { ValorSesion } from '@/features/auth/session';
-import { bootstrapSession } from '@/lib/auth';
+import { bootstrapSession, limpiarSesionLocal } from '@/lib/auth';
 import type { AuthResponse, Usuario } from '@/features/auth/types';
 
 vi.mock('@/lib/auth', async (importOriginal) => {
@@ -59,6 +59,8 @@ function montar(captura: Captura): void {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // El token en memoria es estado de módulo: se limpia entre tests.
+  limpiarSesionLocal();
 });
 
 describe('ProveedorSesion', () => {
