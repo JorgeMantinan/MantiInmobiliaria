@@ -10,19 +10,18 @@ import es.manti.usuarios.domain.Usuario;
 import es.manti.usuarios.domain.UsuarioInactivoException;
 import es.manti.usuarios.domain.UsuarioNoEncontradoException;
 import es.manti.usuarios.domain.UsuarioRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Locale;
+import java.util.UUID;
 
 /**
  * Casos de uso de autenticación: registro, login email/password, rotación de
  * refresh token, logout y login con Google (vínculo de cuenta + código opaco).
  */
 @Service
-@RequiredArgsConstructor
 public class AuthService {
 
     private final UsuarioRepository usuarios;
@@ -31,6 +30,30 @@ public class AuthService {
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final AuthProperties properties;
+
+    /**
+     * Hash BCrypt de un password inexistente, precalculado UNA sola vez al
+     * arrancar: un login con usuario inexistente (o cuenta sin password) paga
+     * el mismo coste de CPU que uno real y es indistinguible en tiempo de
+     * respuesta (evita la enumeración de emails por timing).
+     *
+     * <p>Nota: no tiene test unitario fiable — el timing de BCrypt es ruidoso
+     * en CI y cualquier umbral daría falsos positivos; se cubre por inspección
+     * y por los tests de mensaje genérico ({@code login_conUsuarioInexistente_...}).</p>
+     */
+    private final String passwordHashDummy;
+
+    public AuthService(UsuarioRepository usuarios, RefreshTokenService refreshTokens,
+                       CodigoOAuth2Port codigos, JwtService jwtService,
+                       PasswordEncoder passwordEncoder, AuthProperties properties) {
+        this.usuarios = usuarios;
+        this.refreshTokens = refreshTokens;
+        this.codigos = codigos;
+        this.jwtService = jwtService;
+        this.passwordEncoder = passwordEncoder;
+        this.properties = properties;
+        this.passwordHashDummy = passwordEncoder.encode(UUID.randomUUID().toString());
+    }
 
     /** Registra un usuario email/password y devuelve su sesión (auto-login). */
     @Transactional
@@ -51,14 +74,18 @@ public class AuthService {
 
     /**
      * Login email/password. El mismo mensaje genérico sirve para usuario
-     * inexistente, password incorrecta y cuenta sin password (sin enumeración).
+     * inexistente, password incorrecta y cuenta sin password (sin enumeración);
+     * cuando no hay usuario se compara igualmente contra el hash dummy para
+     * que el coste temporal sea idéntico (sin enumeración por timing).
      */
     @Transactional
     public AuthResult login(String email, String password) {
-        Usuario usuario = usuarios.findByEmail(normalizarEmail(email))
-                .orElseThrow(CredencialesInvalidasException::new);
-        if (usuario.getPasswordHash() == null
-                || !passwordEncoder.matches(password, usuario.getPasswordHash())) {
+        Usuario usuario = usuarios.findByEmail(normalizarEmail(email)).orElse(null);
+        if (usuario == null || usuario.getPasswordHash() == null) {
+            passwordEncoder.matches(password, passwordHashDummy);
+            throw new CredencialesInvalidasException();
+        }
+        if (!passwordEncoder.matches(password, usuario.getPasswordHash())) {
             throw new CredencialesInvalidasException();
         }
         if (!usuario.isActivo()) {
