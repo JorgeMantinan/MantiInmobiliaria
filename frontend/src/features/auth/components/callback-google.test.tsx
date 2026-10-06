@@ -76,7 +76,7 @@ describe('CallbackGoogle', () => {
     expect(window.location.search).toBe('');
   });
 
-  it('sin_code_muestra_error_y_el_enlace_a_login', () => {
+  it('sin_code_muestra_error_y_el_enlace_a_login_sin_navegar', () => {
     window.history.replaceState(null, '', '/auth/google/callback?error=access_denied');
     renderizarCallback({ error: 'access_denied' });
 
@@ -86,17 +86,22 @@ describe('CallbackGoogle', () => {
       '/login',
     );
     expect(apiExchangeGoogleCode).not.toHaveBeenCalled();
-    // Sin código no hay canje: la URL residual se reemplaza por el inicio.
-    expect(navegacion.replace).toHaveBeenCalledWith('/');
+    // No se navega a '/': el usuario tiene que llegar a leer el motivo.
+    expect(navegacion.replace).not.toHaveBeenCalledWith('/');
+    // La URL residual (`?error=`) se limpia con history.replaceState.
+    expect(window.location.pathname).toBe('/auth/google/callback');
+    expect(window.location.search).toBe('');
   });
 
   it('un_error_desconocido_no_rompe_el_render', () => {
+    window.history.replaceState(null, '', '/auth/google/callback?error=constructor');
     renderizarCallback({ error: 'constructor' });
 
     expect(screen.getByRole('alert')).toHaveTextContent(
       'No se ha podido completar el acceso con Google.',
     );
-    expect(navegacion.replace).toHaveBeenCalledWith('/');
+    expect(navegacion.replace).not.toHaveBeenCalled();
+    expect(window.location.search).toBe('');
   });
 
   it('con_el_code_caducado_muestra_el_error_de_la_api_y_el_enlace_a_login', async () => {

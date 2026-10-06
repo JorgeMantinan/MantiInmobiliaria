@@ -37,19 +37,23 @@ export function CallbackGoogle({ code, error }: CallbackGoogleProps) {
   const router = useRouter();
   const { iniciarSesion } = useSesion();
   const yaCanjeado = useRef(false);
-  // Se decide en el primer render: al limpiar la URL, `code` pasa a undefined
-  // y NO debe re-interpretarse como "llegamos sin código".
-  const [llegoSinCodigo] = useState(() => code === undefined);
+  // Se decide en el primer render: al limpiar la URL, `code` y `error` pasan a
+  // undefined y NO deben re-interpretarse (perderíamos el mensaje de Google).
+  const [inicio] = useState(() => ({
+    sinCodigo: code === undefined,
+    mensaje: code === undefined ? mensajeDeFallo(error) : null,
+  }));
   const [falloDelCanje, setFalloDelCanje] = useState<string | null>(null);
-  const fallo = llegoSinCodigo ? mensajeDeFallo(error) : falloDelCanje;
+  const fallo = inicio.mensaje ?? falloDelCanje;
 
-  // Sin código (p. ej. `?error=` de Google) no hay nada que canjear y la URL
-  // queda residual: se vuelve al inicio.
+  // Sin código (p. ej. `?error=` de Google) no hay nada que canjear: se limpia
+  // la URL residual pero se deja el mensaje + enlace VISIBLES. No se navega a
+  // `/`: el usuario debe ver por qué no se ha podido entrar.
   useEffect(() => {
-    if (llegoSinCodigo) {
-      router.replace('/');
+    if (inicio.sinCodigo) {
+      window.history.replaceState(null, '', '/auth/google/callback');
     }
-  }, [llegoSinCodigo, router]);
+  }, [inicio.sinCodigo]);
 
   useEffect(() => {
     if (code === undefined || yaCanjeado.current) {
