@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { mensajeDeError } from '@/features/auth/mensajes';
+import { useEffect, useRef, useState } from 'react';
+import { apiExchangeGoogleCode } from '@/features/auth/api';
+import { AVISO_ERROR, mensajeDeError } from '@/features/auth/mensajes';
 import { useSesion } from '@/features/auth/session';
-import { apiExchangeGoogleCode } from '@/lib/api';
 
 type CallbackGoogleProps = Readonly<{
   code?: string;
@@ -20,55 +20,74 @@ const MENSAJES_GOOGLE: Readonly<Record<string, string>> = {
   unsupported: 'No se ha podido completar el acceso con Google.',
 };
 
+const MENSAJE_SIN_CODIGO = 'No hemos recibido el código de Google. Vuelve a intentarlo.';
+
 function mensajeDeFallo(error: string | undefined): string {
-  if (error !== undefined) {
-    return MENSAJES_GOOGLE[error] ?? MENSAJES_GOOGLE.unsupported;
+  if (error === undefined) {
+    return MENSAJE_SIN_CODIGO;
   }
-  return 'No hemos recibido el código de Google. Vuelve a intentarlo.';
+  // Object.hasOwn: `?error=constructor` no debe devolver un método de Object.
+  return Object.hasOwn(MENSAJES_GOOGLE, error)
+    ? MENSAJES_GOOGLE[error]
+    : MENSAJES_GOOGLE.unsupported;
 }
 
 /** Segundo paso del flujo Google: canjea `?code=` por la sesión. */
 export function CallbackGoogle({ code, error }: CallbackGoogleProps) {
   const router = useRouter();
   const { iniciarSesion } = useSesion();
-  // El fallo sin código se deriva del prop (nada que sincronizar en un effect).
-  const falloInicial = code === undefined ? mensajeDeFallo(error) : null;
+  const yaCanjeado = useRef(false);
+  // Se decide en el primer render: al limpiar la URL, `code` pasa a undefined
+  // y NO debe re-interpretarse como "llegamos sin código".
+  const [llegoSinCodigo] = useState(() => code === undefined);
   const [falloDelCanje, setFalloDelCanje] = useState<string | null>(null);
-  const fallo = falloInicial ?? falloDelCanje;
+  const fallo = llegoSinCodigo ? mensajeDeFallo(error) : falloDelCanje;
+
+  // Sin código (p. ej. `?error=` de Google) no hay nada que canjear y la URL
+  // queda residual: se vuelve al inicio.
+  useEffect(() => {
+    if (llegoSinCodigo) {
+      router.replace('/');
+    }
+  }, [llegoSinCodigo, router]);
 
   useEffect(() => {
-    if (code === undefined) {
+    if (code === undefined || yaCanjeado.current) {
       return;
     }
+    yaCanjeado.current = true;
 
-    let activo = true;
+    // Limpia `?code=` ANTES de canjear (el código es de un solo uso: un F5 no
+    // debe reintentarlo). `history.replaceState` y no `router.replace` para no
+    // re-disparar este effect.
+    window.history.replaceState(null, '', '/auth/google/callback');
+
+    // Sin cleanup a propósito: el canje debe completarse aunque StrictMode
+    // vuelva a montar el effect (el ref evita el segundo envío) y aunque el
+    // usuario abandone la página (la sesión se guarda de todos modos).
     async function canjear(codigo: string): Promise<void> {
       try {
         const sesion = await apiExchangeGoogleCode(codigo);
-        if (!activo) return;
         iniciarSesion(sesion);
         router.replace('/');
       } catch (causa) {
-        if (activo) setFalloDelCanje(mensajeDeError(causa));
+        setFalloDelCanje(mensajeDeError(causa));
       }
     }
 
     void canjear(code);
-    return () => {
-      activo = false;
-    };
   }, [code, iniciarSesion, router]);
 
   if (fallo !== null) {
     return (
       <div className="flex w-full max-w-md flex-col gap-4 rounded-lg border border-borde bg-superficie p-6 sm:p-8">
         <h1 className="font-display text-2xl text-texto">No se ha podido entrar</h1>
-        <p role="alert" aria-live="assertive" className="text-sm text-acento-hover">
+        <p role="alert" aria-live="assertive" className={AVISO_ERROR}>
           {fallo}
         </p>
         <Link
           href="/login"
-          className="rounded-md bg-acento-nogal px-4 py-2 text-center text-sm font-medium text-superficie transition-colors hover:bg-acento-hover focus:ring-2 focus:ring-acento-nogal outline-none"
+          className="rounded-md bg-acento-nogal px-4 py-2 text-center text-sm font-medium text-superficie transition-colors outline-none focus:ring-2 focus:ring-acento-nogal hover:bg-acento-hover"
         >
           Volver a iniciar sesión
         </Link>

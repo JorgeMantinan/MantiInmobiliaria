@@ -6,18 +6,18 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Boton } from '@/components/ui/boton';
 import { Campo } from '@/components/ui/campo';
-import { mensajeDeError } from '@/features/auth/mensajes';
+import { apiRegister } from '@/features/auth/api';
+import { AVISO_ERROR, mensajeDeError } from '@/features/auth/mensajes';
 import { useSesion } from '@/features/auth/session';
+import type { ErroresRegistro } from '@/features/auth/validacion';
 import {
   PASSWORD_MAXIMO,
   PASSWORD_MINIMO,
   hayErrores,
   validarRegistro,
 } from '@/features/auth/validacion';
-import { apiRegister, esApiError } from '@/lib/api';
-import type { ErroresRegistro } from '@/features/auth/validacion';
+import { esApiError } from '@/lib/api';
 
-const AVISO = 'text-sm text-acento-hover';
 const MENSAJE_EMAIL_REPETIDO = 'Ese email ya está registrado.';
 
 /** Alta de cuenta: el backend devuelve tokens, así que queda auto-login. */
@@ -49,16 +49,24 @@ export function RegistroForm() {
       iniciarSesion(sesion);
       router.push('/');
     } catch (causa) {
-      setErrorApi(esApiError(causa) && causa.status === 409
-        ? MENSAJE_EMAIL_REPETIDO
-        : mensajeDeError(causa));
+      setErrorApi(
+        esApiError(causa) && causa.status === 409
+          ? MENSAJE_EMAIL_REPETIDO
+          : mensajeDeError(causa),
+      );
     } finally {
       setEnviando(false);
     }
   }
 
   return (
-    <form onSubmit={(evento) => void enviar(evento)} className="mt-6 flex flex-col gap-4">
+    // noValidate: mandan nuestras reglas (8-72, confirmación) con avisos
+    // accesibles; required/minLength siguen presentes para lectores de pantalla.
+    <form
+      onSubmit={(evento) => void enviar(evento)}
+      noValidate
+      className="mt-6 flex flex-col gap-4"
+    >
       <Campo
         id="registro-nombre"
         name="nombre"
@@ -98,12 +106,10 @@ export function RegistroForm() {
         required
       />
 
-      <p className="text-xs text-texto-suave">
-        Mínimo {PASSWORD_MINIMO} caracteres.
-      </p>
+      <p className="text-xs text-texto-suave">Mínimo {PASSWORD_MINIMO} caracteres.</p>
 
       {errorApi !== null ? (
-        <p role="alert" aria-live="assertive" className={AVISO}>
+        <p role="alert" aria-live="assertive" className={AVISO_ERROR}>
           {errorApi}
         </p>
       ) : null}
@@ -114,7 +120,10 @@ export function RegistroForm() {
 
       <p className="text-sm text-texto-suave">
         ¿Ya tienes cuenta?{' '}
-        <Link href="/login" className="text-acento-nogal underline underline-offset-4">
+        <Link
+          href="/login"
+          className="rounded-md text-acento-nogal underline underline-offset-4 outline-none focus:ring-2 focus:ring-acento-nogal"
+        >
           Iniciar sesión
         </Link>
       </p>

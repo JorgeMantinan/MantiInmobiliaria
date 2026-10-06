@@ -1,19 +1,21 @@
+import { StrictMode } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { apiExchangeGoogleCode } from '@/features/auth/api';
 import { CallbackGoogle } from '@/features/auth/components/callback-google';
 import { SesionContext } from '@/features/auth/session';
 import type { ValorSesion } from '@/features/auth/session';
-import { ApiError, apiExchangeGoogleCode } from '@/lib/api';
-import type { AuthResponse, Usuario } from '@/lib/api';
+import { ApiError } from '@/lib/api';
+import type { AuthResponse, Usuario } from '@/features/auth/types';
 
-const navegacion = vi.hoisted(() => ({ replace: vi.fn() }));
+const navegacion = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), replace: navegacion.replace, prefetch: vi.fn() }),
+  useRouter: () => ({ push: navegacion.push, replace: navegacion.replace, prefetch: vi.fn() }),
 }));
 
-vi.mock('@/lib/api', async (importOriginal) => {
-  const real = await importOriginal<typeof import('@/lib/api')>();
+vi.mock('@/features/auth/api', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@/features/auth/api')>();
   return { ...real, apiExchangeGoogleCode: vi.fn() };
 });
 
@@ -40,21 +42,25 @@ function valorDeSesion(): ValorSesion {
 function renderizarCallback(
   props: Readonly<{ code?: string; error?: string }>,
   valor: ValorSesion = valorDeSesion(),
+  opciones: Readonly<{ estricto?: boolean }> = {},
 ) {
-  const utils = render(
+  const contenido = (
     <SesionContext.Provider value={valor}>
       <CallbackGoogle {...props} />
-    </SesionContext.Provider>,
+    </SesionContext.Provider>
   );
+  const utils = render(opciones.estricto ? <StrictMode>{contenido}</StrictMode> : contenido);
   return { ...utils, valor };
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  window.history.replaceState(null, '', '/');
 });
 
 describe('CallbackGoogle', () => {
-  it('canjea_el_code_por_la_sesion_y_redirige_al_inicio', async () => {
+  it('canjea_el_code_limpia_la_url_y_redirige_al_inicio', async () => {
+    window.history.replaceState(null, '', '/auth/google/callback?code=codigo-de-google');
     vi.mocked(apiExchangeGoogleCode).mockResolvedValue(SESION);
     const { valor } = renderizarCallback({ code: 'codigo-de-google' });
 
@@ -65,20 +71,32 @@ describe('CallbackGoogle', () => {
     await waitFor(() => {
       expect(navegacion.replace).toHaveBeenCalledWith('/');
     });
+    // El código de un solo uso se limpia de la URL antes del canje.
+    expect(window.location.pathname).toBe('/auth/google/callback');
+    expect(window.location.search).toBe('');
   });
 
   it('sin_code_muestra_error_y_el_enlace_a_login', () => {
+    window.history.replaceState(null, '', '/auth/google/callback?error=access_denied');
     renderizarCallback({ error: 'access_denied' });
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'Has cancelado el acceso con Google.',
-    );
+    expect(screen.getByRole('alert')).toHaveTextContent('Has cancelado el acceso con Google.');
     expect(screen.getByRole('link', { name: 'Volver a iniciar sesión' })).toHaveAttribute(
       'href',
       '/login',
     );
     expect(apiExchangeGoogleCode).not.toHaveBeenCalled();
-    expect(navegacion.replace).not.toHaveBeenCalled();
+    // Sin código no hay canje: la URL residual se reemplaza por el inicio.
+    expect(navegacion.replace).toHaveBeenCalledWith('/');
+  });
+
+  it('un_error_desconocido_no_rompe_el_render', () => {
+    renderizarCallback({ error: 'constructor' });
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'No se ha podido completar el acceso con Google.',
+    );
+    expect(navegacion.replace).toHaveBeenCalledWith('/');
   });
 
   it('con_el_code_caducado_muestra_el_error_de_la_api_y_el_enlace_a_login', async () => {
@@ -92,5 +110,16 @@ describe('CallbackGoogle', () => {
     );
     expect(screen.getByRole('link', { name: 'Volver a iniciar sesión' })).toBeInTheDocument();
     expect(navegacion.replace).not.toHaveBeenCalled();
+  });
+
+  it('callback_no_canjea_dos_veces_aunque_strict_mode_remonte_el_effect', async () => {
+    vi.mocked(apiExchangeGoogleCode).mockResolvedValue(SESION);
+    const { valor } = renderizarCallback({ code: 'codigo-unico' }, valorDeSesion(), {
+      estricto: true,
+    });
+
+    await waitFor(() => expect(navegacion.replace).toHaveBeenCalledWith('/'));
+    expect(apiExchangeGoogleCode).toHaveBeenCalledTimes(1);
+    expect(valor.iniciarSesion).toHaveBeenCalledTimes(1);
   });
 });

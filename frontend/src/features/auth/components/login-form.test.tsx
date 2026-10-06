@@ -1,19 +1,21 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { apiLogin } from '@/features/auth/api';
 import { LoginForm } from '@/features/auth/components/login-form';
 import { SesionContext } from '@/features/auth/session';
 import type { ValorSesion } from '@/features/auth/session';
-import { ApiError, apiLogin } from '@/lib/api';
-import type { AuthResponse, Usuario } from '@/lib/api';
+import { ApiError } from '@/lib/api';
+import type { AuthResponse, Usuario } from '@/features/auth/types';
 
-const navegacion = vi.hoisted(() => ({ push: vi.fn() }));
+const navegacion = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: navegacion.push, replace: vi.fn(), prefetch: vi.fn() }),
+  useRouter: () => ({ push: navegacion.push, replace: navegacion.replace, prefetch: vi.fn() }),
 }));
 
-vi.mock('@/lib/api', async (importOriginal) => {
-  const real = await importOriginal<typeof import('@/lib/api')>();
+vi.mock('@/features/auth/api', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@/features/auth/api')>();
   return { ...real, apiLogin: vi.fn() };
 });
 
@@ -46,18 +48,14 @@ function renderizarLogin(valor: ValorSesion = valorDeSesion()) {
   return { ...utils, valor };
 }
 
-function rellenarYEnviar(contenedor: HTMLElement): void {
-  fireEvent.change(screen.getByLabelText('Email'), {
-    target: { value: 'ana@example.com' },
-  });
-  fireEvent.change(screen.getByLabelText('Contraseña'), {
-    target: { value: 'secreto123' },
-  });
-  const formulario = contenedor.querySelector('form');
-  if (formulario === null) {
-    throw new Error('No se encontró el formulario de login');
-  }
-  fireEvent.submit(formulario);
+async function rellenarYEnviar(
+  usuario: ReturnType<typeof userEvent.setup>,
+  email: string,
+  password: string,
+): Promise<void> {
+  await usuario.type(screen.getByLabelText('Email'), email);
+  await usuario.type(screen.getByLabelText('Contraseña'), password);
+  await usuario.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
 }
 
 beforeEach(() => {
@@ -66,10 +64,11 @@ beforeEach(() => {
 
 describe('LoginForm', () => {
   it('al_enviar_llama_a_apiLogin_inicia_sesion_y_navega_al_inicio', async () => {
+    const usuario = userEvent.setup();
     vi.mocked(apiLogin).mockResolvedValue(SESION);
-    const { container, valor } = renderizarLogin();
+    const { valor } = renderizarLogin();
 
-    rellenarYEnviar(container);
+    await rellenarYEnviar(usuario, 'ana@example.com', 'secreto123');
 
     await waitFor(() => {
       expect(apiLogin).toHaveBeenCalledWith({
@@ -82,12 +81,13 @@ describe('LoginForm', () => {
   });
 
   it('muestra_el_detalle_del_problemdetail_cuando_las_credenciales_son_invalidas', async () => {
+    const usuario = userEvent.setup();
     vi.mocked(apiLogin).mockRejectedValue(
       new ApiError(401, 'no-autenticado', 'Credenciales incorrectas'),
     );
-    const { container, valor } = renderizarLogin();
+    const { valor } = renderizarLogin();
 
-    rellenarYEnviar(container);
+    await rellenarYEnviar(usuario, 'ana@example.com', 'mala1234');
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Credenciales incorrectas');
     expect(valor.iniciarSesion).not.toHaveBeenCalled();
@@ -95,16 +95,18 @@ describe('LoginForm', () => {
   });
 
   it('ante_un_429_muestra_un_mensaje_amigable', async () => {
+    const usuario = userEvent.setup();
     vi.mocked(apiLogin).mockRejectedValue(
       new ApiError(429, 'rate-limit', 'Límite de peticiones alcanzado'),
     );
-    const { container } = renderizarLogin();
+    const { valor } = renderizarLogin();
 
-    rellenarYEnviar(container);
+    await rellenarYEnviar(usuario, 'ana@example.com', 'secreto123');
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Demasiados intentos. Espera un minuto y vuelve a intentarlo.',
     );
+    expect(valor.iniciarSesion).not.toHaveBeenCalled();
     expect(navegacion.push).not.toHaveBeenCalled();
   });
 });
