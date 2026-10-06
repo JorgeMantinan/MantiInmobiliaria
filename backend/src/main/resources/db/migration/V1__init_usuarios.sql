@@ -24,6 +24,7 @@ CREATE TABLE refresh_tokens (
     expires_at  timestamptz NOT NULL,
     revoked     boolean NOT NULL DEFAULT false,       -- rotación: el uso anterior queda invalidado
     created_at  timestamptz NOT NULL DEFAULT now(),
+    updated_at  timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT uq_refresh_tokens_token_hash UNIQUE (token_hash),
     CONSTRAINT fk_refresh_tokens_usuario FOREIGN KEY (usuario_id)
         REFERENCES usuarios (id) ON DELETE CASCADE
