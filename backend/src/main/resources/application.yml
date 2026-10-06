@@ -2,7 +2,7 @@ spring:
   application:
     name: manti-backend
   datasource:
-    url: jdbc:postgresql://localhost:5433/manti
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/manti}
     username: ${DB_USER:manti}
     password: ${DB_PASSWORD:manti_dev}
   jpa:
