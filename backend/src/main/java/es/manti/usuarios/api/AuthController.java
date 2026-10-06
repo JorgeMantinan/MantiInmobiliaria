@@ -24,6 +24,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -32,6 +33,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -126,6 +128,14 @@ public class AuthController {
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         authService.logout(leerCookieSesion(request));
+        // Sesión fantasma: el flujo JWT no necesita JSESSIONID persistente
+        // (sólo se crea durante el baile OAuth2 de Google), así que al cerrar
+        // la sesión se invalida y se limpia el SecurityContext.
+        HttpSession sesion = request.getSession(false);
+        if (sesion != null) {
+            sesion.invalidate();
+        }
+        SecurityContextHolder.clearContext();
         response.addHeader(HttpHeaders.SET_COOKIE, cookieBorrada().toString());
         return ResponseEntity.noContent().build();
     }

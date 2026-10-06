@@ -6,9 +6,11 @@ import es.manti.usuarios.domain.CuentaGoogleConflictivaException;
 import es.manti.usuarios.domain.UsuarioInactivoException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
@@ -40,6 +42,9 @@ public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler 
                     oidc.getSubject(),
                     oidc.getEmail(),
                     oidc.getFullName() != null ? oidc.getFullName() : oidc.getPreferredUsername());
+            // El flujo JWT no necesita JSESSIONID persistente: la sesión sólo
+            // existía para el baile OAuth2, así que se invalida antes de salir.
+            invalidarSesionDeNavegador(request);
             response.sendRedirect(consultaFrontend("code=" + URLEncoder.encode(codigo, StandardCharsets.UTF_8)));
         } catch (MissingEmailException e) {
             log.warn("Login con Google incompleto: {}", e.getMessage());
@@ -72,6 +77,14 @@ public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler 
             base = base.substring(0, base.length() - 1);
         }
         return base + "/auth/google/callback?" + query;
+    }
+
+    private static void invalidarSesionDeNavegador(HttpServletRequest request) {
+        HttpSession sesion = request.getSession(false);
+        if (sesion != null) {
+            sesion.invalidate();
+        }
+        SecurityContextHolder.clearContext();
     }
 
     /** Falta el claim de email en el token de Google. */

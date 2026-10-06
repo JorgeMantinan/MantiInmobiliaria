@@ -10,6 +10,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -191,6 +192,22 @@ class AuthFlowTest {
                         .cookie(new Cookie("refresh_token", "cualquiera")))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.detail").value(containsString("X-Requested-With")));
+    }
+
+    @Test
+    void logout_invalidaLaSesionDelNavegador() throws Exception {
+        String email = emailNuevo();
+        Sesion sesion = registrar(email);
+        MockHttpSession navegador = new MockHttpSession();
+
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .session(navegador)
+                        .cookie(sesion.refreshCookie())
+                        .header(CABECERA_CSRF, "XMLHttpRequest"))
+                .andExpect(status().isNoContent());
+
+        // Sin sesión fantasma: el flujo JWT no necesita JSESSIONID
+        assertThat(navegador.isInvalid()).isTrue();
     }
 
     @Test

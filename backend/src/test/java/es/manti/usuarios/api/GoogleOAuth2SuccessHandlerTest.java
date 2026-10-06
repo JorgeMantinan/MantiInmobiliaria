@@ -7,7 +7,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 
 import java.time.Duration;
@@ -75,6 +77,22 @@ class GoogleOAuth2SuccessHandlerTest {
 
         assertThat(response.getRedirectedUrl())
                 .isEqualTo("http://localhost:3000/auth/google/callback?error=account_conflict");
+    }
+
+    @Test
+    void alAutenticarConGoogle_invalidaLaSesionDelNavegador() throws Exception {
+        OidcUser oidc = oidcUser("google-id-000", "sesion@example.com", "Sin Sesión");
+        when(authService.crearCodigoGoogle("google-id-000", "sesion@example.com", "Sin Sesión"))
+                .thenReturn("CODIGO-UN-USO");
+        MockHttpServletRequest peticion = new MockHttpServletRequest();
+        MockHttpSession sesion = new MockHttpSession();
+        peticion.setSession(sesion);
+
+        handler.onAuthenticationSuccess(peticion, response, autenticacion(oidc));
+
+        // El flujo JWT no deja JSESSIONID detrás del callback de Google
+        assertThat(sesion.isInvalid()).isTrue();
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
 
     // ------------------------------------------------------------------
