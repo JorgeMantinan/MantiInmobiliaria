@@ -1,0 +1,43 @@
+# ===== Maven / Java =====
+backend/target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# ===== Node / Next.js =====
+node_modules/
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+
+# ===== Entornos y secretos =====
+.env
+.env.*
+!.env.example
+
+# ===== IDE / editor =====
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# ===== Sistema =====
+.DS_Store
+Thumbs.db
+
+# ===== Logs =====
+*.log
+logs/
+
+# ===== Tests / coverage =====
+coverage/
+playwright-report/
+test-results/
+
+# ===== Docker =====
+docker-compose.override.yml

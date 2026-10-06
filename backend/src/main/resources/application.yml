@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: manti-backend
+  datasource:
+    url: jdbc:postgresql://localhost:5433/manti
+    username: ${DB_USER:manti}
+    password: ${DB_PASSWORD:manti_dev}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+
+server:
+  port: 8080
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
