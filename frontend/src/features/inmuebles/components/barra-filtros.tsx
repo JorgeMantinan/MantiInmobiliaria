@@ -1,8 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { Boton } from '@/components/ui/boton';
-import { leerFiltros } from '../filtros';
+import {
+  construirQueryInmuebles,
+  HABITACIONES_MAX,
+  leerFiltros,
+  PRECIO_MAXIMO_CONSULTA,
+  rangoPrecioInconsistente,
+} from '../filtros';
 import { ETIQUETAS_ESTADO, ETIQUETAS_TIPO } from '../formato';
 import type { FiltrosInmuebles } from '../types';
 
@@ -40,12 +47,26 @@ type BarraFiltrosProps = Readonly<{
  * `leerFiltros` y el contenedor sincroniza la URL (`router.replace`).
  */
 export function BarraFiltros({ filtros, onAplicar, onLimpiar }: BarraFiltrosProps) {
+  const [avisoRango, setAvisoRango] = useState<string | null>(null);
+
   function aplicar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
-    const params = new URLSearchParams();
+    // Se parte de los filtros vigentes (p. ej. `?destacado=true`, que no tiene
+    // campo en el formulario) y sólo se pisan los que trae el formulario; los
+    // campos vacíos se eliminan para que sirvan de "quitar este filtro".
+    const params = new URLSearchParams(construirQueryInmuebles(filtros).replace(/^\?/, ''));
     for (const [clave, valor] of new FormData(evento.currentTarget)) {
-      if (typeof valor === 'string') params.set(clave, valor);
+      if (typeof valor !== 'string') continue;
+      if (valor.trim() === '') params.delete(clave);
+      else params.set(clave, valor.trim());
     }
+
+    if (rangoPrecioInconsistente(params)) {
+      // Se avisa y NO se navega: la query resultante la rechazaría el backend.
+      setAvisoRango('El precio mínimo no puede superar al máximo.');
+      return;
+    }
+    setAvisoRango(null);
     onAplicar(leerFiltros(params));
   }
 
@@ -116,6 +137,7 @@ export function BarraFiltros({ filtros, onAplicar, onLimpiar }: BarraFiltrosProp
             name="precioMin"
             type="number"
             min={0}
+            max={PRECIO_MAXIMO_CONSULTA}
             inputMode="numeric"
             defaultValue={filtros.precioMin ?? ''}
             className={CLASE_CAMPO}
@@ -128,6 +150,7 @@ export function BarraFiltros({ filtros, onAplicar, onLimpiar }: BarraFiltrosProp
             name="precioMax"
             type="number"
             min={0}
+            max={PRECIO_MAXIMO_CONSULTA}
             inputMode="numeric"
             defaultValue={filtros.precioMax ?? ''}
             className={CLASE_CAMPO}
@@ -140,12 +163,19 @@ export function BarraFiltros({ filtros, onAplicar, onLimpiar }: BarraFiltrosProp
             name="habitacionesMin"
             type="number"
             min={0}
+            max={HABITACIONES_MAX}
             inputMode="numeric"
             defaultValue={filtros.habitacionesMin ?? ''}
             className={CLASE_CAMPO}
           />
         </CampoFiltro>
       </div>
+
+      {avisoRango !== null ? (
+        <p role="status" className="mt-3 text-sm text-acento-hover">
+          {avisoRango}
+        </p>
+      ) : null}
 
       <div className="mt-4 flex flex-wrap justify-end gap-2">
         <Boton variante="secundario" onClick={onLimpiar}>

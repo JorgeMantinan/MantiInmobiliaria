@@ -10,6 +10,20 @@ import type { EstadoInmueble, FiltrosInmuebles, OrdenPrecio, TipoInmueble } from
 /** Tamaño de página por defecto que usa el cliente (el backend admite 1..50). */
 export const LIMITE_PAGINA = 20;
 
+/**
+ * Techo de precio consultable en euros. El backend no acota (BigDecimal), pero
+ * un precio por encima de esto es un error de dedo y sólo genera queries sin
+ * sentido; el input también lo declara como `max`.
+ */
+export const PRECIO_MAXIMO_CONSULTA = 100_000_000;
+
+/**
+ * Techo de `habitacionesMin`: el backend lo recibe como `Short`, así que por
+ * encima de 32767 Spring ya responde 400 por no poder convertirlo. 0..100
+ * cubre cualquier vivienda real y además evita ese 400.
+ */
+export const HABITACIONES_MAX = 100;
+
 const ESTADOS: readonly EstadoInmueble[] = ["VENTA", "ALQUILER"];
 const TIPOS: readonly TipoInmueble[] = [
   "PISO",
@@ -40,23 +54,28 @@ function elegido<T extends string>(valor: string | null, permitidos: readonly T[
   return permitidos.includes(valor as T) ? (valor as T) : undefined;
 }
 
-/** Sólo dígitos (con opcionalmente espacios recortados); si no, se ignora. */
-function numeroEntero(valor: string | null): string | undefined {
+/** Sólo dígitos dentro de `[0, maximo]`; fuera de rango o sucio ⇒ se ignora. */
+function enteroEnRango(valor: string | null, maximo: number): string | undefined {
   if (valor === null) return undefined;
   const limpio = valor.trim();
-  return /^\d+$/.test(limpio) ? limpio : undefined;
+  if (!/^\d+$/.test(limpio)) return undefined;
+  return Number(limpio) <= maximo ? limpio : undefined;
 }
 
 function texto(valor: string | null, maximo: number): string | undefined {
   if (valor === null) return undefined;
   const limpio = valor.trim();
-  if (limpio.length === 0 || limpio.length > maximo) return undefined;
-  return limpio;
+  if (limpio.length === 0) return undefined;
+  // El backend acota el municipio a 120: recortamos aquí en vez de mandar un 400.
+  return limpio.slice(0, maximo);
 }
 
 /**
  * Querystring de `GET /api/v1/inmuebles` con los parámetros definidos, en
  * orden estable. Devuelve `''` sin filtros o `?a=b&c=d`.
+ *
+ * Nunca serializa un rango invertido: el backend responde 400 si
+ * `precioMin > precioMax`, así que en ese caso no se envía ninguno de los dos.
  */
 export function construirQueryInmuebles(
   filtros: FiltrosInmuebles,
@@ -66,8 +85,10 @@ export function construirQueryInmuebles(
   if (filtros.estado) params.set("estado", filtros.estado);
   if (filtros.tipo) params.set("tipo", filtros.tipo);
   if (filtros.municipio) params.set("municipio", filtros.municipio);
-  if (filtros.precioMin) params.set("precioMin", filtros.precioMin);
-  if (filtros.precioMax) params.set("precioMax", filtros.precioMax);
+  if (!rangoPrecioInvertido(filtros)) {
+    if (filtros.precioMin) params.set("precioMin", filtros.precioMin);
+    if (filtros.precioMax) params.set("precioMax", filtros.precioMax);
+  }
   if (filtros.habitacionesMin) params.set("habitacionesMin", filtros.habitacionesMin);
   if (filtros.destacado !== undefined) params.set("destacado", String(filtros.destacado));
   if (filtros.sort) params.set("sort", filtros.sort);
@@ -76,6 +97,25 @@ export function construirQueryInmuebles(
 
   const query = params.toString();
   return query.length === 0 ? "" : `?${query}`;
+}
+
+/** `true` cuando los filtros traen `precioMin > precioMax` (query inválida). */
+function rangoPrecioInvertido(filtros: FiltrosInmuebles): boolean {
+  return (
+    filtros.precioMin !== undefined &&
+    filtros.precioMax !== undefined &&
+    Number(filtros.precioMin) > Number(filtros.precioMax)
+  );
+}
+
+/**
+ * `true` si unos parámetros brutos (URL o `FormData`) traen un rango de precios
+ * invertido. La barra de filtros lo usa para avisar y NO navegar en ese caso.
+ */
+export function rangoPrecioInconsistente(params: Parametros): boolean {
+  const minimo = enteroEnRango(params.get("precioMin"), PRECIO_MAXIMO_CONSULTA);
+  const maximo = enteroEnRango(params.get("precioMax"), PRECIO_MAXIMO_CONSULTA);
+  return minimo !== undefined && maximo !== undefined && Number(minimo) > Number(maximo);
 }
 
 /**
@@ -100,12 +140,19 @@ export function leerFiltros(params: Parametros): FiltrosInmuebles {
     filtros.destacado = destacadoRaw === "true";
   }
 
-  const precioMin = numeroEntero(params.get("precioMin"));
-  const precioMax = numeroEntero(params.get("precioMax"));
-  const habitacionesMin = numeroEntero(params.get("habitacionesMin"));
+  const precioMin = enteroEnRango(params.get("precioMin"), PRECIO_MAXIMO_CONSULTA);
+  const precioMax = enteroEnRango(params.get("precioMax"), PRECIO_MAXIMO_CONSULTA);
+  const habitacionesMin = enteroEnRango(params.get("habitacionesMin"), HABITACIONES_MAX);
   if (precioMin !== undefined) filtros.precioMin = precioMin;
   if (precioMax !== undefined) filtros.precioMax = precioMax;
   if (habitacionesMin !== undefined) filtros.habitacionesMin = habitacionesMin;
+
+  // El backend responde 400 si precioMin > precioMax: descartamos el par
+  // completo (en vez de sólo uno) para no mandar una query que se sabe inválida.
+  if (rangoPrecioInvertido(filtros)) {
+    delete filtros.precioMin;
+    delete filtros.precioMax;
+  }
 
   return filtros;
 }
