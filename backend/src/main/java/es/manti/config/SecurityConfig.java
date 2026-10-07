@@ -13,6 +13,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -38,8 +39,8 @@ import java.util.List;
  * Cadena de seguridad (Spring Security 7).
  *
  * <ul>
- *   <li>Abiertos: rutas de autenticación, {@code /api/v1/public/**},
- *       {@code /actuator/health} y springdoc.</li>
+ *   <li>Abiertos: rutas de autenticación, GET de {@code /api/v1/inmuebles}
+ *       (portal público, FASE 2), {@code /actuator/health} y springdoc.</li>
  *   <li>Todo lo demás autenticado con Bearer JWT (resource server) — sin
  *       {@code httpBasic} ni {@code formLogin}.</li>
  *   <li>CORS: allowlist desde {@code ALLOWED_ORIGINS} con credenciales
@@ -99,6 +100,15 @@ public class SecurityConfig {
                                 "/api/v1/auth/logout",
                                 "/api/v1/auth/oauth2/token").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
+                        // FASE 2 — lectura PÚBLICA del portal de inmuebles.
+                        // SÓLO GET y SÓLO el recurso de lectura: los escritos del
+                        // backoffice viven en /api/v1/admin/inmuebles (requieren
+                        // rol ADMIN vía @PreAuthorize en el controller) y no existe
+                        // ningún POST/PUT/DELETE bajo /api/v1/inmuebles (un anónimo
+                        // que lo intente recibe 401 aquí; con token, 405 al no haber
+                        // mapping). El comodín es de UN segmento: /inmuebles/{id}.
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/inmuebles", "/api/v1/inmuebles/*").permitAll()
                         // /api/v1/public/** queda sin abrir hasta que exista el
                         // módulo de contenido público con consumidores reales.
                         .requestMatchers("/actuator/health").permitAll()
