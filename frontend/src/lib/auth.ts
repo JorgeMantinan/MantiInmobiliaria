@@ -15,9 +15,17 @@ import type { AuthResponse } from "@/lib/tipos";
 
 const configurado = process.env.NEXT_PUBLIC_API_URL;
 
-if ((configurado === undefined || configurado === "") && process.env.NODE_ENV === "production") {
-  // En Vercel/hosting debe existir: mejor fallar el build que apuntar a localhost.
-  throw new Error("NEXT_PUBLIC_API_URL es obligatoria en producción");
+if (process.env.NODE_ENV === "production") {
+  if (configurado === undefined || configurado === "") {
+    // En Vercel/hosting debe existir: mejor fallar el build que apuntar a localhost.
+    throw new Error("NEXT_PUBLIC_API_URL es obligatoria en producción");
+  }
+  // En producción el tráfico a la API debe ir cifrado; sólo se admite
+  // http:// sobre localhost para poder ejecutar `next build` en local.
+  const esLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(configurado);
+  if (!configurado.startsWith("https://") && !esLocal) {
+    throw new Error("NEXT_PUBLIC_API_URL debe empezar por https:// en producción");
+  }
 }
 
 /** URL base de la API (reexportada por `lib/api.ts` para sus consumidores). */
