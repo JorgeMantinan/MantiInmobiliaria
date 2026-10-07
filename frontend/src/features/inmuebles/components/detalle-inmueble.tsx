@@ -4,38 +4,19 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { esApiError } from '@/lib/api';
 import { obtenerInmueble } from '../api';
-import {
-  direccionCompleta,
-  ETIQUETAS_ESTADO,
-  ETIQUETAS_TIPO,
-  formatoPrecio,
-  formatoSuperficie,
-} from '../formato';
+import { direccionCompleta, ETIQUETAS_ESTADO, ETIQUETAS_TIPO, formatoPrecio } from '../formato';
 import { mensajeDeError, MENSAJES } from '../mensajes';
 import type { InmuebleDetalle } from '../types';
 import { FotoInmueble } from './foto-inmueble';
 import { MapaDetalleWrapper } from './mapa-detalle-wrapper';
+import { SeccionCaracteristicas } from './seccion-caracteristicas';
+import { SeccionErrorFicha } from './seccion-error-ficha';
 
 type EstadoFicha =
   | Readonly<{ fase: 'cargando' }>
   | Readonly<{ fase: 'error'; mensaje: string }>
   | Readonly<{ fase: 'no-encontrado' }>
   | Readonly<{ fase: 'ok'; inmueble: InmuebleDetalle }>;
-
-type CaracteristicaProps = Readonly<{ etiqueta: string; valor: string }>;
-
-function Caracteristica({ etiqueta, valor }: CaracteristicaProps) {
-  return (
-    <div>
-      <dt className="text-xs uppercase tracking-wide text-texto-suave">{etiqueta}</dt>
-      <dd className="mt-0.5 font-medium text-texto">{valor}</dd>
-    </div>
-  );
-}
-
-function valorOpcion(valor: number | null, formato: (v: number) => string): string {
-  return valor === null ? '—' : formato(valor);
-}
 
 /** Ficha completa: se carga desde el cliente con estados de carga/error/404. */
 export function DetalleInmueble({ id }: Readonly<{ id: number }>) {
@@ -87,37 +68,12 @@ export function DetalleInmueble({ id }: Readonly<{ id: number }>) {
   }
 
   if (estado.fase === 'error' || estado.fase === 'no-encontrado') {
-    const noEncontrado = estado.fase === 'no-encontrado';
     return (
-      <div className="mx-auto flex w-full max-w-md flex-1 items-center justify-center px-4 py-12">
-        <section className="w-full rounded-lg border border-borde bg-superficie p-6 text-center">
-          <h1 className="font-display text-2xl text-texto">
-            {noEncontrado ? 'Inmueble no encontrado' : 'No se ha podido cargar la ficha'}
-          </h1>
-          <p role="alert" className="mt-2 text-sm text-texto-suave">
-            {noEncontrado
-              ? 'Puede que se haya retirado el anuncio o que el enlace no sea correcto.'
-              : estado.mensaje}
-          </p>
-          {!noEncontrado ? (
-            <div className="mt-6 flex flex-col gap-3">
-              <button
-                type="button"
-                onClick={reintentar}
-                className="rounded-md bg-acento-nogal px-4 py-2 text-sm font-medium text-superficie transition-colors outline-none hover:bg-acento-hover focus:ring-2 focus:ring-acento-nogal"
-              >
-                Reintentar
-              </button>
-            </div>
-          ) : null}
-          <Link
-            href="/inmuebles"
-            className="mt-4 inline-block rounded-md border border-borde px-4 py-2 text-sm font-medium text-texto transition-colors outline-none hover:bg-superficie-alta focus:ring-2 focus:ring-acento-nogal"
-          >
-            Ver todas las viviendas
-          </Link>
-        </section>
-      </div>
+      <SeccionErrorFicha
+        noEncontrado={estado.fase === 'no-encontrado'}
+        mensaje={estado.fase === 'error' ? estado.mensaje : ''}
+        onReintentar={reintentar}
+      />
     );
   }
 
@@ -154,18 +110,12 @@ export function DetalleInmueble({ id }: Readonly<{ id: number }>) {
         <FotoInmueble src={inmueble.imagenUrl} alt={altFoto} />
       </div>
 
-      <dl className="mt-6 grid grid-cols-2 gap-4 rounded-lg border border-borde bg-superficie p-5 sm:grid-cols-4">
-        <Caracteristica
-          etiqueta="Superficie"
-          valor={valorOpcion(inmueble.superficieM2, formatoSuperficie)}
-        />
-        <Caracteristica
-          etiqueta="Habitaciones"
-          valor={valorOpcion(inmueble.habitaciones, (v) => String(v))}
-        />
-        <Caracteristica etiqueta="Baños" valor={valorOpcion(inmueble.banios, (v) => String(v))} />
-        <Caracteristica etiqueta="Tipo" valor={ETIQUETAS_TIPO[inmueble.tipo]} />
-      </dl>
+      <SeccionCaracteristicas
+        superficieM2={inmueble.superficieM2}
+        habitaciones={inmueble.habitaciones}
+        banios={inmueble.banios}
+        tipo={inmueble.tipo}
+      />
 
       <section className="mt-6" aria-labelledby="titulo-descripcion">
         <h2 id="titulo-descripcion" className="font-display text-xl text-texto">

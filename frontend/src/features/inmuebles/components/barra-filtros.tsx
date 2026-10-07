@@ -1,39 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import type { FormEvent, ReactNode } from 'react';
+import type { FormEvent } from 'react';
 import { Boton } from '@/components/ui/boton';
 import {
   construirQueryInmuebles,
   HABITACIONES_MAX,
   leerFiltros,
-  PRECIO_MAXIMO_CONSULTA,
   rangoPrecioInconsistente,
 } from '../filtros';
 import { ETIQUETAS_ESTADO, ETIQUETAS_TIPO } from '../formato';
 import type { FiltrosInmuebles } from '../types';
-
-const CLASE_CAMPO =
-  'rounded-md border border-borde bg-superficie px-3 py-2 text-sm text-texto outline-none transition-colors focus:ring-2 focus:ring-acento-nogal';
-const CLASE_ETIQUETA = 'block text-sm font-medium text-texto';
-
-type CampoFiltroProps = Readonly<{
-  id: string;
-  etiqueta: string;
-  children: ReactNode;
-}>;
-
-/** Contenedor de un campo con su label accesible (los inputs son no controlados). */
-function CampoFiltro({ id, etiqueta, children }: CampoFiltroProps) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className={CLASE_ETIQUETA}>
-        {etiqueta}
-      </label>
-      {children}
-    </div>
-  );
-}
+import { CampoFiltro, CLASE_CAMPO } from './campo-filtro';
+import { CamposPrecio } from './campos-precio';
 
 type BarraFiltrosProps = Readonly<{
   /** Valores con los que arranca el formulario (los de la URL). */
@@ -131,31 +110,11 @@ export function BarraFiltros({ filtros, onAplicar, onLimpiar }: BarraFiltrosProp
           </select>
         </CampoFiltro>
 
-        <CampoFiltro id="filtro-precio-min" etiqueta="Precio mínimo (€)">
-          <input
-            id="filtro-precio-min"
-            name="precioMin"
-            type="number"
-            min={0}
-            max={PRECIO_MAXIMO_CONSULTA}
-            inputMode="numeric"
-            defaultValue={filtros.precioMin ?? ''}
-            className={CLASE_CAMPO}
-          />
-        </CampoFiltro>
-
-        <CampoFiltro id="filtro-precio-max" etiqueta="Precio máximo (€)">
-          <input
-            id="filtro-precio-max"
-            name="precioMax"
-            type="number"
-            min={0}
-            max={PRECIO_MAXIMO_CONSULTA}
-            inputMode="numeric"
-            defaultValue={filtros.precioMax ?? ''}
-            className={CLASE_CAMPO}
-          />
-        </CampoFiltro>
+        <CamposPrecio
+          precioMin={filtros.precioMin}
+          precioMax={filtros.precioMax}
+          avisoRango={avisoRango}
+        />
 
         <CampoFiltro id="filtro-habitaciones" etiqueta="Habitaciones mínimas">
           <input
@@ -170,12 +129,6 @@ export function BarraFiltros({ filtros, onAplicar, onLimpiar }: BarraFiltrosProp
           />
         </CampoFiltro>
       </div>
-
-      {avisoRango !== null ? (
-        <p role="status" className="mt-3 text-sm text-acento-hover">
-          {avisoRango}
-        </p>
-      ) : null}
 
       <div className="mt-4 flex flex-wrap justify-end gap-2">
         <Boton variante="secundario" onClick={onLimpiar}>
