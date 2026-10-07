@@ -47,11 +47,13 @@ se ejecuta.
 | Cuenta (sólo dev) | Valor |
 |---|---|
 | Email | `admin@manti.dev` |
-| Password | `Admin1234!` |
+| Password | la facilita el equipo (en el repo sólo está su hash, en la semilla del perfil `dev`) |
 | Rol | `ADMIN` (CRUD en `/api/v1/admin/inmuebles`) |
 
-> Estas credenciales son de desarrollo: no existen en `application.yml` ni en
-> ningún fichero de producción.
+> Estas credenciales son de desarrollo: **no están en ningún fichero del
+> repositorio en claro ni en `application.yml` ni en la configuración de
+> producción** — sólo el hash vive en `db/dev/V901__seed_usuario_admin_dev.sql`,
+> que además sólo se aplica con el perfil `dev`. Pídesela al equipo.
 
 
 ## Ramas (Git Flow)
