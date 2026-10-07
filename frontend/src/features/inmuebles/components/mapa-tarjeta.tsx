@@ -7,10 +7,11 @@ const ZOOM_TESELA = 16;
  * La caja del mini-mapa es 2,5 veces más ancha que alta (`aspect-[5/2]`) y el
  * tile se dibuja al 200 % de ese ancho: así el tile SIEMPRE cubre la caja
  * (aunque el punto esté pegado al borde de la tesela) y el pin queda dentro.
+ * Exportados para que el test de `ubicar()` use los mismos valores.
  */
 const RELACION_CAJA = 2.5;
-const IMAGEN_ANCHO_PCT = 200;
-const IMAGEN_ALTO_PCT = IMAGEN_ANCHO_PCT * RELACION_CAJA;
+export const IMAGEN_ANCHO_PCT = 200;
+export const IMAGEN_ALTO_PCT = IMAGEN_ANCHO_PCT * RELACION_CAJA;
 
 type MapaTarjetaProps = Readonly<{
   lat: number;
@@ -42,6 +43,8 @@ export function ubicar(offset: number, tamanoPct: number): Posicion {
  * por eso es seguro en server components.
  */
 export function MapaTarjeta({ lat, lng, titulo, direccion, municipio }: MapaTarjetaProps) {
+  // Server component: aquí el aviso se emite al renderizar (una sola vez por
+  // módulo y petición); en el mapa cliente el warn vive en un `useEffect`.
   avisarClaveCartoAusente();
   const { x, y, offsetX, offsetY } = latLngATile(lat, lng, ZOOM_TESELA);
   const horizontal = ubicar(offsetX, IMAGEN_ANCHO_PCT);

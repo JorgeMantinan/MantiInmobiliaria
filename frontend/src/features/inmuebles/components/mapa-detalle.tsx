@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css';
 // del icono por defecto) y su JS en ese orden, después de Leaflet.
 import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
 import 'leaflet-defaulticon-compatibility';
+import { useEffect } from 'react';
 import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
 import { ATRIBUCION, avisarClaveCartoAusente, PLANTILLA_TESELA_CARTO } from '../carto';
 
@@ -20,7 +21,11 @@ type MapaDetalleProps = Readonly<{
  * desplazarse por la página.
  */
 export function MapaDetalle({ lat, lng, titulo }: MapaDetalleProps) {
-  avisarClaveCartoAusente();
+  // El aviso de clave ausente se emite en un efecto, nunca durante el render.
+  useEffect(() => {
+    avisarClaveCartoAusente();
+  }, []);
+
   return (
     <div
       role="region"
