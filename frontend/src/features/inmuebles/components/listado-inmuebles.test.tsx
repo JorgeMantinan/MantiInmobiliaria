@@ -140,14 +140,15 @@ describe('ListadoInmuebles', () => {
     );
     vista.rerender(<ListadoInmuebles />);
 
-    // La respuesta obsoleta del reintento llega tarde y se descarta...
-    resolverReintento(pagina([resumen(99, 'Obsoleto')], null));
-    await cederElTurno();
-    expect(screen.queryByText('Obsoleto')).not.toBeInTheDocument();
-
-    // ...y la de los filtros actuales sí se pinta (nunca queda `cargando` clavado).
+    // La búsqueda de los filtros actuales se pinta PRIMERO...
     resolverNueva(pagina([resumen(2, 'Piso Nuevo')], null));
     expect(await screen.findByText('Piso Nuevo')).toBeInTheDocument();
+
+    // ...y sólo DESPUÉS llega la respuesta obsoleta del reintento: sin la
+    // guarda de generación pisaría la lista nueva y este getByText fallaría.
+    resolverReintento(pagina([resumen(99, 'Obsoleto')], null));
+    await cederElTurno();
+    expect(screen.getByText('Piso Nuevo')).toBeInTheDocument();
     expect(screen.queryByText('Obsoleto')).not.toBeInTheDocument();
   });
 
@@ -177,12 +178,15 @@ describe('ListadoInmuebles', () => {
     );
     vista.rerender(<ListadoInmuebles />);
 
-    resolverCarga(pagina([resumen(3, 'Piso Obsoleto')], null));
-    await cederElTurno();
-    expect(screen.queryByText('Piso Obsoleto')).not.toBeInTheDocument();
-
+    // La página de los filtros actuales se pinta PRIMERO...
     resolverNueva(pagina([resumen(10, 'Piso Nuevo')], null));
     expect(await screen.findByText('Piso Nuevo')).toBeInTheDocument();
+
+    // ...y SÓLO DESPUÉS llega la página obsoleta del "cargar más": sin la
+    // guarda reconstruiría la lista vieja y 'Piso Nuevo' desaparecería.
+    resolverCarga(pagina([resumen(3, 'Piso Obsoleto')], null));
+    await cederElTurno();
+    expect(screen.getByText('Piso Nuevo')).toBeInTheDocument();
     expect(screen.queryByText('Piso Obsoleto')).not.toBeInTheDocument();
   });
 });
