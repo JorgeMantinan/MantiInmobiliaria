@@ -3,6 +3,8 @@ package es.manti.shared.error;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -37,9 +39,11 @@ import java.util.Map;
  *
  * <p>Orden: los advices de módulo van ANTES que éste
  * ({@code @Order(HIGHEST_PRECEDENCE)} vs {@code LOWEST_PRECEDENCE}), de modo que
- * su catch-all nunca captura una excepción de dominio.</p>
+ * su catch-all nunca captura una excepción de dominio. El de éste es explícito
+ * en la anotación, no delegado en el default.</p>
  */
 @Slf4j
+@Order(Ordered.LOWEST_PRECEDENCE)
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

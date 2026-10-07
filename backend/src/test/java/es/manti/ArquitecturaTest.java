@@ -39,14 +39,15 @@ class ArquitecturaTest {
     }
 
     /**
-     * {@code shared} es transversal: si importa el dominio de un módulo, el
-     * módulo deja de ser un módulo y shared se convierte en un cajón de sastre.
-     * Los mapeos de dominio viven en el advice de cada módulo.
+     * {@code shared} es transversal: si importa el dominio o la aplicación de un
+     * módulo, el módulo deja de ser un módulo y shared se convierte en un cajón
+     * de sastre. Los mapeos de dominio viven en el advice de cada módulo y la
+     * lógica de negocio en su {@code application}.
      */
     @Test
     void sharedNoDependeDeDominioDeNingunModulo() {
         noClasses().that().resideInAPackage("..shared..")
-                .should().dependOnClassesThat().resideInAnyPackage("..domain..")
+                .should().dependOnClassesThat().resideInAnyPackage("..domain..", "..application..")
                 .check(CLASES);
     }
 
