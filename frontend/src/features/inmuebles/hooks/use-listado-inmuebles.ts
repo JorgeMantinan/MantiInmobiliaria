@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { listarInmuebles } from '../api';
 import { construirQueryInmuebles, leerFiltros } from '../filtros';
+import { mensajeDeError, MENSAJES } from '../mensajes';
 import type { FiltrosInmuebles, InmuebleResumen } from '../types';
 
 /** Resultado de una primera-carga: se descarta si ya no son esos filtros. */
@@ -40,10 +41,6 @@ export type ListadoAcciones = Readonly<{
   cargarMas: () => void;
 }>;
 
-function mensajeDeError(error: unknown): string {
-  return error instanceof Error ? error.message : 'No se han podido cargar los inmuebles.';
-}
-
 function resultadoConPagina(
   filtros: FiltrosInmuebles,
   inmuebles: readonly InmuebleResumen[],
@@ -59,7 +56,7 @@ function resultadoConError(filtros: FiltrosInmuebles, error: unknown): Resultado
     inmuebles: [],
     cursor: null,
     total: 0,
-    error: mensajeDeError(error),
+    error: mensajeDeError(error, MENSAJES.listado),
     errorMas: null,
   };
 }
@@ -96,16 +93,34 @@ export function useListadoInmuebles(): ListadoEstado & ListadoAcciones {
   const [resultado, setResultado] = useState<ResultadoBusqueda | null>(null);
   const [cargandoMas, setCargandoMas] = useState(false);
   const idsCargados = useRef<ReadonlySet<number>>(new Set());
+  /**
+   * Contador de "búsquedas en vuelo". Se incrementa al cambiar los filtros y
+   * al reintentar: cualquier respuesta que llegue con una generación antigua
+   * pertenece a una búsqueda ya invalidada y se descarta. Sin esta guarda, una
+   * respuesta obsoleta podría pisar el estado actual y dejar `cargando`/`cargandoMas`
+   * clavados (o mezclar páginas de filtros distintos).
+   */
+  const generacion = useRef(0);
 
   useEffect(() => {
-    let cancelado = false;
+    const generacionActual = ++generacion.current;
+    // Al cambiar de filtros empieza una página nueva: se limpian los ids
+    // deduplicados y el "cargar más" anterior deja de ser válido (si seguía en
+    // vuelo, su bloque verá otra generación y no tocará el estado).
+    idsCargados.current = new Set();
+    let vigente = true;
     traerPrimeraPagina(filtros).then((resultadoNuevo) => {
-      if (cancelado) return;
+      if (!vigente || generacionActual !== generacion.current) return;
       idsCargados.current = idsDe(resultadoNuevo);
+      // El reset de `cargandoMas` va en este callback y no en el cuerpo del
+      // effect: React prohíbe setState síncrono ahí. Mientras no haya resultado
+      // de ESTOS filtros el "cargar más" ni siquiera se pinta (`cargando`), así
+      // que no se abre ninguna ventana incoherente.
+      setCargandoMas(false);
       setResultado(resultadoNuevo);
     });
     return () => {
-      cancelado = true;
+      vigente = false;
     };
   }, [filtros]);
 
@@ -123,8 +138,13 @@ export function useListadoInmuebles(): ListadoEstado & ListadoAcciones {
   }, [router]);
 
   const reintentar = useCallback(() => {
+    // Invalida cualquier carga en vuelo (un reintento anterior o la primera
+    // página del effect) antes de disparar la nueva: sólo aplica la última.
+    const generacionActual = ++generacion.current;
     setResultado(null);
+    setCargandoMas(false);
     void traerPrimeraPagina(filtros).then((resultadoNuevo) => {
+      if (generacionActual !== generacion.current) return;
       idsCargados.current = idsDe(resultadoNuevo);
       setResultado(resultadoNuevo);
     });
@@ -133,9 +153,15 @@ export function useListadoInmuebles(): ListadoEstado & ListadoAcciones {
   const cargarMas = useCallback(async () => {
     if (paginaActual === null || paginaActual.cursor === null || cargandoMas) return;
     const anteriores = paginaActual;
+    const filtrosAlLanzar = filtros;
+    const generacionAlLanzar = generacion.current;
+    /** Si los filtros cambiaron (u otro reintento corrió), esta página ya no pinta. */
+    const sigueVigente = () => generacionAlLanzar === generacion.current;
+
     setCargandoMas(true);
     try {
-      const siguiente = await listarInmuebles(filtros, { cursor: anteriores.cursor });
+      const siguiente = await listarInmuebles(filtrosAlLanzar, { cursor: anteriores.cursor });
+      if (!sigueVigente()) return;
       const nuevos = siguiente.content.filter((i) => !idsCargados.current.has(i.id));
       const acumulados = new Set(idsCargados.current);
       for (const inmueble of nuevos) {
@@ -149,9 +175,12 @@ export function useListadoInmuebles(): ListadoEstado & ListadoAcciones {
         errorMas: null,
       });
     } catch (errorDeCarga: unknown) {
-      setResultado({ ...anteriores, errorMas: mensajeDeError(errorDeCarga) });
+      if (!sigueVigente()) return;
+      setResultado({ ...anteriores, errorMas: mensajeDeError(errorDeCarga, MENSAJES.listado) });
     } finally {
-      setCargandoMas(false);
+      // Sólo el "cargar más" vigente apaga su propio indicador; si la
+      // generación cambió, el effect de filtros ya lo apagó al empezar.
+      if (sigueVigente()) setCargandoMas(false);
     }
   }, [paginaActual, cargandoMas, filtros]);
 

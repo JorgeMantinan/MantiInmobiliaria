@@ -49,6 +49,9 @@ function pagina(content: readonly InmuebleResumen[], nextCursor: string | null):
   return { content, nextCursor, totalElements: 3 };
 }
 
+/** Deja correr los microtasks de las promesas ya resueltas. */
+const cederElTurno = () => new Promise<void>((resolver) => setTimeout(resolver, 0));
+
 beforeEach(() => {
   vi.clearAllMocks();
   url.actual = '';
@@ -111,5 +114,75 @@ describe('ListadoInmuebles', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('la API está caída');
     await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
     expect(await screen.findByText('Mostrando 1 de 3 inmuebles')).toBeInTheDocument();
+  });
+
+  it('descarta_la_respuesta_de_un_reintentar_obsoleto_cuando_cambian_los_filtros', async () => {
+    vi.mocked(apiFetch).mockRejectedValueOnce(new Error('fallo inicial'));
+    const vista = render(<ListadoInmuebles />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('fallo inicial');
+
+    // Reintento que sigue en vuelo...
+    let resolverReintento!: (valor: PaginaInmuebles) => void;
+    vi.mocked(apiFetch).mockReturnValueOnce(
+      new Promise<PaginaInmuebles>((resolver) => {
+        resolverReintento = resolver;
+      }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+
+    // ...mientras cambian los filtros: nueva búsqueda, también en vuelo.
+    url.actual = 'tipo=CASA';
+    let resolverNueva!: (valor: PaginaInmuebles) => void;
+    vi.mocked(apiFetch).mockReturnValueOnce(
+      new Promise<PaginaInmuebles>((resolver) => {
+        resolverNueva = resolver;
+      }),
+    );
+    vista.rerender(<ListadoInmuebles />);
+
+    // La respuesta obsoleta del reintento llega tarde y se descarta...
+    resolverReintento(pagina([resumen(99, 'Obsoleto')], null));
+    await cederElTurno();
+    expect(screen.queryByText('Obsoleto')).not.toBeInTheDocument();
+
+    // ...y la de los filtros actuales sí se pinta (nunca queda `cargando` clavado).
+    resolverNueva(pagina([resumen(2, 'Piso Nuevo')], null));
+    expect(await screen.findByText('Piso Nuevo')).toBeInTheDocument();
+    expect(screen.queryByText('Obsoleto')).not.toBeInTheDocument();
+  });
+
+  it('no_acumula_la_pagina_de_un_cargar_mas_lanzado_con_filtros_anteriores', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(
+      pagina([resumen(1, 'Piso Uno'), resumen(2, 'Piso Dos')], 'c1'),
+    );
+    const vista = render(<ListadoInmuebles />);
+    expect(await screen.findByText('Mostrando 2 de 3 inmuebles')).toBeInTheDocument();
+
+    // "Cargar más" que queda en vuelo...
+    let resolverCarga!: (valor: PaginaInmuebles) => void;
+    vi.mocked(apiFetch).mockReturnValueOnce(
+      new Promise<PaginaInmuebles>((resolver) => {
+        resolverCarga = resolver;
+      }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Cargar más' }));
+
+    // ...y cambian los filtros antes de que responda.
+    url.actual = 'tipo=CASA';
+    let resolverNueva!: (valor: PaginaInmuebles) => void;
+    vi.mocked(apiFetch).mockReturnValueOnce(
+      new Promise<PaginaInmuebles>((resolver) => {
+        resolverNueva = resolver;
+      }),
+    );
+    vista.rerender(<ListadoInmuebles />);
+
+    resolverCarga(pagina([resumen(3, 'Piso Obsoleto')], null));
+    await cederElTurno();
+    expect(screen.queryByText('Piso Obsoleto')).not.toBeInTheDocument();
+
+    resolverNueva(pagina([resumen(10, 'Piso Nuevo')], null));
+    expect(await screen.findByText('Piso Nuevo')).toBeInTheDocument();
+    expect(screen.queryByText('Piso Obsoleto')).not.toBeInTheDocument();
   });
 });
