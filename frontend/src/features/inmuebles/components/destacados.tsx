@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { listarInmuebles } from '../api';
 import { mensajeDeError, MENSAJES } from '../mensajes';
 import type { InmuebleResumen } from '../types';
@@ -19,11 +19,18 @@ const ENLACE_SECUNDARIO =
 /** Rejilla de inmuebles destacados del home (6 como máximo). */
 export function Destacados() {
   const [estado, setEstado] = useState<EstadoDestacados | null>(null);
+  /**
+   * Generación de la carga en curso: cada `cargar()` la incrementa, así que una
+   * respuesta de un reintento anterior (o del efecto inicial) que llegue tarde
+   * se descarta en vez de pisar el estado actual.
+   */
+  const generacion = useRef(0);
 
-  const cargar = useCallback((estaCancelado: () => boolean) => {
+  const cargar = useCallback(() => {
+    const generacionActual = ++generacion.current;
     listarInmuebles({ destacado: true }, { limit: 6 })
       .then((pagina) => {
-        if (estaCancelado()) return;
+        if (generacionActual !== generacion.current) return;
         setEstado(
           pagina.content.length === 0
             ? { fase: 'vacio' }
@@ -31,22 +38,18 @@ export function Destacados() {
         );
       })
       .catch((errorDeCarga: unknown) => {
-        if (estaCancelado()) return;
+        if (generacionActual !== generacion.current) return;
         setEstado({ fase: 'error', mensaje: mensajeDeError(errorDeCarga, MENSAJES.destacados) });
       });
   }, []);
 
   useEffect(() => {
-    let cancelado = false;
-    cargar(() => cancelado);
-    return () => {
-      cancelado = true;
-    };
+    cargar();
   }, [cargar]);
 
   function reintentar() {
     setEstado(null);
-    cargar(() => false);
+    cargar();
   }
 
   return (

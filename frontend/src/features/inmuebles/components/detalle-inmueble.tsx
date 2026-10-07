@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { esApiError } from '@/lib/api';
 import { obtenerInmueble } from '../api';
 import {
@@ -40,36 +40,37 @@ function valorOpcion(valor: number | null, formato: (v: number) => string): stri
 /** Ficha completa: se carga desde el cliente con estados de carga/error/404. */
 export function DetalleInmueble({ id }: Readonly<{ id: number }>) {
   const [estado, setEstado] = useState<EstadoFicha>({ fase: 'cargando' });
+  /**
+   * Generación de la carga en curso: al cambiar de `id` o al reintentar se
+   * incrementa, de modo que una respuesta que llegue con la generación anterior
+   * (p. ej. un reintento lento) se descarta en vez de pisar la ficha nueva.
+   */
+  const generacion = useRef(0);
 
-  const cargar = useCallback(
-    (estaCancelado: () => boolean) => {
-      obtenerInmueble(id)
-        .then((inmueble) => {
-          if (!estaCancelado()) setEstado({ fase: 'ok', inmueble });
-        })
-        .catch((errorDeCarga: unknown) => {
-          if (estaCancelado()) return;
-          if (esApiError(errorDeCarga) && errorDeCarga.status === 404) {
-            setEstado({ fase: 'no-encontrado' });
-          } else {
-            setEstado({ fase: 'error', mensaje: mensajeDeError(errorDeCarga, MENSAJES.ficha) });
-          }
-        });
-    },
-    [id],
-  );
+  const cargar = useCallback(() => {
+    const generacionActual = ++generacion.current;
+    obtenerInmueble(id)
+      .then((inmueble) => {
+        if (generacionActual !== generacion.current) return;
+        setEstado({ fase: 'ok', inmueble });
+      })
+      .catch((errorDeCarga: unknown) => {
+        if (generacionActual !== generacion.current) return;
+        if (esApiError(errorDeCarga) && errorDeCarga.status === 404) {
+          setEstado({ fase: 'no-encontrado' });
+        } else {
+          setEstado({ fase: 'error', mensaje: mensajeDeError(errorDeCarga, MENSAJES.ficha) });
+        }
+      });
+  }, [id]);
 
   useEffect(() => {
-    let cancelado = false;
-    cargar(() => cancelado);
-    return () => {
-      cancelado = true;
-    };
+    cargar();
   }, [cargar]);
 
   function reintentar() {
     setEstado({ fase: 'cargando' });
-    cargar(() => false);
+    cargar();
   }
 
   if (estado.fase === 'cargando') {
