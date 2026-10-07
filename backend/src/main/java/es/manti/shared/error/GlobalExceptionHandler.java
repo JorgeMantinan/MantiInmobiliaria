@@ -1,5 +1,8 @@
 package es.manti.shared.error;
 
+import es.manti.inmuebles.domain.CursorInvalidoException;
+import es.manti.inmuebles.domain.InmuebleNoEncontradoException;
+import es.manti.inmuebles.domain.ParametroInvalidoException;
 import es.manti.usuarios.domain.AuthException;
 import es.manti.usuarios.domain.CodigoInvalidoException;
 import es.manti.usuarios.domain.CredencialesInvalidasException;
@@ -61,6 +64,17 @@ public class GlobalExceptionHandler {
                 "Validación fallida", "Datos de entrada inválidos", request);
         pd.setProperty("errors", List.of(Map.of("message", "valor inválido")));
         return pd;
+    }
+
+    /**
+     * Query params de negocio inválidos del listado de inmuebles: cursor
+     * corrupto/emitido con otro orden o valor de {@code sort} no admitido.
+     * El mensaje es fijo (lo construye el dominio), nunca datos internos.
+     */
+    @ExceptionHandler({CursorInvalidoException.class, ParametroInvalidoException.class})
+    public ProblemDetail parametroDeListado(RuntimeException e, HttpServletRequest request) {
+        return problema(HttpStatus.BAD_REQUEST, "parametro-invalido",
+                "Parámetro inválido", e.getMessage(), request);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
@@ -128,6 +142,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(UsuarioNoEncontradoException.class)
     public ProblemDetail noEncontrado(UsuarioNoEncontradoException e, HttpServletRequest request) {
+        return problema(HttpStatus.NOT_FOUND, "no-encontrado",
+                "No encontrado", e.getMessage(), request);
+    }
+
+    /**
+     * Detalle de inmueble inexistente o eliminado (soft-delete): el servicio lo
+     * trata igual, así que la API pública no filtra borrados.
+     */
+    @ExceptionHandler(InmuebleNoEncontradoException.class)
+    public ProblemDetail inmuebleNoEncontrado(InmuebleNoEncontradoException e, HttpServletRequest request) {
         return problema(HttpStatus.NOT_FOUND, "no-encontrado",
                 "No encontrado", e.getMessage(), request);
     }
