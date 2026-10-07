@@ -50,10 +50,12 @@ se ejecuta.
 | Password | la facilita el equipo (en el repo sólo está su hash, en la semilla del perfil `dev`) |
 | Rol | `ADMIN` (CRUD en `/api/v1/admin/inmuebles`) |
 
-> Estas credenciales son de desarrollo: **no están en ningún fichero del
-> repositorio en claro ni en `application.yml` ni en la configuración de
-> producción** — sólo el hash vive en `db/dev/V901__seed_usuario_admin_dev.sql`,
-> que además sólo se aplica con el perfil `dev`. Pídesela al equipo.
+> Estas credenciales son de desarrollo: la contraseña **no está en ningún
+> fichero del repositorio** (ni en el código, ni en `application.yml`, ni en la
+> configuración de producción, ni siquiera en los comentarios de la semilla).
+> En el repo sólo vive el hash BCrypt en
+> `db/dev/V901__seed_usuario_admin_dev.sql`, que además sólo se aplica con el
+> perfil `dev`. La contraseña en claro la facilita el equipo.
 
 
 ## Ramas (Git Flow)
