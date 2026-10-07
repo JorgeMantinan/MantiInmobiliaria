@@ -46,12 +46,12 @@ describe('TarjetaInmueble', () => {
     expect(screen.getByText('Madrid')).toBeInTheDocument();
   });
 
-  it('apunta_a_la_ficha_con_un_enlace_y_saca_el_tile_de_carto', () => {
+  it('apunta_a_la_ficha_con_un_enlace_y_saca_el_tile_del_proveedor', () => {
     render(<TarjetaInmueble inmueble={INMUEBLE} />);
 
     const tile = screen.getByAltText(/Mapa de la ubicación de/);
     expect(tile.getAttribute('src')).toContain(
-      'https://basemaps.cartocdn.com/rastertiles/voyager/16/',
+      'https://tile.openstreetmap.org/16/',
     );
     expect(tile).toHaveAttribute('loading', 'lazy');
     expect(tile).toHaveAttribute('decoding', 'async');

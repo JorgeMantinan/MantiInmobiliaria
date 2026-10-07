@@ -1,5 +1,5 @@
 import { latLngATile, TAMANO_TESELA } from "@/lib/geo";
-import { ATRIBUCION, avisarClaveCartoAusente, urlTeselaCarto } from "../carto";
+import { ATRIBUCION, urlTesela } from "../teselas";
 
 /** Zoom del tile estático de la tarjeta: nivel de calle, sin cargar detalle de más. */
 const ZOOM_TESELA = 16;
@@ -38,14 +38,12 @@ export function ubicar(offset: number, tamanoPct: number): Posicion {
 }
 
 /**
- * Mini-mapa ESTÁTICO de la tarjeta: un único tile de CARTO en z16 más un pin
- * SVG posicionado con los offsets de `latLngATile`. Sin JavaScript de mapas,
- * por eso es seguro en server components.
+ * Mini-mapa ESTÁTICO de la tarjeta: un único tile del proveedor (OSM por
+ * defecto) en z16 más un pin SVG posicionado con los offsets de
+ * `latLngATile`. Sin JavaScript de mapas, por eso es seguro en server
+ * components.
  */
 export function MapaTarjeta({ lat, lng, titulo, direccion, municipio }: MapaTarjetaProps) {
-  // Server component: aquí el aviso se emite al renderizar (una sola vez por
-  // módulo y petición); en el mapa cliente el warn vive en un `useEffect`.
-  avisarClaveCartoAusente();
   const { x, y, offsetX, offsetY } = latLngATile(lat, lng, ZOOM_TESELA);
   const horizontal = ubicar(offsetX, IMAGEN_ANCHO_PCT);
   const vertical = ubicar(offsetY, IMAGEN_ALTO_PCT);
@@ -54,11 +52,11 @@ export function MapaTarjeta({ lat, lng, titulo, direccion, municipio }: MapaTarj
   return (
     <div className="overflow-hidden rounded-md border border-borde bg-superficie">
       <div className="relative aspect-[5/2] w-full overflow-hidden bg-superficie-alta">
-        {/* Tile suelto de CARTO con offsets en %: no es una imagen de contenido
+        {/* Tile suelto con offsets en %: no es una imagen de contenido
             para `next/image`, que además necesitaría `remotePatterns`. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={urlTeselaCarto(ZOOM_TESELA, x, y)}
+          src={urlTesela(ZOOM_TESELA, x, y)}
           alt={alt}
           width={TAMANO_TESELA}
           height={TAMANO_TESELA}
