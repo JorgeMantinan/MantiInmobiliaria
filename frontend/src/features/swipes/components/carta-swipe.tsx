@@ -9,17 +9,16 @@ import {
   formatoPrecio,
 } from '@/features/inmuebles/formato';
 import type { InmuebleResumen } from '@/features/inmuebles/types';
+import { debeDecidir } from '../arrastre';
 import type { DecisionSwipe } from '../types';
 
 type CartaSwipeProps = Readonly<{
   inmueble: InmuebleResumen;
   /** La carta superior es la arrastrable; las demás sólo esperan debajo. */
   esSuperior: boolean;
-  onDecidir: (decision: DecisionSwipe) => void;
+  /** Decide sobre ESTA carta: el deck valida que siga siendo la superior. */
+  onDecidir: (inmuebleId: number, decision: DecisionSwipe) => void;
 }>;
-
-/** Desplazamiento mínimo (px) para que el arrastre cuente como decisión. */
-const UMBRAL_ARRASTRE = 110;
 
 /**
  * Salida de la carta: el sentido lo aporta `AnimatePresence` vía `custom`
@@ -48,8 +47,9 @@ export function CartaSwipe({ inmueble, esSuperior, onDecidir }: CartaSwipeProps)
   const opacidadNope = useTransform(x, [-150, -40], [1, 0]);
 
   function alSoltar(_evento: MouseEvent | TouchEvent | PointerEvent, info: PanInfo): void {
-    if (info.offset.x > UMBRAL_ARRASTRE) onDecidir('LIKE');
-    else if (info.offset.x < -UMBRAL_ARRASTRE) onDecidir('NOPE');
+    // Lógica pura en `arrastre.ts`: umbral de 110 px O tirón rápido (>700 px/s).
+    const decision = debeDecidir(info.offset.x, info.velocity.x);
+    if (decision !== null) onDecidir(inmueble.id, decision);
   }
 
   return (

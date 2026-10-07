@@ -3,9 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { InmuebleResumen } from '@/features/inmuebles/types';
 import { useSesion } from '@/features/auth/session';
-import { esApiError } from '@/lib/api';
 import { obtenerDeck, registrarSwipe } from '../api';
-import { mensajeDeError, MENSAJES } from '../mensajes';
+import { esSinSesion, mensajeDeError, MENSAJES } from '../mensajes';
 import type { DecisionSwipe } from '../types';
 
 /** Posición de la carta actual dentro de las cartas ya cargadas. */
@@ -31,16 +30,23 @@ export type EstadoDeck = Readonly<{
 }>;
 
 export type AccionesDeck = Readonly<{
-  decidir: (decision: DecisionSwipe) => void;
+  /** Decide sobre la carta SUPERIOR; ignora ids que ya no lo son. */
+  decidir: (inmuebleId: number, decision: DecisionSwipe) => void;
   reintentar: () => void;
 }>;
 
 /**
- * Deck de swipes con POST optimista:
+ * Deck de swipes con POST optimista y protección de carreras:
  *
- * - `decidir` saca la carta del deck al instante y lanza el POST en paralelo;
- *   si el POST falla, la carta vuelve al frente y se anuncia el error (salvo
- *   401, que cae a la pantalla de sesión).
+ * - `decidir(inmuebleId, decision)` sólo actúa si el id sigue siendo la carta
+ *   superior (`cartasRef`) y no tiene ya un POST en vuelo (`enVueloRef`):
+ *   una segunda decisión mientras la anterior aún sale no elimina otra carta
+ *   sin su propio POST.
+ * - Si el POST falla, la carta vuelve al frente con merge SIN pisar la página
+ *   siguiente que pudiera estar cargando en paralelo (dedupe por id) y se
+ *   anuncia el error (salvo 401, que cae a la pantalla de sesión).
+ * - Cada recarga invalida por generación las respuestas anteriores, al estilo
+ *   de `use-listado-inmuebles`.
  * - Agotado el deck se pide la página siguiente con el `nextCursor`; sin
  *   cursor, `finDeDeck` queda en true (valor derivado, sin efectos).
  * - Con sesión anónima no se lanza ninguna petición.
@@ -60,13 +66,25 @@ export function useDeckSwipe(): EstadoDeck & AccionesDeck {
   const [direccionSalida, setDireccionSalida] = useState<DecisionSwipe>('LIKE');
 
   // Sólo la primera página se pide desde el effect (evita el doble montaje
-  // de StrictMode); el resto de cargas se lanzan de forma imperativa.
+  // de StrictMode); el resto de cargas se lanza de forma imperativa.
   const cargadaInicial = useRef(false);
   // Guarda contra el doble effect de la página siguiente (mismas deps).
   const siguienteEnVuelo = useRef(false);
+  // Espejo de `cartas` para leer la carta superior DESDE el handler de evento
+  // sin depender del closure del render (cierre obsoleto).
+  const cartasRef = useRef<readonly InmuebleResumen[]>([]);
+  // Ids con un POST de decisión en vuelo: no se repite mientras esté activo
+  // y se libera en `finally` (el reintento tras rollback vuelve a permitirlo).
+  const enVueloRef = useRef<ReadonlySet<number>>(new Set());
+  // Cada recarga nueva invalida las respuestas anteriores (carreras).
+  const generacion = useRef(0);
+
+  useEffect(() => {
+    cartasRef.current = cartas;
+  }, [cartas]);
 
   const anunciarFalloDeCarga = useCallback((fallo: unknown): void => {
-    if (esApiError(fallo) && fallo.status === 401) {
+    if (esSinSesion(fallo)) {
       setSesionPerdida(true);
       return;
     }
@@ -74,18 +92,21 @@ export function useDeckSwipe(): EstadoDeck & AccionesDeck {
   }, []);
 
   const cargarPrimeraPagina = useCallback(async (): Promise<void> => {
+    const generacionActual = ++generacion.current;
     setCargando(true);
     setError(null);
     try {
       const pagina = await obtenerDeck();
+      // Respuesta obsoleta: otra recarga más reciente ya mandó.
+      if (generacionActual !== generacion.current) return;
       setCartas(pagina.content);
       setCursor(pagina.nextCursor);
       setCargadas(pagina.content.length);
       setDecididas(0);
     } catch (fallo: unknown) {
-      anunciarFalloDeCarga(fallo);
+      if (generacionActual === generacion.current) anunciarFalloDeCarga(fallo);
     } finally {
-      setCargando(false);
+      if (generacionActual === generacion.current) setCargando(false);
     }
   }, [anunciarFalloDeCarga]);
 
@@ -99,53 +120,80 @@ export function useDeckSwipe(): EstadoDeck & AccionesDeck {
   }, [cargandoSesion, sinSesion, cargarPrimeraPagina]);
 
   // Deck agotado con cursor: se pide la página siguiente en cuanto no quedan
-  // cartas. `siguienteEnVuelo` evita duplicar la petición entre renders.
+  // cartas. `siguienteEnVuelo` evita duplicar la petición entre renders y la
+  // generación descarta respuestas de recargas ya invalidadas.
   useEffect(() => {
-    if (cargando || cartas.length > 0 || cursor === null) return;
+    if (cargando || sinSesion || cartas.length > 0 || cursor === null) return;
     if (siguienteEnVuelo.current) return;
     siguienteEnVuelo.current = true;
+    const generacionAlLanzar = generacion.current;
     setCargandoSiguientes(true);
     void obtenerDeck(cursor)
       .then((pagina) => {
+        if (generacionAlLanzar !== generacion.current) return;
         // Página vacía con cursor: corta el bucle y cierra el deck.
         if (pagina.content.length === 0) {
           setCursor(null);
           return;
         }
-        setCartas(pagina.content);
+        // Fusión con dedupe: nunca sustituye lo que haya en memoria (una
+        // carta reinsertada por un POST fallido sobrevive a esta carga).
+        setCartas((anteriores) =>
+          anteriores.length === 0
+            ? pagina.content
+            : [
+                ...anteriores,
+                ...pagina.content.filter(
+                  (nueva) => !anteriores.some((anterior) => anterior.id === nueva.id),
+                ),
+              ],
+        );
         setCargadas((anterior) => anterior + pagina.content.length);
         setCursor(pagina.nextCursor);
       })
-      .catch((fallo: unknown) => anunciarFalloDeCarga(fallo))
+      .catch((fallo: unknown) => {
+        if (generacionAlLanzar === generacion.current) anunciarFalloDeCarga(fallo);
+      })
       .finally(() => {
         siguienteEnVuelo.current = false;
         setCargandoSiguientes(false);
       });
-  }, [cargando, cartas.length, cursor, anunciarFalloDeCarga]);
+  }, [cargando, sinSesion, cartas.length, cursor, anunciarFalloDeCarga]);
 
-  const decidir = useCallback(
-    (decision: DecisionSwipe): void => {
-      const carta = cartas[0];
-      if (carta === undefined) return;
+  const decidir = useCallback((inmuebleId: number, decision: DecisionSwipe): void => {
+    const carta = cartasRef.current[0];
+    // Carta obsoleta (quien llamó ya no es la superior) o POST en vuelo:
+    // no se toca el estado ni se repite la petición.
+    if (carta === undefined || carta.id !== inmuebleId) return;
+    if (enVueloRef.current.has(inmuebleId)) return;
 
-      setDireccionSalida(decision);
-      setCartas((anteriores) => anteriores.slice(1));
-      setDecididas((anterior) => anterior + 1);
-      setErrorDecision(null);
+    enVueloRef.current = new Set(enVueloRef.current).add(inmuebleId);
+    const generacionAlDecidir = generacion.current;
+    setDireccionSalida(decision);
+    setCartas((anteriores) => anteriores.slice(1));
+    setDecididas((anterior) => anterior + 1);
+    setErrorDecision(null);
 
-      void registrarSwipe(carta.id, decision).catch((fallo: unknown) => {
-        if (esApiError(fallo) && fallo.status === 401) {
+    void registrarSwipe(inmuebleId, decision)
+      .catch((fallo: unknown) => {
+        // La recarga invalidó este deck: nada que reintegrar.
+        if (generacionAlDecidir !== generacion.current) return;
+        if (esSinSesion(fallo)) {
           setSesionPerdida(true);
           return;
         }
-        // Reintegro optimista: la carta recupera su sitio en el deck.
+        // Reintegro optimista con merge: recupera su sitio aunque otra
+        // decisión o una página siguiente hayan tocado el mazo entretanto.
         setCartas((anteriores) => [carta, ...anteriores]);
         setDecididas((anterior) => Math.max(0, anterior - 1));
         setErrorDecision(mensajeDeError(fallo, MENSAJES.decision));
+      })
+      .finally(() => {
+        const siguiente = new Set(enVueloRef.current);
+        siguiente.delete(inmuebleId);
+        enVueloRef.current = siguiente;
       });
-    },
-    [cartas],
-  );
+  }, []);
 
   const reintentar = useCallback((): void => {
     void cargarPrimeraPagina();

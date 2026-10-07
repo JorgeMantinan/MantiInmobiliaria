@@ -208,6 +208,29 @@ describe('ModoSwipe', () => {
     expect(await screen.findByText('Piso Uno')).toBeInTheDocument();
   });
 
+  it('si_el_post_de_decision_devuelve_401_se_muestra_la_cta_sin_mas_llamadas', async () => {
+    const usuario = userEvent.setup();
+    vi.mocked(apiFetch).mockImplementation(async (ruta: string) => {
+      if (ruta === '/api/v1/swipes') {
+        throw new ApiError(401, 'No autorizado', 'Sesión caducada');
+      }
+      return pagina([vivienda(1, 'Piso Uno'), vivienda(2, 'Piso Dos')], null);
+    });
+
+    renderConSesion(CON_SESION, <ModoSwipe />);
+    await screen.findByText('Carta 1 de 2');
+    const llamadasIniciales = vi.mocked(apiFetch).mock.calls.length;
+
+    await usuario.click(screen.getByRole('button', { name: 'Guardar como favorito' }));
+
+    expect(await screen.findByText('Inicia sesión para guardar tus favoritos')).toBeInTheDocument();
+    expect(screen.queryByRole('article')).not.toBeInTheDocument();
+    // Tras la CTA no se lanza nada más (deck + POST = 2 llamadas).
+    await waitFor(() => expect(vi.mocked(apiFetch).mock.calls.length).toBe(llamadasIniciales + 1));
+    await new Promise((resolver) => setTimeout(resolver, 20));
+    expect(vi.mocked(apiFetch).mock.calls.length).toBe(llamadasIniciales + 1);
+  });
+
   it('si_el_post_falla_la_carta_vuelve_al_deck_y_se_anuncia_el_error', async () => {
     const usuario = userEvent.setup();
     vi.mocked(apiFetch).mockImplementation(async (ruta: string) => {
