@@ -128,10 +128,14 @@ paths:
       tags:
       - Swipes
       summary: Registra un like o nope sobre un inmueble
-      description: Primera decisión → 201; repetir la MISMA decisión → 200 sin crear
-        fila (idempotente); cambiar de opinión → 200 actualizando la fila. 404 si
-        el inmueble no existe o está eliminado.
-      operationId: registrar
+      description: "Idempotente por DISEÑO (la constraint `uq_swipes_usuario_inmueble`\
+        \ garantiza una fila por pareja): 201 en la primera decisión; repetir la MISMA\
+        \ decisión → 200 sin crear fila; cambiar de opinión → 200 actualizando. No\
+        \ requiere cabecera `Idempotency-Key`: la unicidad natural es la idempotencia.\
+        \ Ante una carrera de inserción (doble tap del frontend) el servicio reintenta\
+        \ una vez en una transacción nueva y responde 200; sólo si la relectura sigue\
+        \ vacía devuelve 409. 404 si el inmueble no existe o está eliminado."
+      operationId: registrarSwipe
       requestBody:
         content:
           application/json:
@@ -169,6 +173,13 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Conflicto de unicidad no resuelto por el reintento (dos escrituras
+            simultáneas sobre la misma pareja usuario+inmueble)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
       security:
       - bearerAuth: []
   /api/v1/auth/register:
@@ -176,7 +187,7 @@ paths:
       tags:
       - Auth
       summary: Registra un usuario y le devuelve la sesión (auto-login)
-      operationId: registrar_1
+      operationId: registrar
       requestBody:
         content:
           application/json:

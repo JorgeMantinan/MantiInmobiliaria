@@ -52,10 +52,16 @@ public class SwipeController {
     private final SwipeMapper mapper;
 
     @PostMapping
-    @Operation(summary = "Registra un like o nope sobre un inmueble",
-            description = "Primera decisión → 201; repetir la MISMA decisión → 200 sin crear "
-                    + "fila (idempotente); cambiar de opinión → 200 actualizando la fila. "
-                    + "404 si el inmueble no existe o está eliminado.",
+    @Operation(operationId = "registrarSwipe",
+            summary = "Registra un like o nope sobre un inmueble",
+            description = "Idempotente por DISEÑO (la constraint `uq_swipes_usuario_inmueble` "
+                    + "garantiza una fila por pareja): 201 en la primera decisión; repetir la "
+                    + "MISMA decisión → 200 sin crear fila; cambiar de opinión → 200 actualizando. "
+                    + "No requiere cabecera `Idempotency-Key`: la unicidad natural es la "
+                    + "idempotencia. Ante una carrera de inserción (doble tap del frontend) el "
+                    + "servicio reintenta una vez en una transacción nueva y responde 200; sólo "
+                    + "si la relectura sigue vacía devuelve 409. 404 si el inmueble no existe o "
+                    + "está eliminado.",
             security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Primera decisión registrada"),
@@ -65,6 +71,9 @@ public class SwipeController {
             @ApiResponse(responseCode = "401", description = "Sin token",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "404", description = "Inmueble inexistente o eliminado",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "409", description = "Conflicto de unicidad no resuelto por el "
+                    + "reintento (dos escrituras simultáneas sobre la misma pareja usuario+inmueble)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     public ResponseEntity<SwipeResponse> registrar(
             @Valid @RequestBody SwipeRequest request,
