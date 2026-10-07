@@ -3,9 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { InmuebleResumen } from '@/features/inmuebles/types';
 import { useSesion } from '@/features/auth/session';
-import { esApiError } from '@/lib/api';
 import { eliminarFavorito, listarFavoritos } from '../api';
-import { mensajeDeError, MENSAJES } from '../mensajes';
+import { esSinSesion, mensajeDeError, MENSAJES } from '../mensajes';
 
 export type EstadoFavoritos = Readonly<{
   /** Sin sesión (401 o `useSesion` sin usuario): no se llama a la API. */
@@ -51,9 +50,12 @@ export function useFavoritos(): EstadoFavoritos & AccionesFavoritos {
   const [sesionPerdida, setSesionPerdida] = useState(false);
 
   const cargadaInicial = useRef(false);
+  // Ids con un DELETE en curso o ya confirmado: una página del cursor que
+  // llegue después NO debe reinsertarlos en la lista.
+  const quitadosRef = useRef<ReadonlySet<number>>(new Set());
 
   const anunciarFalloDeCarga = useCallback((fallo: unknown, porDefecto: string): void => {
-    if (esApiError(fallo) && fallo.status === 401) {
+    if (esSinSesion(fallo)) {
       setSesionPerdida(true);
       return;
     }
@@ -86,6 +88,7 @@ export function useFavoritos(): EstadoFavoritos & AccionesFavoritos {
 
   const quitar = useCallback((inmuebleId: number): void => {
     if (quitando.has(inmuebleId)) return;
+    quitadosRef.current = new Set(quitadosRef.current).add(inmuebleId);
     setErrorQuitar(null);
     setQuitando((anterior) => new Set(anterior).add(inmuebleId));
     void eliminarFavorito(inmuebleId)
@@ -94,7 +97,7 @@ export function useFavoritos(): EstadoFavoritos & AccionesFavoritos {
         setFavoritos((anteriores) => anteriores.filter((favorito) => favorito.id !== inmuebleId));
       })
       .catch((fallo: unknown) => {
-        if (esApiError(fallo) && fallo.status === 401) {
+        if (esSinSesion(fallo)) {
           setSesionPerdida(true);
           return;
         }
@@ -115,15 +118,22 @@ export function useFavoritos(): EstadoFavoritos & AccionesFavoritos {
     setErrorMas(null);
     try {
       const pagina = await listarFavoritos(cursor);
+      // Página vacía con cursor: corta el bucle de "Cargar más".
+      if (pagina.content.length === 0) {
+        setCursor(null);
+        return;
+      }
       setFavoritos((anteriores) => [
         ...anteriores,
         ...pagina.content.filter(
-          (nuevo) => !anteriores.some((favorito) => favorito.id === nuevo.id),
+          (nuevo) =>
+            !quitadosRef.current.has(nuevo.id) &&
+            !anteriores.some((favorito) => favorito.id === nuevo.id),
         ),
       ]);
       setCursor(pagina.nextCursor);
     } catch (fallo: unknown) {
-      if (esApiError(fallo) && fallo.status === 401) {
+      if (esSinSesion(fallo)) {
         setSesionPerdida(true);
         return;
       }

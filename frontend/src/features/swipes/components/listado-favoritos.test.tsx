@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SesionContext, type ValorSesion } from '@/features/auth/session';
@@ -169,6 +169,41 @@ describe('ListadoFavoritos', () => {
       '/swipe',
     );
     expect(screen.queryByRole('button', { name: /Quitar de favoritos/ })).not.toBeInTheDocument();
+  });
+
+  it('un_favorito_quitado_en_vuelo_no_reaparece_al_cargar_mas', async () => {
+    const usuario = userEvent.setup();
+    const primera = pagina([vivienda(1, 'Piso Uno'), vivienda(2, 'Piso Dos')], 'c1');
+    // Página del cursor que todavía contiene el favorito YA quitado.
+    const segunda = pagina([vivienda(1, 'Piso Uno'), vivienda(3, 'Piso Tres')], null);
+    let resolverPagina!: (pagina: PaginaSwipes) => void;
+    const promesaPagina = new Promise<PaginaSwipes>((resolver) => {
+      resolverPagina = resolver;
+    });
+    vi.mocked(apiFetch).mockImplementation((_ruta, opciones) => {
+      if (opciones?.method === 'DELETE') return Promise.resolve(undefined);
+      if (_ruta.includes('cursor=c1')) return promesaPagina;
+      return Promise.resolve(primera);
+    });
+
+    renderConSesion(CON_SESION, <ListadoFavoritos />);
+    await screen.findByText('Mostrando 2 favoritos');
+
+    // "Cargar más" queda EN VUELO…
+    await usuario.click(screen.getByRole('button', { name: 'Cargar más' }));
+    // …mientras se confirma el DELETE del Piso Uno (sale de la lista local).
+    await usuario.click(screen.getByRole('button', { name: 'Quitar de favoritos: Piso Uno' }));
+    expect(await screen.findByText('Mostrando 1 favorito')).toBeInTheDocument();
+
+    // La página del cursor llega DESPUÉS con el favorito quitado: no vuelve.
+    await act(async () => {
+      resolverPagina(segunda);
+      await promesaPagina;
+    });
+
+    expect(await screen.findByText('Mostrando 2 favoritos')).toBeInTheDocument();
+    expect(screen.queryByText('Piso Uno')).not.toBeInTheDocument();
+    expect(screen.getByText('Piso Tres')).toBeInTheDocument();
   });
 
   it('con_sesion_anonima_muestra_la_cta_sin_llamar_a_la_api', async () => {
