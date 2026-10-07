@@ -6,9 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
 import 'leaflet-defaulticon-compatibility';
 import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
-
-const CLAVE_CARTO = process.env.NEXT_PUBLIC_CARTO_KEY ?? '';
-const ATRIBUCION = '© OpenStreetMap contributors, © CARTO';
+import { ATRIBUCION, avisarClaveCartoAusente, PLANTILLA_TESELA_CARTO } from '../carto';
 
 type MapaDetalleProps = Readonly<{
   lat: number;
@@ -22,6 +20,7 @@ type MapaDetalleProps = Readonly<{
  * desplazarse por la página.
  */
 export function MapaDetalle({ lat, lng, titulo }: MapaDetalleProps) {
+  avisarClaveCartoAusente();
   return (
     <div
       role="region"
@@ -35,10 +34,7 @@ export function MapaDetalle({ lat, lng, titulo }: MapaDetalleProps) {
         zoomControl
         className="h-full w-full"
       >
-        <TileLayer
-          url={`https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=${CLAVE_CARTO}`}
-          attribution={ATRIBUCION}
-        />
+        <TileLayer url={PLANTILLA_TESELA_CARTO} attribution={ATRIBUCION} />
         <Marker position={[lat, lng]} alt={`Ubicación de ${titulo}`}>
           <Popup>{titulo}</Popup>
         </Marker>

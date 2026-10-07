@@ -1,4 +1,5 @@
 import { latLngATile, TAMANO_TESELA } from "@/lib/geo";
+import { ATRIBUCION, avisarClaveCartoAusente, urlTeselaCarto } from "../carto";
 
 /** Zoom del tile estático de la tarjeta: nivel de calle, sin cargar detalle de más. */
 const ZOOM_TESELA = 16;
@@ -10,9 +11,6 @@ const ZOOM_TESELA = 16;
 const RELACION_CAJA = 2.5;
 const IMAGEN_ANCHO_PCT = 200;
 const IMAGEN_ALTO_PCT = IMAGEN_ANCHO_PCT * RELACION_CAJA;
-
-const CLAVE_CARTO = process.env.NEXT_PUBLIC_CARTO_KEY ?? "";
-const ATRIBUCION = "© OpenStreetMap contributors, © CARTO";
 
 type MapaTarjetaProps = Readonly<{
   lat: number;
@@ -29,8 +27,10 @@ type Posicion = Readonly<{ inicio: number; punto: number }>;
  * Ubica el tile (`tamanoPct` % de la caja) para que contenga el punto y devuelva
  * el porcentaje del punto dentro de la caja. `inicio` es la posición del tile
  * y `punto` la del pin, ambos en coordenadas de la caja (0..100).
+ *
+ * Exportada sólo para testearla (`mapa-tarjeta.test.tsx`).
  */
-function ubicar(offset: number, tamanoPct: number): Posicion {
+export function ubicar(offset: number, tamanoPct: number): Posicion {
   const dentro = (offset / TAMANO_TESELA) * tamanoPct;
   const inicio = Math.min(Math.max(50 - dentro, 100 - tamanoPct), 0);
   return { inicio, punto: inicio + dentro };
@@ -42,6 +42,7 @@ function ubicar(offset: number, tamanoPct: number): Posicion {
  * por eso es seguro en server components.
  */
 export function MapaTarjeta({ lat, lng, titulo, direccion, municipio }: MapaTarjetaProps) {
+  avisarClaveCartoAusente();
   const { x, y, offsetX, offsetY } = latLngATile(lat, lng, ZOOM_TESELA);
   const horizontal = ubicar(offsetX, IMAGEN_ANCHO_PCT);
   const vertical = ubicar(offsetY, IMAGEN_ALTO_PCT);
@@ -54,7 +55,7 @@ export function MapaTarjeta({ lat, lng, titulo, direccion, municipio }: MapaTarj
             para `next/image`, que además necesitaría `remotePatterns`. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={`https://basemaps.cartocdn.com/rastertiles/voyager/${ZOOM_TESELA}/${x}/${y}.png?key=${CLAVE_CARTO}`}
+          src={urlTeselaCarto(ZOOM_TESELA, x, y)}
           alt={alt}
           width={TAMANO_TESELA}
           height={TAMANO_TESELA}
