@@ -9,10 +9,10 @@ type ListadoVacioProps = Readonly<{
   onLimpiar: () => void;
 }>;
 
-/** Esqueleto del listado mientras llega la primera página (`aria-live` politely). */
+/** Esqueleto del listado mientras llega la primera página (`role="status"` ya anuncia). */
 export function ListadoCargando() {
   return (
-    <div role="status" aria-live="polite">
+    <div role="status">
       <span className="sr-only">Cargando inmuebles…</span>
       <ul aria-hidden="true" className="grid list-none gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }, (_, indice) => (
@@ -26,12 +26,11 @@ export function ListadoCargando() {
   );
 }
 
-/** Error de carga del listado, con reintento. */
+/** Error de carga del listado, con reintento (`role="alert"` ya es live). */
 export function ListadoError({ mensaje, onReintentar }: ListadoErrorProps) {
   return (
     <div
       role="alert"
-      aria-live="polite"
       className="rounded-lg border border-borde bg-superficie p-6 text-center"
     >
       <h2 className="font-display text-xl text-texto">No se han podido cargar los inmuebles</h2>

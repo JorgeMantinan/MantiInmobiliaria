@@ -60,7 +60,7 @@ export function ListadoInmuebles() {
               ))}
             </ul>
             {errorMas !== null ? (
-              <p role="alert" aria-live="polite" className="mt-4 text-center text-sm text-acento-hover">
+              <p role="alert" className="mt-4 text-center text-sm text-acento-hover">
                 {errorMas}
               </p>
             ) : null}

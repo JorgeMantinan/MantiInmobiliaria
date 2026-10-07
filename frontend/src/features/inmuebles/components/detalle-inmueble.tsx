@@ -9,7 +9,9 @@ import {
   ETIQUETAS_ESTADO,
   ETIQUETAS_TIPO,
   formatoPrecio,
+  formatoSuperficie,
 } from '../formato';
+import { mensajeDeError, MENSAJES } from '../mensajes';
 import type { InmuebleDetalle } from '../types';
 import { FotoInmueble } from './foto-inmueble';
 import { MapaDetalleWrapper } from './mapa-detalle-wrapper';
@@ -35,10 +37,6 @@ function valorOpcion(valor: number | null, formato: (v: number) => string): stri
   return valor === null ? '—' : formato(valor);
 }
 
-function mensajeDeError(error: unknown): string {
-  return error instanceof Error ? error.message : 'No se ha podido cargar el inmueble.';
-}
-
 /** Ficha completa: se carga desde el cliente con estados de carga/error/404. */
 export function DetalleInmueble({ id }: Readonly<{ id: number }>) {
   const [estado, setEstado] = useState<EstadoFicha>({ fase: 'cargando' });
@@ -54,7 +52,7 @@ export function DetalleInmueble({ id }: Readonly<{ id: number }>) {
           if (esApiError(errorDeCarga) && errorDeCarga.status === 404) {
             setEstado({ fase: 'no-encontrado' });
           } else {
-            setEstado({ fase: 'error', mensaje: mensajeDeError(errorDeCarga) });
+            setEstado({ fase: 'error', mensaje: mensajeDeError(errorDeCarga, MENSAJES.ficha) });
           }
         });
     },
@@ -76,7 +74,7 @@ export function DetalleInmueble({ id }: Readonly<{ id: number }>) {
 
   if (estado.fase === 'cargando') {
     return (
-      <div role="status" aria-live="polite" className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+      <div role="status" className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
         <span className="sr-only">Cargando el inmueble…</span>
         <div aria-hidden="true" className="space-y-4">
           <div className="h-8 w-64 animate-pulse rounded-md bg-superficie-alta" />
@@ -95,7 +93,7 @@ export function DetalleInmueble({ id }: Readonly<{ id: number }>) {
           <h1 className="font-display text-2xl text-texto">
             {noEncontrado ? 'Inmueble no encontrado' : 'No se ha podido cargar la ficha'}
           </h1>
-          <p role="alert" aria-live="polite" className="mt-2 text-sm text-texto-suave">
+          <p role="alert" className="mt-2 text-sm text-texto-suave">
             {noEncontrado
               ? 'Puede que se haya retirado el anuncio o que el enlace no sea correcto.'
               : estado.mensaje}
@@ -158,7 +156,7 @@ export function DetalleInmueble({ id }: Readonly<{ id: number }>) {
       <dl className="mt-6 grid grid-cols-2 gap-4 rounded-lg border border-borde bg-superficie p-5 sm:grid-cols-4">
         <Caracteristica
           etiqueta="Superficie"
-          valor={valorOpcion(inmueble.superficieM2, (v) => `${v} m²`)}
+          valor={valorOpcion(inmueble.superficieM2, formatoSuperficie)}
         />
         <Caracteristica
           etiqueta="Habitaciones"

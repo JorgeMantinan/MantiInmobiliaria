@@ -14,9 +14,16 @@ const FORMATEADOR_PRECIO = new Intl.NumberFormat("es-ES", {
   maximumFractionDigits: 0,
 });
 
+const FORMATEADOR_ENTERO = new Intl.NumberFormat("es-ES");
+
 /** `245000` → `245.000 €`. */
 export function formatoPrecio(precio: number): string {
   return FORMATEADOR_PRECIO.format(precio);
+}
+
+/** `1250` → `1.250 m²` (separadores de miles españoles). */
+export function formatoSuperficie(superficieM2: number): string {
+  return `${FORMATEADOR_ENTERO.format(superficieM2)} m²`;
 }
 
 export const ETIQUETAS_ESTADO: Readonly<Record<EstadoInmueble, string>> = {
@@ -60,7 +67,7 @@ export function direccionCompleta(inmueble: InmuebleDetalle): string {
 /** Datos rápidos de la tarjeta: `96 m² · 3 hab. · 1 baño`. */
 export function datosDe(inmueble: InmuebleResumen): string {
   const partes: string[] = [];
-  if (inmueble.superficieM2 !== null) partes.push(`${inmueble.superficieM2} m²`);
+  if (inmueble.superficieM2 !== null) partes.push(formatoSuperficie(inmueble.superficieM2));
   if (inmueble.habitaciones !== null) partes.push(`${inmueble.habitaciones} hab.`);
   if (inmueble.banios !== null) partes.push(`${inmueble.banios} ${inmueble.banios === 1 ? "baño" : "baños"}`);
   return partes.join(" · ");
