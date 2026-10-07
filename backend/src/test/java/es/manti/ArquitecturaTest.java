@@ -1,8 +1,12 @@
 package es.manti;
 
+import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
+import es.manti.inmuebles.domain.EstadoInmueble;
+import es.manti.inmuebles.domain.TipoInmueble;
 import org.junit.jupiter.api.Test;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
@@ -104,14 +108,10 @@ class ArquitecturaTest {
      * CÓDIGO: la proyección es un record propio y las entidades se referencian
      * por nombre, nunca por import.
      *
-     * <p>La regla alcanza al NÚCLEO del módulo (domain, application, infra).
-     * La capa {@code api} queda fuera A PROPÓSITO: su único punto de contacto
-     * es el DTO público {@code es.manti.inmuebles.api.dto.InmuebleSummary},
-     * cuya firma de constructor menciona inevitablemente {@code TipoInmueble} y
-     * {@code EstadoInmueble} (el mapper tiene que construirlos para poder
-     * devolver el resumen). Ese acoplamiento es api → api y está permitido; lo
-     * que esta regla impide es el núcleo de swipes hablando con los internos de
-     * inmuebles.</p>
+     * <p>Esta regla es del NÚCLEO del módulo (domain, application, infra) y es
+     * absoluta: ni una sola clase del dominio ajeno, tampoco los enums. Lo que
+     * la capa {@code api} puede tocar — sólo enums, nada más — lo mira
+     * {@link #swipesNoDependeDelDominioDeInmueblesSalvoLosDosEnums()}.</p>
      */
     @Test
     void swipesNoDependeDelDominioNiDeLaInfraestructuraDeInmuebles() {
@@ -134,6 +134,37 @@ class ArquitecturaTest {
         noClasses().that().resideInAPackage("es.manti.swipes..")
                 .should().dependOnClassesThat().resideInAnyPackage(
                         "es.manti.inmuebles.infra..", "es.manti.inmuebles.application..")
+                .check(CLASES);
+    }
+
+    /**
+     * FASE 4 — <b>api → dominio ajeno: sólo los enums pinados
+     * {@code TipoInmueble}/{@code EstadoInmueble} (uso interno del mapper de
+     * {@code InmuebleSummary})</b>. El resto del paquete
+     * {@code es.manti.inmuebles.domain..} —la entidad {@code Inmueble}, las
+     * Specification, lo que sea— queda prohibido para TODO el módulo
+     * {@code swipes}, capa {@code api} incluida.
+     *
+     * <p>La excepción es inevitable y está justificada: MapStruct genera
+     * {@code SwipeMapperImpl}, cuyo método {@code toSummary} debe instanciar
+     * {@code InmuebleSummary}, un record cuya firma expone esos dos enums. La
+     * unicidad de la excepción la garantiza el predicado, que está escrito
+     * contra los FQCN concretos: si mañana aparece una tercera clase del
+     * dominio de inmuebles en swipes, la regla muerde.</p>
+     */
+    @Test
+    void swipesNoDependeDelDominioDeInmueblesSalvoLosDosEnums() {
+        DescribedPredicate<JavaClass> dominioDeInmuebles =
+                JavaClass.Predicates.resideInAPackage("es.manti.inmuebles.domain..");
+        DescribedPredicate<JavaClass> enumsPinados =
+                JavaClass.Predicates.belongToAnyOf(TipoInmueble.class, EstadoInmueble.class);
+
+        noClasses().that().resideInAPackage("es.manti.swipes..")
+                .should().dependOnClassesThat(
+                        dominioDeInmuebles.and(DescribedPredicate.not(enumsPinados)))
+                .because("la api de swipes sólo puede usar el DTO público InmuebleSummary; "
+                        + "de inmuebles.domain sólo se admiten los enums pinados "
+                        + "TipoInmueble y EstadoInmueble que exige la firma del record")
                 .check(CLASES);
     }
 
