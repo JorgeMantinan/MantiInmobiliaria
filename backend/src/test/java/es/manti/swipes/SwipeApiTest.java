@@ -211,7 +211,14 @@ class SwipeApiTest {
     @Test
     void deck_devuelveEnvelopeConInmuebleSummaryYCursor() throws Exception {
         String token = registrarUsuario();
+        long usuario = idUsuario(token);
         String municipio = municipioPrueba();
+        // El deck de un usuario recién creado es TODO el catálogo activo (los
+        // seeds V900 en dev, una BD casi vacía en CI). Se le swipea lo que ya
+        // existía antes de crear las fixtures para que el tamaño de página, el
+        // cursor y totalElements dependan sólo de ESTE test en cualquier entorno.
+        descartarCatalogoPreexistente(usuario);
+        long masViejo = inmueble(municipio);
         long uno = inmueble(municipio);
         long dos = inmueble(municipio);
 
@@ -226,11 +233,13 @@ class SwipeApiTest {
                 .andExpect(jsonPath("$.content[0].estado").value("VENTA"))
                 .andExpect(jsonPath("$.content[0].descripcion").doesNotExist())
                 .andExpect(jsonPath("$.nextCursor").isString())
-                .andExpect(jsonPath("$.totalElements").isNumber())
+                .andExpect(jsonPath("$.totalElements").value(3))
                 .andReturn().getResponse().getContentAsString();
 
         assertThat(idsDe(cuerpo)).containsExactly(dos, uno);
         assertThat((String) JsonPath.read(cuerpo, "$.nextCursor")).isNotBlank();
+        // Tercera fila más antigua: se queda tras el cursor y por eso éste existe
+        assertThat(idsDeck(token)).containsExactly(dos, uno, masViejo);
     }
 
     @Test
@@ -444,6 +453,21 @@ class SwipeApiTest {
 
     private String municipioPrueba() {
         return "It-" + UUID.randomUUID().toString().substring(0, 8);
+    }
+
+    /**
+     * Swipea (NOPE) todo lo que ya había en {@code inmuebles} para que el deck
+     * de este usuario empiece vacío: el anti-join es global, no por municipio,
+     * así que sin este aislamiento el test vería también los seeds de dev y
+     * fallaría en CI, donde no existen. Las filas se van con el usuario
+     * ({@code ON DELETE CASCADE}) en {@link #limpiarFixtures()}.
+     */
+    private void descartarCatalogoPreexistente(long usuario) {
+        jdbc.update("""
+                INSERT INTO swipes (usuario_id, inmueble_id, decision)
+                SELECT ?, id, 'NOPE' FROM inmuebles
+                ON CONFLICT (usuario_id, inmueble_id) DO NOTHING
+                """, usuario);
     }
 
     private long inmueble(String municipio) {
