@@ -407,7 +407,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/InmueblePage"
         "400":
-          description: "Cursor, sort o parámetro inválido (ProblemDetail)"
+          description: "Cursor, sort, rango de filtros (precioMin>precioMax, precios\
+            \ negativos, habitacionesMin<0) o valor de parámetro no admitido (p. ej.\
+            \ estado=XYZ, limit=abc): ProblemDetail con errors:[{field, message}]"
           content:
             '*/*':
               schema:
@@ -603,6 +605,23 @@ components:
         properties:
           type: object
           additionalProperties: {}
+        errors:
+          type: array
+          description: Errores campo/mensaje; presente en las respuestas 400
+          items:
+            type: object
+            description: Error individual
+            properties:
+              field:
+                type: string
+                description: "Campo o parámetro que falló (p. ej. precioMin, estado);\
+                  \ ausente cuando sólo procede el mensaje"
+              message:
+                type: string
+                description: "Motivo fijo del error, sin datos internos de la petició\
+                  n"
+            required:
+            - message
     InmuebleResponse:
       type: object
       description: Detalle completo de un inmueble

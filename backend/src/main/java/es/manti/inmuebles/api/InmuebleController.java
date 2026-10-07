@@ -69,7 +69,9 @@ public class InmuebleController {
                     + "`limit` se acota a 1..50 (20 por defecto).")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Página de inmuebles"),
-            @ApiResponse(responseCode = "400", description = "Cursor, sort o parámetro inválido (ProblemDetail)",
+            @ApiResponse(responseCode = "400", description = "Cursor, sort, rango de filtros (precioMin>precioMax, "
+                    + "precios negativos, habitacionesMin<0) o valor de parámetro no admitido "
+                    + "(p. ej. estado=XYZ, limit=abc): ProblemDetail con errors:[{field, message}]",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     @SecurityRequirements   // endpoint público: security: [] en la spec
     public ResponseEntity<InmueblePage> listar(

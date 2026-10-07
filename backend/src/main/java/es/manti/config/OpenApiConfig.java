@@ -3,9 +3,17 @@ package es.manti.config;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.media.ArraySchema;
+import io.swagger.v3.oas.models.media.ObjectSchema;
+import io.swagger.v3.oas.models.media.Schema;
+import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.List;
+import java.util.Map;
 
 /** Configuración global de springdoc (spec + esquema de seguridad bearer). */
 @Configuration
@@ -24,5 +32,48 @@ public class OpenApiConfig {
                                 .scheme("bearer")
                                 .bearerFormat("JWT")
                                 .description("Access token JWT (HS256, 15 min) devuelto por /api/v1/auth/login")));
+    }
+
+    /**
+     * Declara en el schema {@code ProblemDetail} el array {@code errors} que la
+     * API emite en los 400 (validación de bodies, parámetros de búsqueda,
+     * type-mismatch de query params). Spring no lo infiere: sin este customizer
+     * la spec no menciona {@code errors} y el gate de documentación miente.
+     *
+     * <p>{@code message} es obligatorio en todo error; {@code field} es
+     * opcional porque la validación de parámetros de método
+     * ({@code HandlerMethodValidationException}) sólo puede reportar el mensaje.
+     * El esquema se enriquece post-generación, sin tocar las anotaciones de los
+     * controllers.</p>
+     */
+    @Bean
+    OpenApiCustomizer problemDetailConErrores() {
+        return openApi -> {
+            Map<String, Schema> esquemas = openApi.getComponents() == null
+                    ? null
+                    : openApi.getComponents().getSchemas();
+            if (esquemas == null) {
+                return;
+            }
+            Schema problemDetail = esquemas.get("ProblemDetail");
+            if (problemDetail == null) {
+                return;
+            }
+
+            ObjectSchema error = new ObjectSchema();
+            error.description("Error individual");
+            error.addProperty("field",
+                    new StringSchema().description("Campo o parámetro que falló (p. ej. precioMin, estado); "
+                            + "ausente cuando sólo procede el mensaje"));
+            error.addProperty("message", new StringSchema()
+                    .description("Motivo fijo del error, sin datos internos de la petición"));
+            error.setRequired(List.of("message"));
+
+            ArraySchema errores = new ArraySchema();
+            errores.description("Errores campo/mensaje; presente en las respuestas 400");
+            errores.items(error);
+
+            problemDetail.addProperty("errors", errores);
+        };
     }
 }
