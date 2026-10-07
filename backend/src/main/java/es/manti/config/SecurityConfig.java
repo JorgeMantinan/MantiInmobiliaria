@@ -101,14 +101,19 @@ public class SecurityConfig {
                                 "/api/v1/auth/oauth2/token").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         // FASE 2 — lectura PÚBLICA del portal de inmuebles.
-                        // SÓLO GET y SÓLO el recurso de lectura: los escritos del
-                        // backoffice viven en /api/v1/admin/inmuebles (requieren
-                        // rol ADMIN vía @PreAuthorize en el controller) y no existe
-                        // ningún POST/PUT/DELETE bajo /api/v1/inmuebles (un anónimo
-                        // que lo intente recibe 401 aquí; con token, 405 al no haber
-                        // mapping). El comodín es de UN segmento: /inmuebles/{id}.
+                        // SÓLO GET, SÓLO el recurso de lectura y SÓLO id numérico:
+                        // los escritos del backoffice viven en
+                        // /api/v1/admin/inmuebles (rol ADMIN vía @PreAuthorize) y
+                        // no existe ningún POST/PUT/DELETE bajo
+                        // /api/v1/inmuebles (un anónimo que lo intente recibe 401
+                        // aquí; con token, 405 al no haber mapping). El patrón
+                        // {id:[0-9]+} acota el comodín a PathVariables de tipo
+                        // Long: así no se abren por error rutas como
+                        // /api/v1/inmuebles/<cualquier-cosa> (esas caen en 401
+                        // en vez de devolver un 404 de la app).
                         .requestMatchers(HttpMethod.GET,
-                                "/api/v1/inmuebles", "/api/v1/inmuebles/*").permitAll()
+                                "/api/v1/inmuebles",
+                                "/api/v1/inmuebles/{id:[0-9]+}").permitAll()
                         // /api/v1/public/** queda sin abrir hasta que exista el
                         // módulo de contenido público con consumidores reales.
                         .requestMatchers("/actuator/health").permitAll()
