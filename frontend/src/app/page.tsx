@@ -1,69 +1,65 @@
-import Image from "next/image";
+import type { Metadata } from 'next';
+import { BuscadorRapido } from '@/features/inmuebles/components/buscador-rapido';
+import { Destacados } from '@/features/inmuebles/components/destacados';
 
+export const metadata: Metadata = {
+  title: 'MantiInmobiliaria — Encuentra tu próxima vivienda',
+  description:
+    'Portal de viviendas en venta y alquiler con fichas detalladas, mapa geolocalizado y filtros por municipio, precio y habitaciones.',
+};
+
+const PASOS = [
+  {
+    titulo: 'Busca con filtros',
+    texto: 'Estado, tipo, municipio, precio y habitaciones; los filtros viven en la URL, así que puedes compartirlos.',
+  },
+  {
+    titulo: 'Mira la ubicación',
+    texto: 'Cada anuncio muestra su punto en el mapa y la ficha incluye un mapa interactivo de la zona.',
+  },
+  {
+    titulo: 'Decide con calma',
+    texto: 'Fotos, superficie, descripción y dirección completa para comparar viviendas sin sorpresas.',
+  },
+] as const;
+
+/** Home público del portal (sustituye a la plantilla de create-next-app). */
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <>
+      <section className="border-b border-borde bg-superficie">
+        <div className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+          <p className="text-xs font-medium uppercase tracking-wide text-texto-suave">
+            Portal de viviendas
           </p>
+          <h1 className="mt-3 max-w-2xl font-display text-4xl leading-tight text-texto sm:text-5xl">
+            Encuentra tu próxima vivienda
+          </h1>
+          <p className="mt-4 max-w-2xl text-texto-suave">
+            Consulta el mapa de cada anuncio, filtra por lo que de verdad te importa y conoce el
+            barrio antes de pisar la puerta.
+          </p>
+          <BuscadorRapido />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      <Destacados />
+
+      <section aria-labelledby="titulo-como-funciona" className="border-t border-borde bg-fondo">
+        <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6">
+          <h2 id="titulo-como-funciona" className="font-display text-2xl text-texto">
+            Así funciona
+          </h2>
+          <ul className="mt-6 grid list-none gap-6 sm:grid-cols-3">
+            {PASOS.map((paso) => (
+              <li key={paso.titulo} className="rounded-lg border border-borde bg-superficie p-5">
+                <h3 className="font-display text-lg text-texto">{paso.titulo}</h3>
+                <p className="mt-2 text-sm text-texto-suave">{paso.texto}</p>
+              </li>
+            ))}
+          </ul>
         </div>
-      </main>
-    </div>
+      </section>
+    </>
   );
 }
