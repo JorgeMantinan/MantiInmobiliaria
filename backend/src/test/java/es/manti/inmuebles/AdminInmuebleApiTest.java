@@ -211,6 +211,50 @@ class AdminInmuebleApiTest {
     }
 
     // ------------------------------------------------------------------
+    // Soft-delete: reintentar una escritura sobre un borrado -> 409
+    // ------------------------------------------------------------------
+
+    @Test
+    void eliminar_porSegundaVez_comoAdmin_devuelve409() throws Exception {
+        String municipio = municipioPrueba();
+        long id = crearComoAdmin(municipio);
+
+        mockMvc.perform(delete("/api/v1/admin/inmuebles/{id}", id)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin()))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(delete("/api/v1/admin/inmuebles/{id}", id)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin()))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Inmueble ya eliminado"))
+                .andExpect(jsonPath("$.detail").value("Inmueble " + id + " ya eliminado"));
+
+        // Sigue borrado: una sola fila y fuera de la API pública
+        Integer filas = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM inmuebles WHERE id = ?", Integer.class, id);
+        assertThat(filas).isEqualTo(1);
+        mockMvc.perform(get("/api/v1/inmuebles/" + id)).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void actualizar_yaEliminado_comoAdmin_devuelve409() throws Exception {
+        String municipio = municipioPrueba();
+        long id = crearComoAdmin(municipio);
+
+        mockMvc.perform(delete("/api/v1/admin/inmuebles/{id}", id)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin()))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(put("/api/v1/admin/inmuebles/{id}", id)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(cuerpoValido(municipio)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.title").value("Inmueble ya eliminado"));
+    }
+
+    // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
 

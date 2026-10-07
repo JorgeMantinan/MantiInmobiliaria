@@ -79,6 +79,11 @@ public class InmuebleRepositoryAdapter implements InmuebleRepository {
     }
 
     @Override
+    public Optional<Inmueble> porIdIncluyendoEliminados(Long id) {
+        return jpaRepository.findById(id);
+    }
+
+    @Override
     public Inmueble guardar(Inmueble inmueble) {
         return jpaRepository.save(inmueble);
     }

@@ -24,8 +24,14 @@ public interface InmuebleRepository {
     /** Total de inmuebles que cumplen los filtros (sin cursor), para {@code totalElements}. */
     long contar(InmuebleFiltros filtros);
 
-    /** Detalle: sólo inmuebles vigentes (no eliminados). */
+    /** Detalle: sólo inmuebles vigentes (no eliminados). Lo usa la API pública. */
     Optional<Inmueble> porId(Long id);
+
+    /**
+     * Detalle SIN filtrar el soft-delete: lo usa el backoffice para distinguir
+     * un inmueble inexistente (404) de uno ya eliminado (409).
+     */
+    Optional<Inmueble> porIdIncluyendoEliminados(Long id);
 
     Inmueble guardar(Inmueble inmueble);
 }

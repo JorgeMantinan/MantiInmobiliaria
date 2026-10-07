@@ -78,7 +78,9 @@ public class AdminInmuebleController {
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "403", description = "Token sin rol ADMIN",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
-            @ApiResponse(responseCode = "404", description = "Inexistente o eliminado",
+            @ApiResponse(responseCode = "404", description = "Inexistente",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "409", description = "Inmueble ya eliminado (soft-delete); no se reescribe un borrado",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     public ResponseEntity<InmuebleResponse> actualizar(
             @Parameter(description = "Identificador del inmueble", example = "1")
@@ -99,7 +101,9 @@ public class AdminInmuebleController {
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "403", description = "Token sin rol ADMIN",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
-            @ApiResponse(responseCode = "404", description = "Inexistente o ya eliminado",
+            @ApiResponse(responseCode = "404", description = "Inexistente",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "409", description = "Inmueble ya eliminado (soft-delete); no se repite el borrado",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     public ResponseEntity<Void> eliminar(
             @Parameter(description = "Identificador del inmueble", example = "1")
