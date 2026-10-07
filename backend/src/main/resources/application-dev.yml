@@ -4,3 +4,12 @@
 spring:
   flyway:
     locations: classpath:db/migration,classpath:db/dev
+    # Los seeds de desarrollo van en V900/V901, muy por encima de cualquier
+    # migración real que llegue después (V3, V4...). Sin esta bandera, si el
+    # esquema local ya está en 901 y aparece una V3, Flyway la marcaría como
+    # "ignorada" (versión anterior a la actual) y el esquema real NO avanzaría.
+    # Con out-of-order se aplican las migraciones reales en su orden aunque el
+    # historial contenga los seeds. Sólo aquí: application-prod.yml fija
+    # locations a classpath:db/migration, de modo que en prod no hay seeds
+    # tampoco aunque esta bandera no esté activa.
+    out-of-order: true

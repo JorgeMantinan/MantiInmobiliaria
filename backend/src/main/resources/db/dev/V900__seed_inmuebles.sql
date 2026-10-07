@@ -1,8 +1,22 @@
 -- FASE 2 — seed de DESARROLLO (perfil dev únicamente; NUNCA se incluye en V*).
 -- Activado por spring.flyway.locations en application-dev.yml.
+--
+-- Por qué vive en V900 y no en V3: los seeds son DATOS, no esquema, y van al
+-- final del historial para no pisar migraciones reales. Eso obliga a activar
+-- spring.flyway.out-of-order en application-dev.yml: como el esquema local queda
+-- en 901, las migraciones reales que lleguen después (V3, V4...) tienen versión
+-- MENOR y Flyway las ignoraría sin esa bandera. Con out-of-order se aplican en
+-- su orden aunque los seeds ya se hayan ejecutado; en prod no hace falta porque
+-- application-prod.yml fija locations a classpath:db/migration (sin db/dev).
+--
 -- 35 inmuebles realistas por España con coordenadas aproximadas reales, precios
 -- coherentes, mezcla venta/alquiler y tipos, imágenes placeholder y
 -- created_at repartidos (el orden del feed es created_at DESC, id DESC).
+--
+-- NOTA: tocar la cabecera de un seed ya aplicado cambia su checksum y Flyway
+-- exige "repair" en las BD locales de dev que lo tengan en el historial
+-- (`flyway repair`, o `docker compose down -v` para recrear el volumen). No
+-- afecta a CI ni a prod: allí el historial empieza vacío / sin db/dev.
 
 -- Madrid y área metropolitana
 INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
