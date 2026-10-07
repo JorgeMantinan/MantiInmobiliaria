@@ -32,9 +32,62 @@ class ArquitecturaTest {
     }
 
     @Test
+    void applicationNoDependeDeInfraestructura() {
+        noClasses().that().resideInAPackage("..application..")
+                .should().dependOnClassesThat().resideInAPackage("..infra..")
+                .check(CLASES);
+    }
+
+    /**
+     * {@code shared} es transversal: si importa el dominio o la aplicación de un
+     * módulo, el módulo deja de ser un módulo y shared se convierte en un cajón
+     * de sastre. Los mapeos de dominio viven en el advice de cada módulo y la
+     * lógica de negocio en su {@code application}.
+     */
+    @Test
+    void sharedNoDependeDeDominioDeNingunModulo() {
+        noClasses().that().resideInAPackage("..shared..")
+                .should().dependOnClassesThat().resideInAnyPackage("..domain..", "..application..")
+                .check(CLASES);
+    }
+
+    @Test
+    void laApiDeUsuariosNoTocaElDominioNiLaInfraestructuraDeInmuebles() {
+        noClasses().that().resideInAPackage("es.manti.usuarios.api..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "es.manti.inmuebles.domain..", "es.manti.inmuebles.infra..",
+                        "es.manti.inmuebles.application..")
+                .check(CLASES);
+    }
+
+    @Test
+    void laApiDeInmueblesNoTocaElDominioNiLaInfraestructuraDeUsuarios() {
+        noClasses().that().resideInAPackage("es.manti.inmuebles.api..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "es.manti.usuarios.domain..", "es.manti.usuarios.infra..",
+                        "es.manti.usuarios.application..")
+                .check(CLASES);
+    }
+
+    @Test
     void laApiDeUsuariosNoDependeDeSuInfraestructura() {
         noClasses().that().resideInAPackage("es.manti.usuarios.api..")
                 .should().dependOnClassesThat().resideInAPackage("es.manti.usuarios.infra..")
+                .check(CLASES);
+    }
+
+    @Test
+    void laApiDeInmueblesNoDependeDeSuInfraestructura() {
+        noClasses().that().resideInAPackage("es.manti.inmuebles.api..")
+                .should().dependOnClassesThat().resideInAPackage("es.manti.inmuebles.infra..")
+                .check(CLASES);
+    }
+
+    @Test
+    void laAplicacionDeInmueblesNoDependeDeApiNiInfra() {
+        noClasses().that().resideInAPackage("es.manti.inmuebles.application..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "es.manti.inmuebles.api..", "es.manti.inmuebles.infra..")
                 .check(CLASES);
     }
 
