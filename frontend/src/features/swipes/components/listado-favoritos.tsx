@@ -4,14 +4,9 @@ import Link from 'next/link';
 import { Boton } from '@/components/ui/boton';
 import { ListadoCargando, ListadoError } from '@/features/inmuebles/components/estados-listado';
 import { TarjetaInmueble } from '@/features/inmuebles/components/tarjeta-inmueble';
+import { ENLACE_PRIMARIO, ENLACE_SECUNDARIO } from '../clases';
 import { useFavoritos } from '../hooks/use-favoritos';
 import { CtaSesion } from './cta-sesion';
-
-const ENLACE_PRIMARIO =
-  'rounded-md bg-acento-nogal px-4 py-2 text-sm font-medium text-superficie transition-colors outline-none focus:ring-2 focus:ring-acento-nogal hover:bg-acento-hover';
-
-const ENLACE_SECUNDARIO =
-  'rounded-md border border-borde px-4 py-2 text-sm font-medium text-texto transition-colors outline-none focus:ring-2 focus:ring-acento-nogal hover:bg-superficie-alta';
 
 /**
  * Grid de favoritos: reutiliza `TarjetaInmueble` y añade por tarjeta el botón

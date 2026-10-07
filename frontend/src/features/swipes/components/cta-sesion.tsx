@@ -1,15 +1,10 @@
 import Link from 'next/link';
+import { ENLACE_PRIMARIO, ENLACE_SECUNDARIO } from '../clases';
 
 type CtaSesionProps = Readonly<{
   titulo: string;
   descripcion: string;
 }>;
-
-const ENLACE_PRIMARIO =
-  'rounded-md bg-acento-nogal px-4 py-2 text-sm font-medium text-superficie transition-colors outline-none focus:ring-2 focus:ring-acento-nogal hover:bg-acento-hover';
-
-const ENLACE_SECUNDARIO =
-  'rounded-md border border-borde px-4 py-2 text-sm font-medium text-texto transition-colors outline-none focus:ring-2 focus:ring-acento-nogal hover:bg-superficie-alta';
 
 /** Pantalla para usuarios anónimos: nunca se llama a la API sin sesión. */
 export function CtaSesion({ titulo, descripcion }: CtaSesionProps) {
