@@ -27,6 +27,12 @@ export function Header() {
             </span>
           ) : usuario ? (
             <>
+              <Link href="/swipe" className={ENLACE}>
+                Swipe
+              </Link>
+              <Link href="/favoritos" className={ENLACE}>
+                Favoritos
+              </Link>
               <span className="hidden max-w-48 truncate text-sm text-texto-suave sm:inline" title={usuario.nombre}>
                 {usuario.email}
               </span>
