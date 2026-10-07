@@ -32,6 +32,43 @@ class ArquitecturaTest {
     }
 
     @Test
+    void applicationNoDependeDeInfraestructura() {
+        noClasses().that().resideInAPackage("..application..")
+                .should().dependOnClassesThat().resideInAPackage("..infra..")
+                .check(CLASES);
+    }
+
+    /**
+     * {@code shared} es transversal: si importa el dominio de un módulo, el
+     * módulo deja de ser un módulo y shared se convierte en un cajón de sastre.
+     * Los mapeos de dominio viven en el advice de cada módulo.
+     */
+    @Test
+    void sharedNoDependeDeDominioDeNingunModulo() {
+        noClasses().that().resideInAPackage("..shared..")
+                .should().dependOnClassesThat().resideInAnyPackage("..domain..")
+                .check(CLASES);
+    }
+
+    @Test
+    void laApiDeUsuariosNoTocaElDominioNiLaInfraestructuraDeInmuebles() {
+        noClasses().that().resideInAPackage("es.manti.usuarios.api..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "es.manti.inmuebles.domain..", "es.manti.inmuebles.infra..",
+                        "es.manti.inmuebles.application..")
+                .check(CLASES);
+    }
+
+    @Test
+    void laApiDeInmueblesNoTocaElDominioNiLaInfraestructuraDeUsuarios() {
+        noClasses().that().resideInAPackage("es.manti.inmuebles.api..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "es.manti.usuarios.domain..", "es.manti.usuarios.infra..",
+                        "es.manti.usuarios.application..")
+                .check(CLASES);
+    }
+
+    @Test
     void laApiDeUsuariosNoDependeDeSuInfraestructura() {
         noClasses().that().resideInAPackage("es.manti.usuarios.api..")
                 .should().dependOnClassesThat().resideInAPackage("es.manti.usuarios.infra..")
