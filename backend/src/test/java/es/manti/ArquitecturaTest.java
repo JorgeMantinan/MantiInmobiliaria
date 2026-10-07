@@ -39,6 +39,21 @@ class ArquitecturaTest {
     }
 
     @Test
+    void laApiDeInmueblesNoDependeDeSuInfraestructura() {
+        noClasses().that().resideInAPackage("es.manti.inmuebles.api..")
+                .should().dependOnClassesThat().resideInAPackage("es.manti.inmuebles.infra..")
+                .check(CLASES);
+    }
+
+    @Test
+    void laAplicacionDeInmueblesNoDependeDeApiNiInfra() {
+        noClasses().that().resideInAPackage("es.manti.inmuebles.application..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "es.manti.inmuebles.api..", "es.manti.inmuebles.infra..")
+                .check(CLASES);
+    }
+
+    @Test
     void sharedNoDependeDeApiNiInfraestructuraDeModulos() {
         noClasses().that().resideInAPackage("es.manti.shared..")
                 .should().dependOnClassesThat().resideInAnyPackage("..api..", "..infra..")
