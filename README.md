@@ -31,6 +31,29 @@ cd backend && ./mvnw spring-boot:run
 cd frontend && npm run dev
 ```
 
+### Datos de desarrollo (perfil `dev`)
+
+Para cargar el seed de inmuebles de ejemplo (35 anuncios) y el usuario admin,
+arranca el backend con el perfil `dev`:
+
+```bash
+cd backend && ./mvnw spring-boot:run "-Dspring-boot.run.profiles=dev"
+```
+
+El seed vive en `backend/src/main/resources/db/dev/` y sólo se aplica con ese
+perfil (`spring.flyway.locations` en `application-dev.yml`); en producción nunca
+se ejecuta.
+
+| Cuenta (sólo dev) | Valor |
+|---|---|
+| Email | `admin@manti.dev` |
+| Password | `Admin1234!` |
+| Rol | `ADMIN` (CRUD en `/api/v1/admin/inmuebles`) |
+
+> Estas credenciales son de desarrollo: no existen en `application.yml` ni en
+> ningún fichero de producción.
+
+
 ## Ramas (Git Flow)
 
 - `master` — producción, siempre etiquetada (`vX.Y.Z`), solo merges de `release/*` o `hotfix/*`.

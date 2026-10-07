@@ -1,0 +1,6 @@
+# Perfil DEV: sólo datos de ejemplo (skill config-secrets + base-de-datos).
+# Los seeds viven en db/dev y NUNCA en db/migration: en prod no se aplican.
+# Activación: ./mvnw spring-boot:run "-Dspring-boot.run.profiles=dev"
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/dev
