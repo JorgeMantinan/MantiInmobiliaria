@@ -10,7 +10,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -21,11 +20,15 @@ import java.time.Instant;
  * Anuncio de inmueble. Soft-delete vía {@code eliminado_en}: las queries
  * públicas filtran siempre {@code eliminado_en IS NULL} (índices parciales de la
  * migración V2) y el histórico nunca se destruye.
+ *
+ * <p>Sin {@code @Setter}: el estado sólo cambia por los métodos de negocio
+ * ({@link #actualizar(InmuebleDatos)}, {@link #eliminar()}). El acceso se hace
+ * por campos ({@code @Id} va en el atributo), así que Hibernate no necesita
+ * setters.</p>
  */
 @Entity
 @Table(name = "inmuebles")
 @Getter
-@Setter
 @NoArgsConstructor
 public class Inmueble {
 

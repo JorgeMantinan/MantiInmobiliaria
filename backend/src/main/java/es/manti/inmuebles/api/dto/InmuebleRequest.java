@@ -90,8 +90,10 @@ public record InmuebleRequest(
                 requiredMode = Schema.RequiredMode.REQUIRED)
         Double lng,
 
-        @Size(max = 500) @Pattern(regexp = "^https://\\S+$")
-        @Schema(description = "Imagen principal; sólo URL https (opcional)",
+        // Sólo URL https con caracteres de URL RFC 3986: sin comillas ni < >,
+        // para que no se cuelen payloads de inyección en el atributo del front.
+        @Size(max = 500) @Pattern(regexp = "^https://[A-Za-z0-9\\-._~:/?#\\[\\]@!$&'()*+,;=%]+$")
+        @Schema(description = "Imagen principal; sólo URL https con caracteres de URL (opcional)",
                 example = "https://picsum.photos/seed/inm1/800/600")
         String imagenUrl,
 

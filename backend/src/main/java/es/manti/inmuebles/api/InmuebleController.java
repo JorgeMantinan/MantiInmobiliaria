@@ -16,8 +16,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -34,9 +36,10 @@ import java.time.Duration;
  * Lectura PÚBLICA de inmuebles (permitAll en SecurityConfig, sólo GET).
  * Las escrituras viven en {@link AdminInmuebleController} (rol ADMIN).
  *
- * <p>Caché: {@code Cache-Control: public, max-age=60} en listado y detalle —
- * son recursos anónimos y casi estáticos; CDN/proxy pueden reutilizarlos un
- * minuto. Los escritos del backoffice no llevan caché.</p>
+ * <p>Caché: {@code Cache-Control: public, max-age=60} + {@code Vary: Origin} en
+ * listado y detalle — son recursos anónimos y casi estáticos; CDN/proxy pueden
+ * reutilizarlos un minuto <b>por origen</b>. Los escritos del backoffice no
+ * llevan caché.</p>
  */
 @Tag(name = "Inmuebles", description = "Listado y detalle público de inmuebles (sin autenticación)")
 @RestController
@@ -45,7 +48,14 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public class InmuebleController {
 
-    /** 60 s público para listado y detalle (ver javadoc de la clase). */
+    /**
+     * 60 s público para listado y detalle (ver javadoc de la clase).
+     *
+     * <p>{@code Vary: Origin} es obligatorio junto al {@code Cache-Control}
+     * público: la respuesta depende del origen (CORS con allowlist y
+     * credenciales), así que un CDN/proxy no debe servir la copia de un origen
+     * a otro.</p>
+     */
     private static final CacheControl CACHE_PUBLICO = CacheControl
             .maxAge(Duration.ofSeconds(60)).cachePublic();
 
@@ -67,11 +77,11 @@ public class InmuebleController {
             @RequestParam(required = false) EstadoInmueble estado,
             @Parameter(description = "Tipo de inmueble (PISO, CASA, ATICO, DUPLEX, ESTUDIO, LOCAL, TERRENO)")
             @RequestParam(required = false) TipoInmueble tipo,
-            @Parameter(description = "Municipio, coincidencia parcial e insensible a mayúsculas")
-            @RequestParam(required = false) String municipio,
-            @Parameter(description = "Precio mínimo en euros")
+            @Parameter(description = "Municipio, coincidencia parcial e insensible a mayúsculas (máx. 120)")
+            @RequestParam(required = false) @Size(max = 120) String municipio,
+            @Parameter(description = "Precio mínimo en euros (>= 0; no puede superar precioMax)")
             @RequestParam(required = false) BigDecimal precioMin,
-            @Parameter(description = "Precio máximo en euros")
+            @Parameter(description = "Precio máximo en euros (>= 0; no puede ser menor que precioMin)")
             @RequestParam(required = false) BigDecimal precioMax,
             @Parameter(description = "Número mínimo de habitaciones")
             @RequestParam(required = false) Short habitacionesMin,
@@ -86,7 +96,8 @@ public class InmuebleController {
         ListadoInmuebles listado = service.listar(new BusquedaInmueblesCommand(
                 estado, tipo, municipio, precioMin, precioMax, habitacionesMin, destacado,
                 sort, cursor, limit));
-        return ResponseEntity.ok().cacheControl(CACHE_PUBLICO).body(mapper.toPage(listado));
+        return ResponseEntity.ok().cacheControl(CACHE_PUBLICO).varyBy(HttpHeaders.ORIGIN)
+                .body(mapper.toPage(listado));
     }
 
     @GetMapping("/{id}")
@@ -100,7 +111,7 @@ public class InmuebleController {
     public ResponseEntity<InmuebleResponse> detalle(
             @Parameter(description = "Identificador del inmueble", example = "1")
             @PathVariable Long id) {
-        return ResponseEntity.ok().cacheControl(CACHE_PUBLICO)
+        return ResponseEntity.ok().cacheControl(CACHE_PUBLICO).varyBy(HttpHeaders.ORIGIN)
                 .body(mapper.toResponse(service.detalle(id)));
     }
 }
