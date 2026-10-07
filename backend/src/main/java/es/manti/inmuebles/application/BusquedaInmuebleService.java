@@ -7,6 +7,7 @@ import es.manti.inmuebles.domain.InmuebleNoEncontradoException;
 import es.manti.inmuebles.domain.InmuebleOrden;
 import es.manti.inmuebles.domain.InmuebleRepository;
 import es.manti.inmuebles.domain.InmuebleResumen;
+import es.manti.inmuebles.domain.ParametroInvalidoException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,7 @@ public class BusquedaInmuebleService {
      */
     @Transactional(readOnly = true)
     public ListadoInmuebles listar(BusquedaInmueblesCommand comando) {
+        validarRangos(comando);
         InmuebleOrden orden = InmuebleOrden.desdeParametro(comando.sort());
         int limite = Math.clamp(comando.limit(), 1, LIMITE_MAXIMO);
         InmuebleCursor cursor = comando.cursor() == null || comando.cursor().isBlank()
@@ -69,6 +71,28 @@ public class BusquedaInmuebleService {
     @Transactional(readOnly = true)
     public Inmueble detalle(Long id) {
         return repository.porId(id).orElseThrow(() -> new InmuebleNoEncontradoException(id));
+    }
+
+    /**
+     * Rangos de filtro incoherentes → 400 con {@code errors:[{field, message}]}.
+     * No se puede expresar con anotaciones porque compara DOS parámetros
+     * ({@code precioMin > precioMax}); por eso se valida en el caso de uso,
+     * antes de tocar la base de datos.
+     */
+    static void validarRangos(BusquedaInmueblesCommand comando) {
+        if (comando.precioMin() != null && comando.precioMin().signum() < 0) {
+            throw new ParametroInvalidoException("precioMin", "no puede ser negativo");
+        }
+        if (comando.precioMax() != null && comando.precioMax().signum() < 0) {
+            throw new ParametroInvalidoException("precioMax", "no puede ser negativo");
+        }
+        if (comando.precioMin() != null && comando.precioMax() != null
+                && comando.precioMin().compareTo(comando.precioMax()) > 0) {
+            throw new ParametroInvalidoException("precioMin", "no puede ser mayor que precioMax");
+        }
+        if (comando.habitacionesMin() != null && comando.habitacionesMin() < 0) {
+            throw new ParametroInvalidoException("habitacionesMin", "no puede ser negativo");
+        }
     }
 
     /**
