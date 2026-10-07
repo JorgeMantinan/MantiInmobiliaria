@@ -65,6 +65,19 @@ describe('Destacados', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Cargando inmuebles…');
   });
 
+  it('sin_destacados_muestra_el_estado_vacio_con_enlace_al_listado', async () => {
+    vi.mocked(apiFetch).mockResolvedValue({
+      content: [],
+      nextCursor: null,
+      totalElements: 0,
+    });
+
+    render(<Destacados />);
+
+    expect(await screen.findByText('Todavía no hay destacados')).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Ver todas las viviendas' })).toHaveLength(2);
+  });
+
   it('si_la_api_falla_anuncia_el_error_y_permite_reintentar', async () => {
     vi.mocked(apiFetch)
       .mockRejectedValueOnce(new ApiError(0, 'Error de conexión', 'Sin conexión con la API.'))
