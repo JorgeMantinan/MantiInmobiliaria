@@ -8,17 +8,22 @@ import es.manti.inmuebles.domain.InmuebleRepository;
 import es.manti.inmuebles.domain.TipoInmueble;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.math.BigDecimal;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -72,6 +77,9 @@ class InmuebleApiTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string(HttpHeaders.CACHE_CONTROL,
                         allOf(containsString("public"), containsString("max-age=60"))))
+                // La respuesta depende del origen (CORS con allowlist): el caché
+                // no puede reutilizarla entre orígenes distintos.
+                .andExpect(header().string(HttpHeaders.VARY, containsString("Origin")))
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.content", hasSize(0)))
@@ -251,6 +259,90 @@ class InmuebleApiTest {
     }
 
     // ------------------------------------------------------------------
+    // Validación de parámetros de búsqueda (400 con errors[])
+    // ------------------------------------------------------------------
+
+    @Test
+    void listado_precioMinMayorQuePrecioMax_devuelve400ConErrors() throws Exception {
+        mockMvc.perform(get("/api/v1/inmuebles")
+                        .param("precioMin", "500000")
+                        .param("precioMax", "100000"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Parámetro inválido"))
+                .andExpect(jsonPath("$.errors[0].field").value("precioMin"))
+                .andExpect(jsonPath("$.errors[0].message").isNotEmpty());
+    }
+
+    @Test
+    void listado_precioNegativo_devuelve400ConErrors() throws Exception {
+        mockMvc.perform(get("/api/v1/inmuebles").param("precioMin", "-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("precioMin"));
+    }
+
+    @Test
+    void listado_habitacionesNegativas_devuelve400ConErrors() throws Exception {
+        mockMvc.perform(get("/api/v1/inmuebles").param("habitacionesMin", "-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("habitacionesMin"));
+    }
+
+    @Test
+    void listado_estadoNoAdmitido_devuelve400ConErrors() throws Exception {
+        mockMvc.perform(get("/api/v1/inmuebles").param("estado", "XYZ"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Parámetro inválido"))
+                .andExpect(jsonPath("$.errors[0].field").value("estado"));
+    }
+
+    @Test
+    void listado_limitNoNumerico_devuelve400ConErrors() throws Exception {
+        mockMvc.perform(get("/api/v1/inmuebles").param("limit", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("limit"));
+    }
+
+    @Test
+    void listado_municipioMasLargoDe120_devuelve400() throws Exception {
+        mockMvc.perform(get("/api/v1/inmuebles").param("municipio", "x".repeat(121)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Validación fallida"));
+    }
+
+    // ------------------------------------------------------------------
+    // Seguridad: el recurso público sólo acepta GET anónimo
+    // ------------------------------------------------------------------
+
+    @ParameterizedTest(name = "{0} {1} sin token -> 401")
+    @CsvSource({
+            "POST,   /api/v1/inmuebles",
+            "PUT,    /api/v1/inmuebles/1",
+            "DELETE, /api/v1/inmuebles/1",
+            "DELETE, /api/v1/inmuebles"
+    })
+    void escrituras_sinToken_devuelven401(String metodo, String ruta) throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.request(HttpMethod.valueOf(metodo), URI.create(ruta))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+    }
+
+    /**
+     * El matcher público es {@code {id:[0-9]+}}: cualquier otro segmento bajo
+     * {@code /api/v1/inmuebles/} deja de estar abierto y cae en 401 en vez de
+     * devolver un 404 de la aplicación.
+     */
+    @Test
+    void detalle_idNoNumerico_sinToken_devuelve401() throws Exception {
+        mockMvc.perform(get("/api/v1/inmuebles/no-es-un-id"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // ------------------------------------------------------------------
     // Detalle
     // ------------------------------------------------------------------
 
@@ -263,6 +355,7 @@ class InmuebleApiTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string(HttpHeaders.CACHE_CONTROL,
                         allOf(containsString("public"), containsString("max-age=60"))))
+                .andExpect(header().string(HttpHeaders.VARY, containsString("Origin")))
                 .andExpect(jsonPath("$.descripcion").value("Descripción de prueba del listado"))
                 .andExpect(jsonPath("$.direccion").value("Calle de prueba 1"))
                 .andReturn().getResponse().getContentAsString();
