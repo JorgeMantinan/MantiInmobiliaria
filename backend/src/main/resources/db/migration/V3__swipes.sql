@@ -1,4 +1,4 @@
--- FASE 5: módulo de swipes (like/nope) y favoritos.
+-- FASE 4: módulo de swipes (like/nope) y favoritos.
 -- Reglas aplicadas (skill base-de-datos):
 --   * snake_case, PK bigint identity, timestamptz, CHECK/UNIQUE/FK con nombre y
 --     ON DELETE explícito (nunca la cláusula olvidada).
@@ -8,7 +8,7 @@
 --     decisión, no un histórico, de ahí UNIQUE (usuario_id, inmueble_id). Esa
 --     misma constraint es a la vez índice de sondeo del anti-join del deck
 --     (NOT EXISTS por usuario_id+inmueble_id).
---   * Índices diseñados sobre las queries REALES de la FASE 5:
+--   * Índices diseñados sobre las queries REALES de la FASE 4:
 --       - deck: NOT EXISTS (usuario_id, inmueble_id) -> uq_swipes_usuario_inmueble
 --       - favoritos: usuario_id = ? ORDER BY creado_en DESC
 --         -> idx_swipes_usuario_creado (usuario_id, creado_en)

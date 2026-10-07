@@ -99,7 +99,7 @@ class ArquitecturaTest {
     }
 
     /**
-     * FASE 5 — el módulo {@code swipes} comparte ESQUEMA con {@code inmuebles}
+     * FASE 4 — el módulo {@code swipes} comparte ESQUEMA con {@code inmuebles}
      * (lee su tabla en las strings JPQL del deck y de favoritos), pero no su
      * CÓDIGO: la proyección es un record propio y las entidades se referencian
      * por nombre, nunca por import.
