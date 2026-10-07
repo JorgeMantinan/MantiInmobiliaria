@@ -42,4 +42,12 @@ describe('api de swipes', () => {
 
     expect(apiFetch).toHaveBeenCalledWith('/api/v1/swipes/favoritos/7', { method: 'DELETE' });
   });
+
+  it('rechaza_ids_de_inmueble_invalidos_sin_llamar_a_la_api', async () => {
+    await expect(registrarSwipe(1.5, 'LIKE')).rejects.toThrow('entero positivo');
+    await expect(registrarSwipe(-3, 'NOPE')).rejects.toThrow('entero positivo');
+    await expect(eliminarFavorito(0)).rejects.toThrow('entero positivo');
+    await expect(eliminarFavorito(Number.NaN)).rejects.toThrow('entero positivo');
+    expect(apiFetch).not.toHaveBeenCalled();
+  });
 });
