@@ -2,6 +2,16 @@
 # Proporciona valores de PRUEBA (no son secretos reales) para que el build
 # funcione también en CI, donde no existe el .env de la raíz.
 
+spring:
+  flyway:
+    # El esquema local de desarrollo ya tiene los seeds V900/V901 aplicados
+    # (perfil dev), así que el historial está en 901 y una migración real nueva
+    # (V3) es de versión MENOR: sin esta bandera Flyway la marcaría como
+    # "ignorada" y el esquema no avanzaría (ddl-auto: validate fallaría).
+    # En CI la BD arranca vacía y la bandera no tiene ningún efecto.
+    # Igual que application-dev.yml; application-prod.yml la fija a false.
+    out-of-order: true
+
 JWT_SECRET: manti-test-only-secret-000000000000000000000000000000000000000000
 GOOGLE_CLIENT_ID: test-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET: test-client-secret
