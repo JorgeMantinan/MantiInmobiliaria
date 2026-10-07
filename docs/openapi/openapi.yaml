@@ -63,7 +63,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
         "404":
-          description: Inexistente o eliminado
+          description: Inexistente
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Inmueble ya eliminado (soft-delete); no se reescribe un borrado
           content:
             '*/*':
               schema:
@@ -102,7 +108,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
         "404":
-          description: Inexistente o ya eliminado
+          description: Inexistente
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Inmueble ya eliminado (soft-delete); no se repite el borrado
           content:
             '*/*':
               schema:
@@ -334,19 +346,22 @@ paths:
           - TERRENO
       - name: municipio
         in: query
-        description: "Municipio, coincidencia parcial e insensible a mayúsculas"
+        description: "Municipio, coincidencia parcial e insensible a mayúsculas (má\
+          x. 120)"
         required: false
         schema:
           type: string
+          maxLength: 120
+          minLength: 0
       - name: precioMin
         in: query
-        description: Precio mínimo en euros
+        description: Precio mínimo en euros (>= 0; no puede superar precioMax)
         required: false
         schema:
           type: number
       - name: precioMax
         in: query
-        description: Precio máximo en euros
+        description: Precio máximo en euros (>= 0; no puede ser menor que precioMin)
         required: false
         schema:
           type: number
@@ -550,11 +565,11 @@ components:
           minimum: -19.0
         imagenUrl:
           type: string
-          description: Imagen principal; sólo URL https (opcional)
+          description: Imagen principal; sólo URL https con caracteres de URL (opcional)
           example: https://picsum.photos/seed/inm1/800/600
           maxLength: 500
           minLength: 0
-          pattern: ^https://\S+$
+          pattern: "^https://[A-Za-z0-9\\-._~:/?#\\[\\]@!$&'()*+,;=%]+$"
         destacado:
           type: boolean
           description: "Marca de destacado; sólo ADMIN (opcional, por defecto false)"
