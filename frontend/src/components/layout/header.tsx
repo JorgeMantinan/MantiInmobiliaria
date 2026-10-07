@@ -20,7 +20,7 @@ export function Header() {
         >
           MantiInmobiliaria
         </Link>
-        <nav aria-label="Cuenta" className="flex items-center gap-2">
+        <nav aria-label="Cuenta" className="flex flex-wrap items-center justify-end gap-2">
           {cargando ? (
             <span role="status" className="text-sm text-texto-suave">
               Comprobando sesión…
