@@ -15,7 +15,11 @@ type FotoInmuebleProps = Readonly<{
 export function FotoInmueble({ src, alt }: FotoInmuebleProps) {
   const [falla, setFalla] = useState(false);
 
-  if (src === null || falla) {
+  // Sólo se renderiza https: una URL http:, javascript: o de otro protocolo
+  // procedente de datos de la API se trata como "sin imagen".
+  const esSegura = src !== null && /^https:\/\//i.test(src);
+
+  if (!esSegura || falla) {
     return (
       <div
         role="img"

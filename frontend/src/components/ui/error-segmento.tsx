@@ -10,12 +10,17 @@ type ErrorSegmentoProps = Readonly<{
 
 /** Fallback mínimo compartido por los `error.tsx` de los segmentos de auth. */
 export function ErrorSegmento({ error, retry }: ErrorSegmentoProps) {
+  // En producción no se filtra el mensaje interno (puede contener detalles del
+  // stack o del backend); en development se muestra para depurar.
+  const detalle =
+    process.env.NODE_ENV === 'production' ? 'Algo ha ido mal. Inténtalo de nuevo.' : error.message;
+
   return (
     <div className="flex flex-1 items-center justify-center bg-fondo px-4 py-12">
       <section className="w-full max-w-md rounded-lg border border-borde bg-superficie p-6 text-center sm:p-8">
         <h1 className="font-display text-2xl text-texto">Algo ha ido mal</h1>
         <p role="alert" className="mt-2 text-sm text-texto-suave">
-          {error.message}
+          {detalle}
         </p>
         <div className="mt-6 flex flex-col gap-3">
           <Boton onClick={retry}>Reintentar</Boton>
