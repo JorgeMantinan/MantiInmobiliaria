@@ -40,9 +40,11 @@ public class NotificacionOutboxService {
      *   <li><b>EMAIL</b>: UNA fila por cada profesional ACTIVO que comparta al
      *       menos un gremio pedido. La query es {@code SELECT DISTINCT}, así
      *       que un profesional con varios gremios en común no duplica filas.</li>
-     *   <li><b>TELEGRAM</b>: UNA fila por gremio de la solicitud, SÓLO si hay
+     *   <li><b>TELEGRAM</b>: UNA sola fila con el listado de gremios en el
+     *       cuerpo (&#8220;[fontanero, albañil]&#8221;), SÓLO si hay
      *       {@code TELEGRAM_CHAT_ID} configurado (si no, no se encola nada
-     *       para no mandar mensajes sin destino).</li>
+     *       para no mandar mensajes sin destino). Una fila por gremio mandaría
+     *       N mensajes idénticos al grupo.</li>
      * </ul>
      */
     @Transactional
@@ -60,14 +62,10 @@ public class NotificacionOutboxService {
         }
 
         if (propiedades.telegram().tieneChat()) {
-            String chatId = propiedades.telegram().chatId();
-            String cuerpo = cuerpoTelegram(solicitud);
-            // Una fila por cada gremio pedido (contrato de la FASE 5).
-            for (Long gremioId : gremioIds) {
-                repository.guardar(NotificacionOutbox.telegram(solicitud, chatId, asunto, cuerpo));
-            }
-            log.debug("Solicitud {}: {} fila(s) de Telegram encoladas",
-                    solicitud.getId(), gremioIds.size());
+            // UNA fila por solicitud: el cuerpo ya lista todos los gremios pedidos.
+            repository.guardar(NotificacionOutbox.telegram(
+                    solicitud, propiedades.telegram().chatId(), asunto, cuerpoTelegram(solicitud)));
+            log.debug("Solicitud {}: fila de Telegram encolada", solicitud.getId());
         } else {
             log.debug("TELEGRAM_CHAT_ID vacío: la solicitud {} no encola avisos de Telegram",
                     solicitud.getId());

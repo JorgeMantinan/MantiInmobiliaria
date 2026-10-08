@@ -19,8 +19,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Caso con {@code TELEGRAM_CHAT_ID} configurado: el alta de una solicitud
- * encola UNA fila de Telegram por cada gremio pedido (además de los emails de
- * los profesionales activos).
+ * encola UNA sola fila de Telegram con el listado de gremios en el cuerpo
+ * (además de los emails de los profesionales activos). Una fila por gremio
+ * mandaría N mensajes idénticos al grupo.
  */
 @SpringBootTest(properties = "TELEGRAM_CHAT_ID=-100123456")
 @AutoConfigureMockMvc
@@ -41,13 +42,14 @@ class OutboxConChatIdTest {
     }
 
     @Test
-    void crear_generaUnaFilaDeTelegramPorGremioYLosEmailsDeLosActivos() throws Exception {
+    void crear_encolaUnaUnicaFilaDeTelegramConTodosLosGremiosYLosEmailsDeLosActivos()
+            throws Exception {
         long activo = FixturesProfesionales.profesional(
                 jdbc, "it-pro-chat-" + fijo() + "@example.com", "ACTIVO", "fontanero", "albañil");
 
         long solicitud = crearSolicitud("fontanero", "albañil");
 
-        assertThat(FixturesProfesionales.contarOutbox(jdbc, solicitud, "TELEGRAM")).isEqualTo(2);
+        assertThat(FixturesProfesionales.contarOutbox(jdbc, solicitud, "TELEGRAM")).isEqualTo(1);
         assertThat(FixturesProfesionales.destinatariosDeEmail(jdbc, solicitud))
                 .containsExactly(activo);
 
@@ -56,13 +58,19 @@ class OutboxConChatIdTest {
                 String.class, solicitud);
         assertThat(destinos).containsOnly(CHAT_ID);
 
+        String cuerpo = jdbc.queryForObject(
+                "SELECT cuerpo FROM notificaciones_outbox WHERE solicitud_id = ? AND canal = 'TELEGRAM'",
+                String.class, solicitud);
+        // Listado de gremios separados por coma, en el orden del catálogo
+        assertThat(cuerpo).contains("[albañil, fontanero]");
+
         // GRUPO sin destinatario_id: lo garantiza también ck_notificaciones_outbox_destinatario
         Integer sinDestinatario = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM notificaciones_outbox WHERE solicitud_id = ? "
                         + "AND canal = 'TELEGRAM' AND destinatario_id IS NULL "
                         + "AND destinatario_tipo = 'GRUPO'",
                 Integer.class, solicitud);
-        assertThat(sinDestinatario).isEqualTo(2);
+        assertThat(sinDestinatario).isEqualTo(1);
     }
 
     @Test
