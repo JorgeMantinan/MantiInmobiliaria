@@ -4,6 +4,7 @@ import es.manti.profesionales.domain.ClaveIdempotenciaConflictivaException;
 import es.manti.profesionales.domain.EmailProfesionalYaRegistradoException;
 import es.manti.profesionales.domain.EstadoProfesionalNoPermitidoException;
 import es.manti.profesionales.domain.GremioInexistenteException;
+import es.manti.profesionales.domain.NotificacionException;
 import es.manti.profesionales.domain.ProfesionalNoEncontradoException;
 import es.manti.profesionales.domain.TelegramSinCredencialException;
 import es.manti.shared.error.Problems;
@@ -76,5 +77,17 @@ public class ProfesionalErrorAdvice {
                                                HttpServletRequest request) {
         return Problems.crear(HttpStatus.CONFLICT, "telegram-sin-credencial",
                 "Telegram sin credencial", e.getMessage(), request);
+    }
+
+    /**
+     * El proveedor externo (Brevo/Telegram) falló en una llamada SÍNCRONA del
+     * cliente → 502: la API es el cliente de un servicio que no ha respondido
+     * bien. Sólo se alcanza desde endpoints (el dispatcher captura su propia
+     * excepción y la guarda en el outbox).
+     */
+    @ExceptionHandler(NotificacionException.class)
+    public ProblemDetail notificacionFallida(NotificacionException e, HttpServletRequest request) {
+        return Problems.crear(HttpStatus.BAD_GATEWAY, "notificacion-fallida",
+                "Servicio de notificaciones no disponible", e.getMessage(), request);
     }
 }

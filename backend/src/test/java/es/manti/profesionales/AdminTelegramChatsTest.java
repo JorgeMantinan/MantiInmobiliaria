@@ -2,6 +2,7 @@ package es.manti.profesionales;
 
 import com.jayway.jsonpath.JsonPath;
 import es.manti.profesionales.domain.ChatVisto;
+import es.manti.profesionales.domain.NotificacionException;
 import es.manti.profesionales.domain.TelegramDiagnosticoPort;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -29,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Diagnóstico de Telegram con credencial y PUERTO mockeado: cero red en la
+ * DiagnÃ³stico de Telegram con credencial y PUERTO mockeado: cero red en la
  * suite. Comprueba el contrato {@code {chatsVistos: [{chatId, tipo,
  * textoMuestra}]}}.
  */
@@ -61,7 +62,7 @@ class AdminTelegramChatsTest {
     @Test
     void diagnostico_comoAdmin_devuelve200ConLosChatsVistos() throws Exception {
         when(diagnostico.chatsVistos()).thenReturn(List.of(
-                new ChatVisto("-100123456", "supergroup", "Busco un fontanero para mañana"),
+                new ChatVisto("-100123456", "supergroup", "Busco un fontanero para maÃ±ana"),
                 new ChatVisto("555123456", "private", "")));
 
         mockMvc.perform(get(RUTA)
@@ -71,7 +72,7 @@ class AdminTelegramChatsTest {
                 .andExpect(jsonPath("$.chatsVistos[0].chatId").value("-100123456"))
                 .andExpect(jsonPath("$.chatsVistos[0].tipo").value("supergroup"))
                 .andExpect(jsonPath("$.chatsVistos[0].textoMuestra")
-                        .value("Busco un fontanero para mañana"))
+                        .value("Busco un fontanero para maÃ±ana"))
                 .andExpect(jsonPath("$.chatsVistos[1].tipo").value("private"));
 
         String cuerpo = mockMvc.perform(get(RUTA)
@@ -80,6 +81,21 @@ class AdminTelegramChatsTest {
                 .andReturn().getResponse().getContentAsString();
         List<Map<String, Object>> chats = JsonPath.read(cuerpo, "$.chatsVistos");
         assertThat(chats).hasSize(2);
+    }
+
+    @Test
+    void diagnostico_conFalloDeTelegram_devuelve502ProblemDetail() throws Exception {
+        when(diagnostico.chatsVistos())
+                .thenThrow(NotificacionException.reintentable("Telegram no disponible (HTTP 502)"));
+
+        mockMvc.perform(get(RUTA)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin()))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.type").value(
+                        "https://api.manti.dev/problems/notificacion-fallida"))
+                .andExpect(jsonPath("$.title").value(
+                        "Servicio de notificaciones no disponible"))
+                .andExpect(jsonPath("$.detail").value("Telegram no disponible (HTTP 502)"));
     }
 
     // ------------------------------------------------------------------

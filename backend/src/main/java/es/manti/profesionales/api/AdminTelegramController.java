@@ -54,6 +54,9 @@ public class AdminTelegramController {
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "409", description = "Telegram sin credencial: falta "
                     + "`TELEGRAM_BOT_TOKEN` (ProblemDetail)",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "502", description = "Telegram no disponible o ha rechazado "
+                    + "`getUpdates` (ProblemDetail)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     public ResponseEntity<TelegramDiagnosticoResponse> diagnostico() {
         return ResponseEntity.ok(mapper.toResponse(service.chatsVistos()));
