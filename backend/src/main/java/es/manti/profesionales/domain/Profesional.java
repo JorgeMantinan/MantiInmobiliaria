@@ -85,8 +85,20 @@ public class Profesional {
         return profesional;
     }
 
-    /** Moderación del backoffice: ACTIVO o RECHAZADO (nunca vuelve a PENDIENTE). */
+    /**
+     * Moderación del backoffice: ACTIVO o RECHAZADO (nunca vuelve a PENDIENTE).
+     *
+     * <p>Regla de dominio además de la validación del DTO: aunque la API sólo
+     * traduce {@code ACTIVO|RECHAZADO}, ningún código puede devolver a un
+     * profesional al estado inicial.</p>
+     *
+     * @throws EstadoProfesionalNoPermitidoException si el estado no es
+     *         {@link EstadoProfesional#ACTIVO} ni {@link EstadoProfesional#RECHAZADO}
+     */
     public void cambiarEstado(EstadoProfesional nuevo) {
+        if (nuevo != EstadoProfesional.ACTIVO && nuevo != EstadoProfesional.RECHAZADO) {
+            throw new EstadoProfesionalNoPermitidoException(nuevo);
+        }
         this.estado = nuevo;
     }
 }

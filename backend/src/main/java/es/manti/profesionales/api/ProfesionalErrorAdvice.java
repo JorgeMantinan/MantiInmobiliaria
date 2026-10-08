@@ -2,6 +2,7 @@ package es.manti.profesionales.api;
 
 import es.manti.profesionales.domain.ClaveIdempotenciaConflictivaException;
 import es.manti.profesionales.domain.EmailProfesionalYaRegistradoException;
+import es.manti.profesionales.domain.EstadoProfesionalNoPermitidoException;
 import es.manti.profesionales.domain.GremioInexistenteException;
 import es.manti.profesionales.domain.ProfesionalNoEncontradoException;
 import es.manti.profesionales.domain.TelegramSinCredencialException;
@@ -59,6 +60,14 @@ public class ProfesionalErrorAdvice {
                                                  HttpServletRequest request) {
         return Problems.crear(HttpStatus.NOT_FOUND, "no-encontrado",
                 "No encontrado", e.getMessage(), request);
+    }
+
+    /** Estado que la moderación no admite (p. ej. volver a PENDIENTE) → 409. */
+    @ExceptionHandler(EstadoProfesionalNoPermitidoException.class)
+    public ProblemDetail estadoNoPermitido(EstadoProfesionalNoPermitidoException e,
+                                           HttpServletRequest request) {
+        return Problems.crear(HttpStatus.CONFLICT, "estado-no-permitido",
+                "Estado no permitido", e.getMessage(), request);
     }
 
     /** Falta {@code TELEGRAM_BOT_TOKEN} en el diagnóstico → 409. */
