@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { BuscadorRapido } from '@/features/inmuebles/components/buscador-rapido';
 import { Destacados } from '@/features/inmuebles/components/destacados';
+import { BannerProfesionales } from '@/features/profesionales/components/banner-profesionales';
 
 export const metadata: Metadata = {
   title: 'MantiInmobiliaria — Encuentra tu próxima vivienda',
@@ -44,6 +45,8 @@ export default function Home() {
       </section>
 
       <Destacados />
+
+      <BannerProfesionales />
 
       <section aria-labelledby="titulo-como-funciona" className="border-t border-borde bg-fondo">
         <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6">
