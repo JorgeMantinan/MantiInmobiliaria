@@ -183,11 +183,13 @@ class ArquitecturaTest {
     /**
      * El núcleo de profesionales (domain, application, infra) es AUTÓNOMO: ni
      * una sola clase de los demás módulos. Comparte ESQUEMA con nadie, así que
-     * la regla es absoluta, sin enums pinados.
+     * la regla es absoluta, sin enums pinados. La capa {@code api} entra en la
+     * regla: sólo puede ver su propio módulo (y {@code shared}).
      */
     @Test
     void profesionalesNoDependeDeNingunOtroModulo() {
         noClasses().that().resideInAnyPackage(
+                        "es.manti.profesionales.api..",
                         "es.manti.profesionales.domain..",
                         "es.manti.profesionales.application..",
                         "es.manti.profesionales.infra..")
