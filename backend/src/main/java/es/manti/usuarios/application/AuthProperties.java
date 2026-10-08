@@ -32,7 +32,8 @@ public record AuthProperties(
     public record Google(String frontendUrl, Duration codeTtl) {
     }
 
-    public record RateLimit(int loginPerMinute, int registerPerMinute) {
+    public record RateLimit(int loginPerMinute, int registerPerMinute,
+                            int solicitudesPerHour, int registroProfesionalPerHour) {
     }
 
     /** Falla al arrancar si el SameSite es inválido o incoherente con Secure. */
