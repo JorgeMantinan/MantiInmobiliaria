@@ -114,6 +114,22 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/inmuebles",
                                 "/api/v1/inmuebles/{id:[0-9]+}").permitAll()
+                        // FASE 5 — PORTAL PÚBLICO de profesionales y solicitudes.
+                        // SÓLO estos tres matchers y SIEMPRE con método explícito,
+                        // para no abrir por error nada más:
+                        //   * catálogo de oficios (GET) — estático, cacheado 60 s;
+                        //   * solicitud de servicio (POST) — anónima y con rate
+                        //     limit de 10/hora por IP (AuthRateLimitFilter);
+                        //   * registro de profesional (POST) — anónimo, rate
+                        //     limit de 5/hora por IP.
+                        // El backoffice /api/v1/admin/** NO se abre aquí: exige
+                        // Bearer con rol ADMIN (@PreAuthorize en cada controller)
+                        // y cualquier otra ruta cae en .anyRequest().authenticated().
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/gremios").permitAll()
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/solicitudes",
+                                "/api/v1/profesionales/registro").permitAll()
                         // /api/v1/public/** queda sin abrir hasta que exista el
                         // módulo de contenido público con consumidores reales.
                         .requestMatchers("/actuator/health").permitAll()
@@ -152,7 +168,8 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(corsProperties.origenesNormalizados());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of(
-                HttpHeaders.AUTHORIZATION, HttpHeaders.CONTENT_TYPE, HttpHeaders.ACCEPT, "X-Requested-With"));
+                HttpHeaders.AUTHORIZATION, HttpHeaders.CONTENT_TYPE, HttpHeaders.ACCEPT,
+                "X-Requested-With", "Idempotency-Key"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

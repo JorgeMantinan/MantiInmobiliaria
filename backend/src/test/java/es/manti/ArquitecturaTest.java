@@ -175,4 +175,39 @@ class ArquitecturaTest {
                 .should().dependOnClassesThat().resideInAPackage("es.manti.swipes.infra..")
                 .check(CLASES);
     }
+
+    // ------------------------------------------------------------------
+    // FASE 5 — módulo profesionales (gremios, solicitudes y outbox)
+    // ------------------------------------------------------------------
+
+    /**
+     * El núcleo de profesionales (domain, application, infra) es AUTÓNOMO: ni
+     * una sola clase de los demás módulos. Comparte ESQUEMA con nadie, así que
+     * la regla es absoluta, sin enums pinados. La capa {@code api} entra en la
+     * regla: sólo puede ver su propio módulo (y {@code shared}).
+     */
+    @Test
+    void profesionalesNoDependeDeNingunOtroModulo() {
+        noClasses().that().resideInAnyPackage(
+                        "es.manti.profesionales.api..",
+                        "es.manti.profesionales.domain..",
+                        "es.manti.profesionales.application..",
+                        "es.manti.profesionales.infra..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "es.manti.inmuebles.domain..", "es.manti.inmuebles.infra..",
+                        "es.manti.inmuebles.application..",
+                        "es.manti.usuarios.domain..", "es.manti.usuarios.infra..",
+                        "es.manti.usuarios.application..",
+                        "es.manti.swipes.domain..", "es.manti.swipes.infra..",
+                        "es.manti.swipes.application..")
+                .check(CLASES);
+    }
+
+    /** La api de profesionales sólo ve su application y su domain, nunca su infra. */
+    @Test
+    void laApiDeProfesionalesNoDependeDeSuInfraestructura() {
+        noClasses().that().resideInAPackage("es.manti.profesionales.api..")
+                .should().dependOnClassesThat().resideInAPackage("es.manti.profesionales.infra..")
+                .check(CLASES);
+    }
 }

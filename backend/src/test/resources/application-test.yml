@@ -11,6 +11,15 @@ spring:
     # En CI la BD arranca vacía y la bandera no tiene ningún efecto.
     # Igual que application-dev.yml; application-prod.yml la fija a false.
     out-of-order: true
+  datasource:
+    hikari:
+      # Cada contexto de prueba (propias las clases con @SpringBootTest(properties=...))
+      # mantiene SU pool abierto hasta que termina la JVM. Con 10+ contextos y el
+      # mínimo de 10 conexiones por pool se superan los 100 clientes que admite
+      # PostgreSQL por defecto: "FATAL: sorry, too many clients already".
+      # Los tests son secuenciales y monohilo: 3 conexiones por contexto bastan.
+      maximum-pool-size: 3
+      minimum-idle: 3
 
 JWT_SECRET: manti-test-only-secret-000000000000000000000000000000000000000000
 GOOGLE_CLIENT_ID: test-client-id.apps.googleusercontent.com
@@ -24,3 +33,20 @@ auth:
   rate-limit:
     login-per-minute: 100000
     register-per-minute: 100000
+    solicitudes-per-hour: 100000
+    registro-profesional-per-hour: 100000
+
+manti:
+  notificaciones:
+    # Sin planificador en test: los tests invocan el despachador a mano
+    # (@Scheduled correría en paralelo y haría los resultados no deterministas).
+    programado: false
+    # Si un test quiere probar el envío, lo activa con @SpringBootTest(properties=...)
+    enabled: false
+    telegram:
+      bot-token: ${TELEGRAM_BOT_TOKEN:}
+      chat-id: ${TELEGRAM_CHAT_ID:}
+    brevo:
+      api-key: ${BREVO_API_KEY:}
+      from-email: no-reply@manti.test
+      from-name: MantiInmobiliaria

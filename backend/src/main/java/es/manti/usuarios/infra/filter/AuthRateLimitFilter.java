@@ -16,9 +16,10 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Rate limiting básico en memoria por IP (sin dependencias externas) para
- * {@code POST /api/v1/auth/login} y {@code POST /api/v1/auth/register}:
- * ventana fija de 60 s por (ruta, IP), configurable con
+ * Rate limiting básico en memoria por IP (sin dependencias externas) para los
+ * POST sensibles: login/registro de usuarios (ventana de 60 s) y, desde la
+ * FASE 5, solicitudes de servicio (10/hora) y registro de profesionales
+ * (5/hora). Cada ruta lleva SU ventana, configurable con
  * {@code auth.rate-limit.*}.
  *
  * <p>Nota despliegue: la IP se toma de {@code remoteAddr}; si el backend va
@@ -28,11 +29,25 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class AuthRateLimitFilter extends OncePerRequestFilter {
 
-    private static final long VENTANA_MS = 60_000L;
+    /** Ventana fija de los endpoints de autenticación. */
+    private static final long VENTANA_MINUTO_MS = 60_000L;
+
+    /** Ventana de las rutas de la FASE 5 (limites "por hora"). */
+    private static final long VENTANA_HORA_MS = 3_600_000L;
+
+    /** Limpieza del mapa cuando crece demasiado (usa la ventana MÁXIMA). */
     private static final int LIMPIA_A_PARTIR_DE = 10_000;
 
     private final AuthProperties properties;
-    private final Map<String, Deque<Long>> ventanas = new ConcurrentHashMap<>();
+    private final Map<String, Ventana> ventanas = new ConcurrentHashMap<>();
+
+    /** Límite de una ruta concreta: nº de peticiones y anchura de su ventana. */
+    private record Limite(int peticiones, long ventanaMs) {
+    }
+
+    /** Marcas de tiempo de una clave (ruta + IP), con la ventana que le aplica. */
+    private record Ventana(long ventanaMs, Deque<Long> marcas) {
+    }
 
     public AuthRateLimitFilter(AuthProperties properties) {
         this.properties = properties;
@@ -42,7 +57,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         String ruta = AuthRequestPath.normalizar(request);
-        Integer limite = limitePara(request.getMethod(), ruta);
+        Limite limite = limitePara(request.getMethod(), ruta);
         if (limite == null) {
             filterChain.doFilter(request, response);
             return;
@@ -53,33 +68,47 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         if (!permitido(clave, limite)) {
             ProblemResponseWriter.write(response, HttpStatus.TOO_MANY_REQUESTS,
                     "rate-limit", "Demasiadas peticiones",
-                    "Límite de peticiones alcanzado; inténtelo de nuevo en un minuto",
+                    "Límite de peticiones alcanzado; inténtelo de nuevo en " + espera(limite),
                     ruta);
             return;
         }
         filterChain.doFilter(request, response);
     }
 
-    private Integer limitePara(String metodo, String rutaNormalizada) {
+    private Limite limitePara(String metodo, String rutaNormalizada) {
         if (!"POST".equals(metodo)) {
             return null;
         }
+        AuthProperties.RateLimit rateLimit = properties.rateLimit();
         return switch (rutaNormalizada) {
-            case "/api/v1/auth/login" -> properties.rateLimit().loginPerMinute();
-            case "/api/v1/auth/register" -> properties.rateLimit().registerPerMinute();
+            case "/api/v1/auth/login" -> new Limite(rateLimit.loginPerMinute(), VENTANA_MINUTO_MS);
+            case "/api/v1/auth/register" ->
+                    new Limite(rateLimit.registerPerMinute(), VENTANA_MINUTO_MS);
+            // FASE 5 — rutas PÚBLICAS: sin límite el outbox y el alta de
+            // profesionales serían un denial-of-service económico.
+            case "/api/v1/solicitudes" ->
+                    new Limite(rateLimit.solicitudesPerHour(), VENTANA_HORA_MS);
+            case "/api/v1/profesionales/registro" ->
+                    new Limite(rateLimit.registroProfesionalPerHour(), VENTANA_HORA_MS);
             default -> null;
         };
     }
 
-    private boolean permitido(String clave, int limite) {
+    private static String espera(Limite limite) {
+        return limite.ventanaMs() == VENTANA_HORA_MS ? "una hora" : "un minuto";
+    }
+
+    private boolean permitido(String clave, Limite limite) {
         limpiarSiDesbordado();
-        Deque<Long> marcas = ventanas.computeIfAbsent(clave, k -> new ArrayDeque<>());
+        Ventana ventana = ventanas.computeIfAbsent(clave,
+                k -> new Ventana(limite.ventanaMs(), new ArrayDeque<>()));
+        Deque<Long> marcas = ventana.marcas();
         long ahora = System.currentTimeMillis();
         synchronized (marcas) {
-            while (!marcas.isEmpty() && marcas.peekFirst() < ahora - VENTANA_MS) {
+            while (!marcas.isEmpty() && marcas.peekFirst() < ahora - ventana.ventanaMs()) {
                 marcas.pollFirst();
             }
-            if (marcas.size() >= limite) {
+            if (marcas.size() >= limite.peticiones()) {
                 return false;
             }
             marcas.addLast(ahora);
@@ -89,9 +118,9 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     private void limpiarSiDesbordado() {
         if (ventanas.size() > LIMPIA_A_PARTIR_DE) {
-            long limiteVentana = System.currentTimeMillis() - VENTANA_MS;
+            long limiteVentana = System.currentTimeMillis() - VENTANA_HORA_MS;
             ventanas.entrySet().removeIf(e -> {
-                Deque<Long> marcas = e.getValue();
+                Deque<Long> marcas = e.getValue().marcas();
                 synchronized (marcas) {
                     return marcas.isEmpty() || marcas.peekLast() < limiteVentana;
                 }
