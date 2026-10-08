@@ -94,6 +94,16 @@ class AdminProfesionalApiTest {
     }
 
     @Test
+    void cambiarEstado_comoUsuarioNormal_devuelve403() throws Exception {
+        mockMvc.perform(patch("/api/v1/admin/profesionales/{id}", ID_INEXISTENTE)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenNormal)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"estado\": \"ACTIVO\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.title").value("Acceso denegado"));
+    }
+
+    @Test
     void listarSolicitudes_sinToken_devuelve401() throws Exception {
         mockMvc.perform(get("/api/v1/admin/solicitudes"))
                 .andExpect(status().isUnauthorized());
