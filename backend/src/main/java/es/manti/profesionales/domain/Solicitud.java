@@ -15,6 +15,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 import java.util.Collection;
@@ -65,6 +66,10 @@ public class Solicitud {
     @CreationTimestamp
     @Column(name = "creado_en", nullable = false, updatable = false)
     private Instant creadoEn;
+
+    @UpdateTimestamp
+    @Column(name = "actualizado_en", nullable = false)
+    private Instant actualizadoEn;
 
     /** Única vía de alta: estado {@link EstadoSolicitud#NUEVA} y gremios pedidos. */
     public static Solicitud nueva(String nombreContacto, String emailContacto, String telefono,
