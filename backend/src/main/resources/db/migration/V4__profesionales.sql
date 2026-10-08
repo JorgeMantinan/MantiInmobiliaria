@@ -81,12 +81,33 @@ CREATE TABLE solicitudes (
     descripcion     text NOT NULL,
     estado          varchar(8) NOT NULL DEFAULT 'NUEVA',
     creado_en       timestamptz NOT NULL DEFAULT now(),
+    actualizado_en  timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT ck_solicitudes_estado CHECK (estado IN ('NUEVA', 'CERRADA')),
     -- Misma regla que valida la API: 10..2000 caracteres (defensa en profundidad).
     CONSTRAINT ck_solicitudes_descripcion
         CHECK (char_length(descripcion) BETWEEN 10 AND 2000),
     CONSTRAINT ck_solicitudes_municipio CHECK (char_length(municipio) <= 120)
 );
+
+-- Idempotencia del alta pública (skill api-rest #9): la cabecera OPCIONAL
+-- Idempotency-Key mapea UNA clave a UNA sola solicitud. Si la clave ya existe
+-- se hace REPLAY de la respuesta original (mismo id, mismo codigo 201) y si el
+-- cuerpo del reintento no coincide con el guardado se devuelve 409.
+--   * clave  -> PK: dos envíos concurrentes con la misma clave no pueden crear
+--               dos solicitudes (el segundo recibe el conflicto de unicidad).
+--   * FK con ON DELETE CASCADE: si la solicitud desaparece, su clave también
+--               (el registro no tiene sentido sin el recurso).
+--   * creado_en indexado para el barrido de caducidad (purga de claves viejas).
+CREATE TABLE solicitudes_idempotencia (
+    clave        varchar(64) PRIMARY KEY,
+    solicitud_id bigint NOT NULL,
+    codigo       int NOT NULL,
+    creado_en    timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT fk_solicitudes_idempotencia_solicitud FOREIGN KEY (solicitud_id)
+        REFERENCES solicitudes (id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_solicitudes_idempotencia_creado_en ON solicitudes_idempotencia (creado_en);
 
 CREATE TABLE solicitud_gremio (
     solicitud_id bigint NOT NULL,
