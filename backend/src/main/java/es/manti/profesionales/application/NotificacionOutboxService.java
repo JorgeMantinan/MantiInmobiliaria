@@ -74,8 +74,19 @@ public class NotificacionOutboxService {
         }
     }
 
-    /** Lote de pendientes más antiguas (transacción de LECTURA del despachador). */
-    @Transactional(readOnly = true)
+    /**
+     * Lote de pendientes más antiguas, bloqueado con
+     * {@code FOR UPDATE SKIP LOCKED}: si dos instancias del despachador corren
+     * a la vez, la segunda salta las filas que la primera ya ha cogido.
+     *
+     * <p>NO es {@code readOnly}: la query toma bloqueos de fila y no queremos
+     * depender de si el driver admite {@code FOR UPDATE} dentro de una
+     * transacción de sólo lectura. Los bloqueos viven sólo durante esta
+     * lectura corta — el envío SIEMPRE ocurre después, fuera de transacción
+     * (skill rendimiento); la exclusividad total entre instancias llegaría con
+     * un estado de reclamación de la fila.</p>
+     */
+    @Transactional
     public List<NotificacionOutbox> pendientes(int lote) {
         return repository.pendientes(lote);
     }
