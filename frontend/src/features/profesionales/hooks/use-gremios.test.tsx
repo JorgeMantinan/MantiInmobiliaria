@@ -16,7 +16,7 @@ beforeEach(() => {
 
 describe('useGremios', () => {
   it('con_la_api_ok_usa_el_catalogo_del_servidor_sin_aviso', async () => {
-    const servidor = [{ slug: 'gasfiteria', nombre: 'Gasfitería' }];
+    const servidor = [{ slug: 'gasista', nombre: 'Gasista' }];
     vi.mocked(apiFetch).mockResolvedValue(servidor);
 
     const { result } = renderHook(() => useGremios());

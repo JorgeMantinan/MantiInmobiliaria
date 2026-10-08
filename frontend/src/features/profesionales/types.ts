@@ -34,20 +34,23 @@ export type AltaProfesional = Readonly<{
 export type AltaCreada = Readonly<{ id: number; estado: 'PENDIENTE' }>;
 
 /**
- * Lista estática de reserva (12 gremios): sólo se usa si `GET /api/v1/gremios`
- * falla o devuelve vacío, para que el formulario siga siendo utilizable.
+ * Catálogo de RESERVA: los 12 oficios sembrados en
+ * `V4__profesionales.sql` (PR `feature/08-profesionales`), en el MISMO orden.
+ * Sólo se usa si `GET /api/v1/gremios` falla o devuelve vacío, para que el
+ * formulario siga siendo utilizable; `types.test.ts` fija este array con un
+ * literal para que cualquier divergencia con el backend rompa el build.
  */
 export const GREMIOS_DE_RESERVA: readonly Gremio[] = [
-  { slug: 'fontaneria', nombre: 'Fontanería' },
-  { slug: 'electricidad', nombre: 'Electricidad' },
-  { slug: 'albanileria', nombre: 'Albañilería' },
-  { slug: 'carpinteria', nombre: 'Carpintería' },
-  { slug: 'pintura', nombre: 'Pintura' },
-  { slug: 'cerrajeria', nombre: 'Cerrajería' },
-  { slug: 'climatizacion', nombre: 'Climatización' },
-  { slug: 'suelos', nombre: 'Suelos y revestimientos' },
-  { slug: 'tejados', nombre: 'Tejados y cubiertas' },
-  { slug: 'jardineria', nombre: 'Jardinería' },
-  { slug: 'limpieza', nombre: 'Limpieza' },
-  { slug: 'domotica', nombre: 'Domótica y seguridad' },
+  { slug: 'fontanero', nombre: 'Fontanero' },
+  { slug: 'albañil', nombre: 'Albañil' },
+  { slug: 'electricista', nombre: 'Electricista' },
+  { slug: 'carpintero', nombre: 'Carpintero' },
+  { slug: 'maderista', nombre: 'Maderista' },
+  { slug: 'soldador', nombre: 'Soldador' },
+  { slug: 'pintor', nombre: 'Pintor' },
+  { slug: 'jardinero', nombre: 'Jardinero' },
+  { slug: 'cerrajero', nombre: 'Cerrajero' },
+  { slug: 'gasista', nombre: 'Gasista' },
+  { slug: 'techador', nombre: 'Techador' },
+  { slug: 'arquitecto', nombre: 'Arquitecto' },
 ];

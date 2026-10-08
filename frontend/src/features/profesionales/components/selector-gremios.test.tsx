@@ -7,10 +7,11 @@ import type { EstadoGremios } from '@/features/profesionales/hooks/use-gremios';
 import type { Gremio } from '@/features/profesionales/types';
 import { GREMIOS_MAXIMOS } from '@/features/profesionales/validacion';
 
+/** Slugs EXACTOS de `V4__profesionales.sql`. */
 const GREMIOS: readonly Gremio[] = [
-  { slug: 'fontaneria', nombre: 'Fontanería' },
-  { slug: 'electricidad', nombre: 'Electricidad' },
-  { slug: 'carpinteria', nombre: 'Carpintería' },
+  { slug: 'fontanero', nombre: 'Fontanero' },
+  { slug: 'electricista', nombre: 'Electricista' },
+  { slug: 'carpintero', nombre: 'Carpintero' },
 ];
 
 const DIEZ: readonly Gremio[] = Array.from({ length: 10 }, (_, indice) => ({
@@ -43,12 +44,12 @@ describe('SelectorGremios', () => {
     const usuario = userEvent.setup();
     render(<Propietaria gremios={GREMIOS} />);
 
-    await usuario.click(screen.getByRole('checkbox', { name: 'Fontanería' }));
-    await usuario.click(screen.getByRole('checkbox', { name: 'Electricidad' }));
+    await usuario.click(screen.getByRole('checkbox', { name: 'Fontanero' }));
+    await usuario.click(screen.getByRole('checkbox', { name: 'Electricista' }));
 
-    expect(screen.getByRole('checkbox', { name: 'Fontanería' })).toBeChecked();
-    expect(screen.getByRole('checkbox', { name: 'Electricidad' })).toBeChecked();
-    expect(screen.getByRole('checkbox', { name: 'Carpintería' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Fontanero' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Electricista' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Carpintero' })).not.toBeChecked();
     expect(screen.getByRole('status')).toHaveTextContent('2 de 8 gremios seleccionados.');
   });
 
@@ -56,7 +57,7 @@ describe('SelectorGremios', () => {
     render(<Propietaria gremios={GREMIOS} />);
 
     expect(screen.getByRole('status')).toHaveTextContent('Selecciona al menos 1 gremio.');
-    expect(screen.getByRole('checkbox', { name: 'Fontanería' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Fontanero' })).not.toBeChecked();
   });
 
   it('al_llegar_al_limite_de_ocho_deshabilita_los_demas_sin_bloquear_los_marcados', async () => {

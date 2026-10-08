@@ -5,7 +5,7 @@ import { FormularioSolicitud } from '@/features/profesionales/components/formula
 export const metadata: Metadata = {
   title: 'Pide presupuesto a profesionales | MantiInmobiliaria',
   description:
-    'Describe el trabajo que necesitas, elige los gremios y recibe el contacto de profesionales de tu municipio: fontanería, electricidad, albañilería, carpintería y más.',
+    'Describe el trabajo que necesitas, elige los gremios y recibe el contacto de profesionales de tu municipio: fontaneros, electricistas, albañiles, carpinteros y más.',
 };
 
 const ENLACE =

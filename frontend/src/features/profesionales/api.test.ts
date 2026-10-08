@@ -11,14 +11,15 @@ vi.mock('@/lib/api', async (importOriginal) => {
   return { ...real, apiFetch: vi.fn() };
 });
 
-const GREMIOS = [{ slug: 'fontaneria', nombre: 'Fontanería' }];
+/** Slugs EXACTOS de `V4__profesionales.sql`. */
+const GREMIOS = [{ slug: 'fontanero', nombre: 'Fontanero' }];
 
 const SOLICITUD = {
   nombreContacto: 'Ana Pérez',
   emailContacto: 'ana@ejemplo.com',
   municipio: 'Oviedo',
   descripcion: 'Se ha roto el grifo del baño',
-  gremios: ['fontaneria'],
+  gremios: ['fontanero'],
 } as const;
 
 beforeEach(() => {
@@ -35,7 +36,7 @@ describe('api de profesionales', () => {
   });
 
   it('crear_solicitud_postea_el_contrato_con_body_y_metodo', async () => {
-    const creada = { id: 42, estado: 'PENDIENTE', creadoEn: '2026-10-08T10:00:00Z' };
+    const creada = { id: 42, estado: 'NUEVA', creadoEn: '2026-10-08T10:00:00Z' };
     vi.mocked(apiFetch).mockResolvedValue(creada);
 
     const resultado = await crearSolicitud(SOLICITUD);
@@ -48,7 +49,7 @@ describe('api de profesionales', () => {
   });
 
   it('registrar_profesional_postea_su_contrato_y_devuelve_estado_pendiente', async () => {
-    const alta = { nombre: 'Luis Fontanero', email: 'luis@ejemplo.com', gremios: ['fontaneria'] };
+    const alta = { nombre: 'Luis Fontanero', email: 'luis@ejemplo.com', gremios: ['fontanero'] };
     vi.mocked(apiFetch).mockResolvedValue({ id: 7, estado: 'PENDIENTE' });
 
     const resultado = await registrarProfesional(alta);
