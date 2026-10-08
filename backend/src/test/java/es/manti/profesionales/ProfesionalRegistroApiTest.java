@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -111,6 +112,14 @@ class ProfesionalRegistroApiTest {
                 .andExpect(jsonPath("$.type").value(
                         "https://api.manti.dev/problems/gremio-inexistente"))
                 .andExpect(jsonPath("$.errors[0].field").value("gremios"));
+    }
+
+    @Test
+    void registrar_getSinToken_devuelve401() throws Exception {
+        // Sólo POST /api/v1/profesionales/registro es permitAll
+        mockMvc.perform(get(RUTA))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
     }
 
     @Test

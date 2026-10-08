@@ -58,6 +58,14 @@ class AdminTelegramDiagnosticoTest {
     }
 
     @Test
+    void diagnostico_comoUsuarioNormal_devuelve403() throws Exception {
+        mockMvc.perform(get(RUTA)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenUsuarioNormal()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.title").value("Acceso denegado"));
+    }
+
+    @Test
     void diagnostico_comoAdminSinCredencialDeTelegram_devuelve409ProblemDetail() throws Exception {
         mockMvc.perform(get(RUTA)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin()))
@@ -74,11 +82,20 @@ class AdminTelegramDiagnosticoTest {
     // ------------------------------------------------------------------
 
     private String tokenAdmin() throws Exception {
-        String email = "it-admin-" + UUID.randomUUID() + "@example.com";
+        return token("ADMIN");
+    }
+
+    private String tokenUsuarioNormal() throws Exception {
+        return token("USER");
+    }
+
+    /** Usuario de prueba con el rol indicado y su access token vía login real. */
+    private String token(String rol) throws Exception {
+        String email = "it-" + rol.toLowerCase() + "-" + UUID.randomUUID() + "@example.com";
         jdbc.update("""
                 INSERT INTO usuarios (email, password_hash, nombre, rol, activo)
-                VALUES (?, ?, 'Admin Test', 'ADMIN', true)
-                """, email, passwordEncoder.encode(PASSWORD));
+                VALUES (?, ?, 'Usuario Test', ?, true)
+                """, email, passwordEncoder.encode(PASSWORD), rol);
         MvcResult resultado = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""

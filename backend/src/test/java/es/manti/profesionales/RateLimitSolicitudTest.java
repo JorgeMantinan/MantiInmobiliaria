@@ -19,9 +19,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Rate limit de las rutas PÚBLICAS de la FASE 5 (ventana de 1 hora por IP en
- * {@link es.manti.usuarios.infra.filter.AuthRateLimitFilter}). Los límites
- * bajos sólo afectan a ESTE contexto de Spring: el resto de tests usa los
- * límites altos del perfil test.
+ * {@link es.manti.usuarios.infra.filter.AuthRateLimitFilter}). Los límites se
+ * bajan a 2/hora SÓLO para este contexto de Spring: el resto de tests usa los
+ * límites altos del perfil test y los valores reales de producción son 10/hora
+ * (solicitudes) y 5/hora (registro de profesional).
  */
 @SpringBootTest(properties = {
         "auth.rate-limit.solicitudes-per-hour=2",
@@ -43,7 +44,7 @@ class RateLimitSolicitudTest {
     }
 
     @Test
-    void crear_masDeDiezSolicitudesPorHora_devuelve429() throws Exception {
+    void crear_trasDosSolicitudesPorHora_devuelve429() throws Exception {
         for (int intento = 1; intento <= 2; intento++) {
             mockMvc.perform(post("/api/v1/solicitudes")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -63,7 +64,7 @@ class RateLimitSolicitudTest {
     }
 
     @Test
-    void registrar_masDeCincoProfesionalesPorHora_devuelve429() throws Exception {
+    void registrar_trasDosRegistrosPorHora_devuelve429() throws Exception {
         for (int intento = 1; intento <= 2; intento++) {
             mockMvc.perform(post("/api/v1/profesionales/registro")
                             .contentType(MediaType.APPLICATION_JSON)

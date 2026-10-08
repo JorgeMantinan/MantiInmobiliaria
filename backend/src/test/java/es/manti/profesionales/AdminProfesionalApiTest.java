@@ -99,6 +99,14 @@ class AdminProfesionalApiTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void listarSolicitudes_comoUsuarioNormal_devuelve403() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/solicitudes")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenNormal))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.title").value("Acceso denegado"));
+    }
+
     // ------------------------------------------------------------------
     // GET /api/v1/admin/profesionales
     // ------------------------------------------------------------------

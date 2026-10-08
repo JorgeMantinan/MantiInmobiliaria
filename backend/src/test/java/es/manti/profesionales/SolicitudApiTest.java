@@ -26,7 +26,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * API PÚBLICA de solicitudes y catálogo de gremios: 201 del alta, validación
  * campo a campo (400 con {@code errors[]}), gremios inexistentes y caché del
- * catálogo. Ninguna ruta necesita token (permitAll en SecurityConfig).
+ * catálogo. Sólo los MÉTODOS abiertos en SecurityConfig son accesibles sin
+ * token (permitAll); cualquier otro método de esas rutas devuelve 401.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -148,6 +149,28 @@ class SolicitudApiTest {
                         .content(cuerpoValido().replaceFirst("\"gremios\": \\[[^]]*]",
                                 "\"gremios\": [\"albanil\"]")))
                 .andExpect(status().isCreated());
+    }
+
+    // ------------------------------------------------------------------
+    // Rutas permitAll: sólo los métodos abiertos, nunca el recurso entero
+    // ------------------------------------------------------------------
+
+    @Test
+    void listarSolicitudes_sinToken_devuelve401() throws Exception {
+        // Sólo POST /api/v1/solicitudes es permitAll: GET cae en authenticated()
+        mockMvc.perform(get("/api/v1/solicitudes"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+    }
+
+    @Test
+    void crearGremio_sinToken_devuelve401() throws Exception {
+        // Sólo GET /api/v1/gremios es permitAll: el catálogo no es escribible
+        mockMvc.perform(post("/api/v1/gremios")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"slug\": \"astronauta\", \"nombre\": \"Astronauta\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
     }
 
     // ------------------------------------------------------------------

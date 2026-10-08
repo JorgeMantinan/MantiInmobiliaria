@@ -57,9 +57,11 @@ class NotificacionesDispatcherTest {
 
     @BeforeEach
     void fixtures() {
-        // Estado limpio: mocks y outbox de las pruebas anteriores
+        // Estado limpio: mocks y outbox de las pruebas anteriores (sólo fixtures
+        // it-*: nunca se borra el outbox de datos ajenos al test)
         reset(email, telegram);
-        jdbc.update("DELETE FROM notificaciones_outbox");
+        jdbc.update("DELETE FROM notificaciones_outbox WHERE solicitud_id IN "
+                + "(SELECT id FROM solicitudes WHERE email_contacto LIKE 'it-%@example.com')");
         profesional = FixturesProfesionales.profesional(
                 jdbc, DESTINO, "ACTIVO", "fontanero");
         solicitud = FixturesProfesionales.solicitud(

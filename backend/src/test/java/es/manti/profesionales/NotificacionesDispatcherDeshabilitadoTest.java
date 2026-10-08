@@ -45,7 +45,9 @@ class NotificacionesDispatcherDeshabilitadoTest {
     @BeforeEach
     void fixtures() {
         reset(email, telegram);
-        jdbc.update("DELETE FROM notificaciones_outbox");
+        // Sólo fixtures it-*: nunca se borra el outbox de datos ajenos al test
+        jdbc.update("DELETE FROM notificaciones_outbox WHERE solicitud_id IN "
+                + "(SELECT id FROM solicitudes WHERE email_contacto LIKE 'it-%@example.com')");
         long profesional = FixturesProfesionales.profesional(
                 jdbc, "it-pro-off-" + UUID.randomUUID() + "@example.com", "ACTIVO", "fontanero");
         long solicitud = FixturesProfesionales.solicitud(
