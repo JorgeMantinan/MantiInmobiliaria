@@ -3,6 +3,7 @@ package es.manti.profesionales.domain;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Puerto de persistencia de solicitudes de servicio.
@@ -10,6 +11,9 @@ import java.util.Map;
 public interface SolicitudRepository {
 
     Solicitud guardar(Solicitud solicitud);
+
+    /** La solicitud con ese id, si existe (replay de una clave de idempotencia). */
+    Optional<Solicitud> porId(Long id);
 
     /** Las {@code limite} solicitudes más recientes, más nuevas primero. */
     List<Solicitud> ultimas(int limite);

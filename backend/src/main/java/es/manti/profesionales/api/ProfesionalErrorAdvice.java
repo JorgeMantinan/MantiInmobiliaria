@@ -1,5 +1,6 @@
 package es.manti.profesionales.api;
 
+import es.manti.profesionales.domain.ClaveIdempotenciaConflictivaException;
 import es.manti.profesionales.domain.EmailProfesionalYaRegistradoException;
 import es.manti.profesionales.domain.GremioInexistenteException;
 import es.manti.profesionales.domain.ProfesionalNoEncontradoException;
@@ -42,6 +43,14 @@ public class ProfesionalErrorAdvice {
                                            HttpServletRequest request) {
         return Problems.crear(HttpStatus.CONFLICT, "email-ya-registrado",
                 "Email ya registrado", e.getMessage(), request);
+    }
+
+    /** Clave Idempotency-Key reutilizada con otro cuerpo → 409. */
+    @ExceptionHandler(ClaveIdempotenciaConflictivaException.class)
+    public ProblemDetail claveIdempotenciaConflictiva(ClaveIdempotenciaConflictivaException e,
+                                                      HttpServletRequest request) {
+        return Problems.crear(HttpStatus.CONFLICT, "idempotencia-conflicto",
+                "Clave de idempotencia en uso", e.getMessage(), request);
     }
 
     /** Backoffice escribiendo sobre un id inexistente → 404. */

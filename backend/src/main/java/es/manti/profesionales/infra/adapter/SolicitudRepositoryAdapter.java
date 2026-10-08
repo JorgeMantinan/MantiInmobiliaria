@@ -12,6 +12,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /** Adaptador JPA del puerto {@link SolicitudRepository}. */
 @Repository
@@ -23,6 +24,11 @@ public class SolicitudRepositoryAdapter implements SolicitudRepository {
     @Override
     public Solicitud guardar(Solicitud solicitud) {
         return jpaRepository.save(solicitud);
+    }
+
+    @Override
+    public Optional<Solicitud> porId(Long id) {
+        return jpaRepository.findById(id);
     }
 
     @Override
