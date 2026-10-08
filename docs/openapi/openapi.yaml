@@ -203,8 +203,22 @@ paths:
       description: "Alta anónima de una petición de trabajo (municipio, descripció\
         n y 1..8 gremios del catálogo). En la MISMA transacción se encolan las notificaciones\
         \ a los profesionales ACTIVOS que compartan algún gremio (outbox). Rate limit:\
-        \ 10 peticiones/hora por IP."
+        \ 10 peticiones/hora por IP. Cabecera opcional `Idempotency-Key` (máx. 64\
+        \ caracteres): reenviar la MISMA clave devuelve la respuesta original (replay,\
+        \ mismo id) en vez de crear una segunda solicitud, y una clave reutilizada\
+        \ con un cuerpo distinto responde 409. Sin `Location`: el recurso no tiene\
+        \ GET público."
       operationId: crearSolicitud
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        description: "Clave opcional de idempotencia (máx. 64 caracteres): la misma\
+          \ clave devuelve la respuesta original en vez de duplicar la solicitud"
+        required: false
+        schema:
+          type: string
+          maxLength: 64
+          minLength: 0
       requestBody:
         content:
           application/json:
@@ -213,7 +227,8 @@ paths:
         required: true
       responses:
         "201":
-          description: Solicitud creada en estado NUEVA
+          description: "Solicitud creada en estado NUEVA (sin `Location`: el recurso\
+            \ no tiene GET público)"
           content:
             '*/*':
               schema:
@@ -221,6 +236,13 @@ paths:
         "400":
           description: "Validación fallida o gremios inexistentes (ProblemDetail con\
             \ errors[])"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: '`Idempotency-Key` reutilizada con un cuerpo distinto al de
+            la petición original (ProblemDetail)'
           content:
             '*/*':
               schema:
@@ -821,6 +843,12 @@ paths:
                 $ref: "#/components/schemas/ProblemDetail"
         "409":
           description: "Telegram sin credencial: falta `TELEGRAM_BOT_TOKEN` (ProblemDetail)"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "502":
+          description: Telegram no disponible o ha rechazado `getUpdates` (ProblemDetail)
           content:
             '*/*':
               schema:
