@@ -16,13 +16,14 @@ vi.mock('@/lib/api', async (importOriginal) => {
   return { ...real, apiFetch: vi.fn() };
 });
 
+/** Slugs EXACTOS de `V4__profesionales.sql`. */
 const GREMIOS = [
-  { slug: 'fontaneria', nombre: 'Fontanería' },
-  { slug: 'electricidad', nombre: 'Electricidad' },
-  { slug: 'carpinteria', nombre: 'Carpintería' },
+  { slug: 'fontanero', nombre: 'Fontanero' },
+  { slug: 'electricista', nombre: 'Electricista' },
+  { slug: 'carpintero', nombre: 'Carpintero' },
 ];
 
-const CREADA = { id: 42, estado: 'PENDIENTE', creadoEn: '2026-10-08T10:00:00Z' };
+const CREADA = { id: 42, estado: 'NUEVA', creadoEn: '2026-10-08T10:00:00Z' };
 
 /** Respuesta por ruta; un `Error` se lanza (así se simulan los ProblemDetail). */
 function conRutas(rutas: Readonly<Record<string, unknown>>): void {
@@ -42,7 +43,7 @@ async function rellenarValido(usuario: ReturnType<typeof userEvent.setup>): Prom
     screen.getByLabelText('Descripción del trabajo'),
     'Se ha roto el grifo del baño',
   );
-  await usuario.click(screen.getByRole('checkbox', { name: 'Fontanería' }));
+  await usuario.click(screen.getByRole('checkbox', { name: 'Fontanero' }));
 }
 
 async function enviar(usuario: ReturnType<typeof userEvent.setup>): Promise<void> {
@@ -58,10 +59,10 @@ describe('FormularioSolicitud', () => {
   it('con_datos_validos_postea_el_contrato_y_muestra_la_confirmacion', async () => {
     const usuario = userEvent.setup();
     render(<FormularioSolicitud />);
-    await screen.findByRole('checkbox', { name: 'Fontanería' });
+    await screen.findByRole('checkbox', { name: 'Fontanero' });
 
     await rellenarValido(usuario);
-    await usuario.click(screen.getByRole('checkbox', { name: 'Electricidad' }));
+    await usuario.click(screen.getByRole('checkbox', { name: 'Electricista' }));
     await enviar(usuario);
 
     await waitFor(() => {
@@ -72,7 +73,7 @@ describe('FormularioSolicitud', () => {
           emailContacto: 'ana@ejemplo.com',
           municipio: 'Oviedo',
           descripcion: 'Se ha roto el grifo del baño',
-          gremios: ['fontaneria', 'electricidad'],
+          gremios: ['fontanero', 'electricista'],
         },
       });
     });
@@ -80,15 +81,15 @@ describe('FormularioSolicitud', () => {
     expect(
       await screen.findByText('Solicitud enviada, te contactarán los profesionales'),
     ).toBeInTheDocument();
-    expect(screen.getByText('Fontanería')).toBeInTheDocument();
-    expect(screen.getByText('Electricidad')).toBeInTheDocument();
+    expect(screen.getByText('Fontanero')).toBeInTheDocument();
+    expect(screen.getByText('Electricista')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Volver al inicio' })).toHaveAttribute('href', '/');
   });
 
   it('con_campos_invalidos_muestra_los_errores_sin_enviar', async () => {
     const usuario = userEvent.setup();
     render(<FormularioSolicitud />);
-    await screen.findByRole('checkbox', { name: 'Fontanería' });
+    await screen.findByRole('checkbox', { name: 'Fontanero' });
 
     await usuario.type(screen.getByLabelText('Email de contacto'), 'no-es-un-email');
     fireEvent.change(screen.getByLabelText('Municipio'), {
@@ -106,7 +107,7 @@ describe('FormularioSolicitud', () => {
     expect(apiFetch).toHaveBeenCalledTimes(1);
   });
 
-  it('con_un_400_del_backend_muestra_los_errores_de_campo', async () => {
+  it('con_un_400_del_backend_pinta_el_error_en_el_campo_y_no_en_el_aviso_global', async () => {
     conRutas({
       '/api/v1/gremios': GREMIOS,
       '/api/v1/solicitudes': new ApiError(400, 'Validación fallida', '1 campo inválido', [
@@ -115,28 +116,62 @@ describe('FormularioSolicitud', () => {
     });
     const usuario = userEvent.setup();
     render(<FormularioSolicitud />);
-    await screen.findByRole('checkbox', { name: 'Fontanería' });
+    await screen.findByRole('checkbox', { name: 'Fontanero' });
 
     await rellenarValido(usuario);
     await enviar(usuario);
 
+    const descripcion = screen.getByLabelText('Descripción del trabajo');
     expect(await screen.findByText('debe tener al menos 10 caracteres')).toBeInTheDocument();
-    expect(screen.getByLabelText('Tu nombre')).toBeInTheDocument();
+    // El error vive EN el campo: marcado y referenciado por `aria-describedby`.
+    expect(descripcion).toHaveAttribute('aria-invalid', 'true');
+    const referencias = (descripcion.getAttribute('aria-describedby') ?? '').split(' ');
+    // Ayuda y error conviven en `aria-describedby` (item de revisión de campo-textarea).
+    expect(referencias).toEqual(
+      expect.arrayContaining(['solicitud-descripcion-ayuda', 'solicitud-descripcion-error']),
+    );
+    const errorCampo = document.getElementById('solicitud-descripcion-error');
+    expect(errorCampo).toHaveAttribute('role', 'alert');
+    expect(errorCampo).toHaveTextContent('debe tener al menos 10 caracteres');
+    // El aviso global es sólo fallback: aquí NO aparece.
+    expect(document.querySelector('[aria-live="assertive"]')).toBeNull();
+  });
+
+  it('con_un_400_sin_campos_conocidos_usa_el_aviso_global', async () => {
+    conRutas({
+      '/api/v1/gremios': GREMIOS,
+      '/api/v1/solicitudes': new ApiError(400, 'Validación fallida', 'Error de validación', [
+        { field: 'campoInexistente', message: 'campo no reconocido' },
+      ]),
+    });
+    const usuario = userEvent.setup();
+    render(<FormularioSolicitud />);
+    await screen.findByRole('checkbox', { name: 'Fontanero' });
+
+    await rellenarValido(usuario);
+    await enviar(usuario);
+
+    const global = await screen.findByText('campo no reconocido');
+    expect(global).toHaveAttribute('aria-live', 'assertive');
+    expect(screen.getByLabelText('Descripción del trabajo')).toHaveAttribute(
+      'aria-invalid',
+      'false',
+    );
   });
 
   it('con_un_429_muestra_el_mensaje_amigable_y_reactiva_el_boton', async () => {
     conRutas({
       '/api/v1/gremios': GREMIOS,
-      '/api/v1/solicitudes': new ApiError(429, 'Demasiadas solicitudes', 'Rate limit superado'),
+      '/api/v1/solicitudes': new ApiError(429, 'Too Many Requests', 'Rate limit superado'),
     });
     const usuario = userEvent.setup();
     render(<FormularioSolicitud />);
-    await screen.findByRole('checkbox', { name: 'Fontanería' });
+    await screen.findByRole('checkbox', { name: 'Fontanero' });
 
     await rellenarValido(usuario);
     await enviar(usuario);
 
-    expect(await screen.findByText('Demasiadas solicitudes, inténtalo más tarde')).toBeInTheDocument();
+    expect(await screen.findByText('Demasiadas peticiones, inténtalo más tarde')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Enviar solicitud' })).toBeEnabled();
   });
 
@@ -158,7 +193,7 @@ describe('FormularioSolicitud', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'No se han podido cargar los gremios; mostramos la lista de referencia.',
     );
-    expect(screen.getByRole('checkbox', { name: 'Fontanería' })).toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: 'Domótica y seguridad' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Fontanero' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Arquitecto' })).toBeInTheDocument();
   });
 });

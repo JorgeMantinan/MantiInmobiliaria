@@ -16,9 +16,10 @@ vi.mock('@/lib/api', async (importOriginal) => {
   return { ...real, apiFetch: vi.fn() };
 });
 
+/** Slugs EXACTOS de `V4__profesionales.sql`. */
 const GREMIOS = [
-  { slug: 'fontaneria', nombre: 'Fontanería' },
-  { slug: 'electricidad', nombre: 'Electricidad' },
+  { slug: 'fontanero', nombre: 'Fontanero' },
+  { slug: 'electricista', nombre: 'Electricista' },
 ];
 
 const REGISTRO = { id: 7, estado: 'PENDIENTE' as const };
@@ -36,7 +37,7 @@ function conRutas(rutas: Readonly<Record<string, unknown>>): void {
 async function rellenar(usuario: ReturnType<typeof userEvent.setup>): Promise<void> {
   await usuario.type(screen.getByLabelText('Nombre o razón social'), 'Luis Fontanero');
   await usuario.type(screen.getByLabelText('Email'), 'luis@ejemplo.com');
-  await usuario.click(screen.getByRole('checkbox', { name: 'Fontanería' }));
+  await usuario.click(screen.getByRole('checkbox', { name: 'Fontanero' }));
 }
 
 async function enviar(usuario: ReturnType<typeof userEvent.setup>): Promise<void> {
@@ -52,7 +53,7 @@ describe('FormularioAlta', () => {
   it('con_datos_validos_postea_el_alta_y_muestra_la_confirmacion', async () => {
     const usuario = userEvent.setup();
     render(<FormularioAlta />);
-    await screen.findByRole('checkbox', { name: 'Fontanería' });
+    await screen.findByRole('checkbox', { name: 'Fontanero' });
 
     await rellenar(usuario);
     await usuario.type(screen.getByLabelText('Municipio (opcional)'), 'Vigo');
@@ -65,7 +66,7 @@ describe('FormularioAlta', () => {
           nombre: 'Luis Fontanero',
           email: 'luis@ejemplo.com',
           municipio: 'Vigo',
-          gremios: ['fontaneria'],
+          gremios: ['fontanero'],
         },
       });
     });
@@ -75,7 +76,7 @@ describe('FormularioAlta', () => {
         'Registro recibido — validaremos tu cuenta y recibirás notificaciones',
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText('Fontanería')).toBeInTheDocument();
+    expect(screen.getByText('Fontanero')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Volver a profesionales' })).toHaveAttribute(
       'href',
       '/profesionales',
@@ -89,7 +90,7 @@ describe('FormularioAlta', () => {
     });
     const usuario = userEvent.setup();
     render(<FormularioAlta />);
-    await screen.findByRole('checkbox', { name: 'Fontanería' });
+    await screen.findByRole('checkbox', { name: 'Fontanero' });
 
     await rellenar(usuario);
     await enviar(usuario);
@@ -101,7 +102,7 @@ describe('FormularioAlta', () => {
   it('sin_gremios_no_envia_el_registro_y_muestra_el_aviso', async () => {
     const usuario = userEvent.setup();
     render(<FormularioAlta />);
-    await screen.findByRole('checkbox', { name: 'Fontanería' });
+    await screen.findByRole('checkbox', { name: 'Fontanero' });
 
     await usuario.type(screen.getByLabelText('Nombre o razón social'), 'Luis Fontanero');
     await usuario.type(screen.getByLabelText('Email'), 'luis@ejemplo.com');
@@ -109,5 +110,25 @@ describe('FormularioAlta', () => {
 
     expect(await screen.findByText('Selecciona al menos un gremio.')).toBeInTheDocument();
     expect(apiFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('con_un_429_muestra_el_mensaje_amigable_neutro_y_reactiva_el_boton', async () => {
+    conRutas({
+      '/api/v1/gremios': GREMIOS,
+      '/api/v1/profesionales/registro': new ApiError(
+        429,
+        'Too Many Requests',
+        'Rate limit superado',
+      ),
+    });
+    const usuario = userEvent.setup();
+    render(<FormularioAlta />);
+    await screen.findByRole('checkbox', { name: 'Fontanero' });
+
+    await rellenar(usuario);
+    await enviar(usuario);
+
+    expect(await screen.findByText('Demasiadas peticiones, inténtalo más tarde')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Registrarme como profesional' })).toBeEnabled();
   });
 });

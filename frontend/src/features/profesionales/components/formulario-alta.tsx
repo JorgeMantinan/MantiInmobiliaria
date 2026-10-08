@@ -8,9 +8,16 @@ import { Campo } from '@/components/ui/campo';
 import { esApiError } from '@/lib/api';
 import { registrarProfesional } from '../api';
 import { useGremios } from '../hooks/use-gremios';
-import { MENSAJES, mensajeDeError } from '../mensajes';
+import { MENSAJES, clasificarErrorEnvio } from '../mensajes';
 import type { AltaProfesional } from '../types';
-import { hayErrores, validarAlta } from '../validacion';
+import {
+  CAMPOS_ALTA,
+  EMAIL_MAXIMO,
+  MUNICIPIO_MAXIMO,
+  NOMBRE_MAXIMO,
+  hayErrores,
+  validarAlta,
+} from '../validacion';
 import type { ErroresAlta } from '../validacion';
 import { Confirmacion } from './confirmacion';
 import { SelectorGremios } from './selector-gremios';
@@ -26,6 +33,12 @@ export function FormularioAlta() {
   const [registrada, setRegistrada] = useState<readonly string[] | null>(null);
 
   async function enviar(evento: FormEvent<HTMLFormElement>): Promise<void> {
+    // Guard de reentrada: el botón queda deshabilitado, pero un segundo submit
+    // (p. ej. Enter repetido) mientras la petición sigue en vuelo se descarta.
+    if (enviando) {
+      evento.preventDefault();
+      return;
+    }
     evento.preventDefault();
     const datos = new FormData(evento.currentTarget);
     const campos = {
@@ -57,11 +70,17 @@ export function FormularioAlta() {
         estado.gremios.filter((gremio) => seleccion.includes(gremio.slug)).map((g) => g.nombre),
       );
     } catch (causa) {
-      setErrorApi(
-        esApiError(causa) && causa.status === 409
-          ? MENSAJES.emailRepetido
-          : mensajeDeError(causa, MENSAJES.registro),
-      );
+      if (esApiError(causa) && causa.status === 409) {
+        setErrorApi(MENSAJES.emailRepetido);
+      } else {
+        // 400 con `errors[]` ⇒ error EN el campo; el aviso global es fallback.
+        const fallo = clasificarErrorEnvio(causa, CAMPOS_ALTA, MENSAJES.registro);
+        if (fallo.global === null) {
+          setErrores((prev): ErroresAlta => ({ ...prev, ...fallo.campos }));
+        } else {
+          setErrorApi(fallo.global);
+        }
+      }
     } finally {
       setEnviando(false);
     }
@@ -89,6 +108,7 @@ export function FormularioAlta() {
         etiqueta="Nombre o razón social"
         type="text"
         autoComplete="organization"
+        maxLength={NOMBRE_MAXIMO}
         error={errores.nombre}
         required
       />
@@ -98,6 +118,7 @@ export function FormularioAlta() {
         etiqueta="Email"
         type="email"
         autoComplete="email"
+        maxLength={EMAIL_MAXIMO}
         error={errores.email}
         required
       />
@@ -115,6 +136,7 @@ export function FormularioAlta() {
         etiqueta="Municipio (opcional)"
         type="text"
         autoComplete="address-level2"
+        maxLength={MUNICIPIO_MAXIMO}
         error={errores.municipio}
       />
 
