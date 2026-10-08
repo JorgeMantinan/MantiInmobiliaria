@@ -15,6 +15,9 @@ type CampoTextoAreaProps = Readonly<{
 export function CampoTextoArea({ id, etiqueta, error, ayuda, ...props }: CampoTextoAreaProps) {
   const idError = `${id}-error`;
   const idAyuda = `${id}-ayuda`;
+  // Ayuda y error conviven: el lector de pantalla debe anunciar AMBOS.
+  const referencias = [ayuda === undefined ? null : idAyuda, error === undefined ? null : idError]
+    .filter((referencia): referencia is string => referencia !== null);
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={id} className="text-sm font-medium text-texto">
@@ -24,9 +27,7 @@ export function CampoTextoArea({ id, etiqueta, error, ayuda, ...props }: CampoTe
         {...props}
         id={id}
         aria-invalid={error !== undefined}
-        aria-describedby={
-          error === undefined ? (ayuda === undefined ? undefined : idAyuda) : idError
-        }
+        aria-describedby={referencias.length > 0 ? referencias.join(' ') : undefined}
         className="rounded-md border border-borde bg-superficie px-3 py-2 text-texto outline-none transition-colors focus:ring-2 focus:ring-acento-nogal"
       />
       {error !== undefined ? (
