@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * DiagnÃ³stico de Telegram con credencial y PUERTO mockeado: cero red en la
+ * Diagnóstico de Telegram con credencial y PUERTO mockeado: cero red en la
  * suite. Comprueba el contrato {@code {chatsVistos: [{chatId, tipo,
  * textoMuestra}]}}.
  */
@@ -62,7 +62,7 @@ class AdminTelegramChatsTest {
     @Test
     void diagnostico_comoAdmin_devuelve200ConLosChatsVistos() throws Exception {
         when(diagnostico.chatsVistos()).thenReturn(List.of(
-                new ChatVisto("-100123456", "supergroup", "Busco un fontanero para maÃ±ana"),
+                new ChatVisto("-100123456", "supergroup", "Busco un fontanero para mañana"),
                 new ChatVisto("555123456", "private", "")));
 
         mockMvc.perform(get(RUTA)
@@ -72,7 +72,7 @@ class AdminTelegramChatsTest {
                 .andExpect(jsonPath("$.chatsVistos[0].chatId").value("-100123456"))
                 .andExpect(jsonPath("$.chatsVistos[0].tipo").value("supergroup"))
                 .andExpect(jsonPath("$.chatsVistos[0].textoMuestra")
-                        .value("Busco un fontanero para maÃ±ana"))
+                        .value("Busco un fontanero para mañana"))
                 .andExpect(jsonPath("$.chatsVistos[1].tipo").value("private"));
 
         String cuerpo = mockMvc.perform(get(RUTA)
