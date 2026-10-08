@@ -3,7 +3,6 @@ package es.manti.profesionales.application;
 import es.manti.profesionales.domain.Gremio;
 import es.manti.profesionales.domain.NotificacionOutbox;
 import es.manti.profesionales.domain.NotificacionOutboxRepository;
-import es.manti.profesionales.domain.Profesional;
 import es.manti.profesionales.domain.ProfesionalRepository;
 import es.manti.profesionales.domain.Solicitud;
 import lombok.RequiredArgsConstructor;
@@ -56,9 +55,12 @@ public class NotificacionOutboxService {
         String asunto = "Nueva solicitud en " + solicitud.getMunicipio();
 
         List<Long> gremioIds = pedidos.stream().map(Gremio::getId).toList();
-        for (Profesional profesional : profesionales.activosCompartiendoGremios(gremioIds)) {
-            repository.guardar(NotificacionOutbox.email(
-                    solicitud, profesional, asunto, cuerpoEmail(solicitud)));
+        List<NotificacionOutbox> emails = profesionales.activosCompartiendoGremios(gremioIds).stream()
+                .map(profesional -> NotificacionOutbox.email(
+                        solicitud, profesional, asunto, cuerpoEmail(solicitud)))
+                .toList();
+        if (!emails.isEmpty()) {
+            repository.guardarTodas(emails);
         }
 
         if (propiedades.telegram().tieneChat()) {

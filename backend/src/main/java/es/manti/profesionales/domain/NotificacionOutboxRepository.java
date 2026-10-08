@@ -1,7 +1,6 @@
 package es.manti.profesionales.domain;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Puerto de persistencia del outbox de notificaciones.
@@ -14,10 +13,11 @@ public interface NotificacionOutboxRepository {
 
     NotificacionOutbox guardar(NotificacionOutbox fila);
 
+    /** Varios emails en UNA sola llamada (sin `save()` en bucle). */
+    List<NotificacionOutbox> guardarTodas(List<NotificacionOutbox> filas);
+
     /** Lote de filas PENDIENTE más antiguas, en el orden exacto del índice parcial. */
     List<NotificacionOutbox> pendientes(int lote);
-
-    Optional<NotificacionOutbox> porId(Long id);
 
     /** Éxito: estado ENVIADA, {@code enviado_en}, sin error y +1 intento. */
     void marcarEnviada(Long id, int intentos);

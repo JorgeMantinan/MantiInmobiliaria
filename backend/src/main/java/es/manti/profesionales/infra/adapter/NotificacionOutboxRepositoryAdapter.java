@@ -9,7 +9,6 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Adaptador JPA del puerto {@link NotificacionOutboxRepository}.
@@ -31,13 +30,13 @@ public class NotificacionOutboxRepositoryAdapter implements NotificacionOutboxRe
     }
 
     @Override
-    public List<NotificacionOutbox> pendientes(int lote) {
-        return jpaRepository.pendientes(EstadoNotificacion.PENDIENTE, PageRequest.of(0, lote));
+    public List<NotificacionOutbox> guardarTodas(List<NotificacionOutbox> filas) {
+        return jpaRepository.saveAll(filas);
     }
 
     @Override
-    public Optional<NotificacionOutbox> porId(Long id) {
-        return jpaRepository.findById(id);
+    public List<NotificacionOutbox> pendientes(int lote) {
+        return jpaRepository.pendientes(EstadoNotificacion.PENDIENTE, PageRequest.of(0, lote));
     }
 
     @Override
