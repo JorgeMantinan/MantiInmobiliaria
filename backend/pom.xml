@@ -167,9 +167,12 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
-			<!-- Coverage: agente en test + informe en verify. GATE LINE en verify (issue #13).
-			     ahora; umbral LINE = RATCHET: subir en cada PR que mejore cobertura,
-			     tests con <check><rule> cuando el backend esté más cubierto. -->
+			<!-- Coverage (issue #13): prepare-agent instrumenta la ejecucion de tests, el goal
+			     report genera el informe HTML/CSV en la fase verify y el goal check actua de
+			     GATE: si la cobertura LINE global (BUNDLE) baja del umbral, el build falla
+			     (haltOnFailure). El umbral es un RATCHET — se sube en cada PR que mejore la
+			     cobertura y JAMAS se baja. Objetivo del repo 0.80 superado (94% medido el
+			     2026-10-09); umbral actual 0.90, siguiente objetivo 0.95+. -->
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
@@ -188,9 +191,6 @@
 							<goal>report</goal>
 						</goals>
 					</execution>
-						<!-- Gate de coverage (issue #13): FALLA el verify si la cobertura LINE global
-						     baja del umbral. Ratchet: subir <value> en cada PR que mejore cobertura
-						     (0.86 = floor medido el 2026-10-09); jamas bajarlo. -->
 					<execution>
 						<id>check</id>
 						<phase>verify</phase>
@@ -205,8 +205,8 @@
 									<limits>
 										<limit>
 											<counter>LINE</counter>
-					<value>COVEREDRATIO</value>
-											<minimum>0.86</minimum>
+											<value>COVEREDRATIO</value>
+											<minimum>0.90</minimum>
 										</limit>
 									</limits>
 								</rule>
