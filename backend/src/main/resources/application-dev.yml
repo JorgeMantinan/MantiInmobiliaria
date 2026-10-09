@@ -13,3 +13,13 @@ spring:
     # locations a classpath:db/migration, de modo que en prod no hay seeds
     # tampoco aunque esta bandera no esté activa.
     out-of-order: true
+  jpa:
+    properties:
+      # FASE 7 (issue #31) — sólo DEV: al cierre de cada sesión Hibernate
+      # imprime queries, tiempo de carga/flush y statements (INFO), que es lo
+      # que hace falta para cazar N+1 sin añadir ruido. Se decidió NO activar
+      # también org.hibernate.SQL=DEBUG: imprimiría cada SELECT completo y el
+      # conteo/tiempos de generate_statistics ya orientan; si un día se
+      # necesita la query concreta se sube puntualmente el logger.
+      hibernate:
+        generate_statistics: true

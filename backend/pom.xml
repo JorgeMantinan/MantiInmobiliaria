@@ -67,6 +67,15 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
+		<!-- Cliente HTTP auto-configurado de Boot (RestClient/RestTemplate con
+		     HttpClientSettings). Hace falta para que apliquen las propiedades
+		     globales spring.http.clients.connect-timeout/read-timeout del issue
+		     #31: sin este starter el módulo spring-boot-http-client no está en el
+		     classpath y las claves no se bindean. Versión por el BOM. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-restclient</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>

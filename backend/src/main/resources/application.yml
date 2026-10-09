@@ -11,12 +11,33 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5433/manti}
     username: ${DB_USER:manti}
     password: ${DB_PASSWORD:manti_dev}
+    # FASE 7 (issue #31) — Hikari explícito. 10 conexiones es el default y NO
+    # se sube sin métrica que lo justifique: mirar hikaricp_connections_active
+    # y hikaricp_connections_pending en /actuator/metrics (issue #25) antes de
+    # tocarlo; más conexiones no arreglan queries lentas y saturan PostgreSQL.
+    # connection-timeout fija el default (30 s): nadie espera eternamente a una
+    # conexión libre del pool.
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 30000
   jpa:
     hibernate:
       ddl-auto: validate
     open-in-view: false
   flyway:
     enabled: true
+  # FASE 7 (issue #31) — timeouts por defecto del cliente HTTP saliente de
+  # Spring (RestClient/RestTemplate auto-configurados): 3 s de conexión y 5 s
+  # de lectura para que una llamada externa caída no colgue un hilo. Ojo:
+  # Brevo/Telegram NO pasan por aquí — usan su propio cliente con los MISMOS
+  # 3 s/5 s (NotificacionesHttpConfig) — y el OAuth2 de Google usa la pila de
+  # Spring Security. La clave correcta en Boot 4.1 es spring.http.clients.*
+  # (spring.http.client.* se deprecó en 4.0); exige spring-boot-restclient en
+  # el classpath (pom.xml).
+  http:
+    clients:
+      connect-timeout: 3s
+      read-timeout: 5s
   # FASE 7 (issue #26) — virtual threads en el servidor (Tomcat) y en las tareas
   # @Scheduled: los hilos HTTP sólo esperan I/O (JDBC, llamadas a Brevo/Telegram,
   # Google), así que el pool de platform threads deja de ser el cuello de
