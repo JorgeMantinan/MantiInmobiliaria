@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.test.web.servlet.MockMvc;
@@ -217,11 +216,6 @@ class GlobalExceptionHandlerTest {
         @PostMapping("/dummy/inesperado")
         String inesperado() {
             throw new IllegalStateException("detalle secreto del negocio");
-        }
-
-        @SuppressWarnings("unused")
-        String noLegible(HttpMessageNotReadableException ignored) {
-            return "nunca";
         }
     }
 }

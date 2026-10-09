@@ -43,7 +43,10 @@ class TelegramBotAdapterTest {
 
     @Test
     void enviar_sinToken_lanzaFalloDefinitivo() {
-        TelegramBotAdapter sinToken = new TelegramBotAdapter(RestClient.builder().build(),
+        // hermeticidad: cualquier petición inesperada revienta en el mock, sin red
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer.bindTo(builder).build();
+        TelegramBotAdapter sinToken = new TelegramBotAdapter(builder.build(),
                 propiedades(null, "-100123"), new ObjectMapper());
 
         assertThatThrownBy(() -> sinToken.enviar("-100123", "aviso"))
@@ -90,6 +93,8 @@ class TelegramBotAdapterTest {
                     assertThat(e).hasMessage("Telegram rechazó la petición (HTTP 404)");
                     assertThat(e.esReintentable()).isFalse();
                 });
+
+        servidor.verify();
     }
 
     @Test
@@ -102,6 +107,8 @@ class TelegramBotAdapterTest {
                     assertThat(e).hasMessage("Telegram no disponible (HTTP 502)");
                     assertThat(e.esReintentable()).isTrue();
                 });
+
+        servidor.verify();
     }
 
     @Test
@@ -114,6 +121,8 @@ class TelegramBotAdapterTest {
                     assertThat(e).hasMessage("Error de red con Telegram (ResourceAccessException)");
                     assertThat(e.esReintentable()).isTrue();
                 });
+
+        servidor.verify();
     }
 
     private static NotificacionesProperties propiedades(String token, String chatId) {

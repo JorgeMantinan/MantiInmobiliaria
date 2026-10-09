@@ -217,11 +217,30 @@ class AuthFlowTest {
                 .andExpect(status().isForbidden());
     }
 
+    /** Contrato RFC 9457 del entry point de seguridad (401) — PR #60, revisión. */
     @Test
-    void me_sinToken_devuelve401() throws Exception {
+    void me_sinToken_devuelve401ConContratoProblemDetail() throws Exception {
         mockMvc.perform(get("/api/v1/auth/me"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+                .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, containsString("Bearer")))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value(
+                        "https://api.manti.dev/problems/no-autenticado"))
+                .andExpect(jsonPath("$.title").value("No autenticado"));
+    }
+
+    /** Contrato RFC 9457 del access denied handler (403): USER contra ruta ADMIN. */
+    @Test
+    void endpointAdmin_conTokenDeUsuario_devuelve403ConContratoProblemDetail() throws Exception {
+        Sesion sesion = registrar(emailNuevo());
+
+        mockMvc.perform(get("/api/v1/admin/profesionales")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + sesion.accessToken()))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value(
+                        "https://api.manti.dev/problems/acceso-denegado"))
+                .andExpect(jsonPath("$.title").value("Acceso denegado"));
     }
 
     @Test

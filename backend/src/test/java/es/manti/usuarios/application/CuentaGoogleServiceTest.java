@@ -37,6 +37,7 @@ class CuentaGoogleServiceTest {
             new AuthProperties.Oauth2(new AuthProperties.Google("http://localhost:3000", TTL)),
             null);
 
+    // unidad de aislamiento; el vínculo real está cubierto por CuentaGoogleVinculoTest
     @Mock
     private UsuarioRepository usuarios;
 
@@ -62,7 +63,7 @@ class CuentaGoogleServiceTest {
                 });
         when(codigos.crear(eq(1L), eq(TTL))).thenReturn("cod-opaco");
 
-        String codigo = service.crearCodigoGoogle("g-123", "  Ana@Example.COM ", "Ana");
+        String codigo = service.crearCodigoGoogle("g-123", "  Ana@Example.COM ", "Ana", false);
 
         assertThat(codigo).isEqualTo("cod-opaco");
         ArgumentCaptor<Usuario> captor = ArgumentCaptor.forClass(Usuario.class);
@@ -73,6 +74,8 @@ class CuentaGoogleServiceTest {
         assertThat(guardado.getGoogleId()).isEqualTo("g-123");
         assertThat(guardado.getRol()).isEqualTo(Rol.USER);
         assertThat(guardado.isActivo()).isTrue();
+        // fail-closed (PR #59): claim email_verified ausente -> la cuenta NO queda verificada
+        assertThat(guardado.isEmailVerificado()).isFalse();
     }
 
     @Test
@@ -87,7 +90,7 @@ class CuentaGoogleServiceTest {
                 });
         when(codigos.crear(eq(1L), eq(TTL))).thenReturn("cod-opaco");
 
-        service.crearCodigoGoogle("g-123", "ana@example.com", "   ");
+        service.crearCodigoGoogle("g-123", "ana@example.com", "   ", true);
 
         ArgumentCaptor<Usuario> captor = ArgumentCaptor.forClass(Usuario.class);
         verify(usuarios).save(captor.capture());
@@ -97,12 +100,14 @@ class CuentaGoogleServiceTest {
     @Test
     void crearCodigoGoogle_conCuentaExistentePorEmail_laVinculaSinCambiarElNombre() {
         Usuario existente = usuario(10L, "ana@example.com", "Ana García", true);
+        // guard de #59: el vínculo sólo se permite con la cuenta local ya verificada
+        existente.setEmailVerificado(true);
         when(usuarios.findByGoogleId("g-123")).thenReturn(Optional.empty());
         when(usuarios.findByEmail("ana@example.com")).thenReturn(Optional.of(existente));
         when(usuarios.save(any(Usuario.class))).thenReturn(existente);
         when(codigos.crear(eq(10L), eq(TTL))).thenReturn("cod-opaco");
 
-        service.crearCodigoGoogle("g-123", "ana@example.com", "Ana de Google");
+        service.crearCodigoGoogle("g-123", "ana@example.com", "Ana de Google", true);
 
         // nombre propio no vacío → no se pisa con el del perfil de Google
         assertThat(existente.getNombre()).isEqualTo("Ana García");
@@ -116,7 +121,7 @@ class CuentaGoogleServiceTest {
         when(usuarios.findByGoogleId("g-123")).thenReturn(Optional.of(vinculada));
         when(codigos.crear(eq(10L), eq(TTL))).thenReturn("cod-opaco");
 
-        String codigo = service.crearCodigoGoogle("g-123", "ana@example.com", "Ana");
+        String codigo = service.crearCodigoGoogle("g-123", "ana@example.com", "Ana", true);
 
         assertThat(codigo).isEqualTo("cod-opaco");
         verify(usuarios, never()).save(any(Usuario.class));
@@ -128,7 +133,7 @@ class CuentaGoogleServiceTest {
         inactiva.setGoogleId("g-123");
         when(usuarios.findByGoogleId("g-123")).thenReturn(Optional.of(inactiva));
 
-        assertThatThrownBy(() -> service.crearCodigoGoogle("g-123", "ana@example.com", "Ana"))
+        assertThatThrownBy(() -> service.crearCodigoGoogle("g-123", "ana@example.com", "Ana", true))
                 .isInstanceOf(UsuarioInactivoException.class);
     }
 

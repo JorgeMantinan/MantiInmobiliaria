@@ -48,7 +48,10 @@ class BrevoEmailAdapterTest {
 
     @Test
     void enviar_sinApiKey_lanzaFalloDefinitivo() {
-        BrevoEmailAdapter sinCredencial = new BrevoEmailAdapter(RestClient.builder().build(),
+        // hermeticidad: cualquier petición inesperada revienta en el mock, sin red
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer.bindTo(builder).build();
+        BrevoEmailAdapter sinCredencial = new BrevoEmailAdapter(builder.build(),
                 new NotificacionesProperties(true, null, null), new ObjectMapper());
 
         assertThatThrownBy(() -> sinCredencial.enviar(DESTINO, ASUNTO, HTML))
@@ -60,7 +63,10 @@ class BrevoEmailAdapterTest {
 
     @Test
     void enviar_apiKeyEnBlanco_lanzaFalloDefinitivo() {
-        BrevoEmailAdapter sinCredencial = new BrevoEmailAdapter(RestClient.builder().build(),
+        // hermeticidad: cualquier petición inesperada revienta en el mock, sin red
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer.bindTo(builder).build();
+        BrevoEmailAdapter sinCredencial = new BrevoEmailAdapter(builder.build(),
                 new NotificacionesProperties(true, null,
                         new NotificacionesProperties.Brevo("  ", "no-reply@manti.dev", "Manti")),
                 new ObjectMapper());
@@ -95,6 +101,8 @@ class BrevoEmailAdapterTest {
                     assertThat(e).hasMessage("Brevo rechazó la petición (HTTP 400)");
                     assertThat(e.esReintentable()).isFalse();
                 });
+
+        servidor.verify();
     }
 
     @Test
@@ -107,6 +115,8 @@ class BrevoEmailAdapterTest {
                     assertThat(e).hasMessage("Brevo no disponible (HTTP 503)");
                     assertThat(e.esReintentable()).isTrue();
                 });
+
+        servidor.verify();
     }
 
     @Test
@@ -119,5 +129,7 @@ class BrevoEmailAdapterTest {
                     assertThat(e).hasMessage("Error de red con Brevo (ResourceAccessException)");
                     assertThat(e.esReintentable()).isTrue();
                 });
+
+        servidor.verify();
     }
 }

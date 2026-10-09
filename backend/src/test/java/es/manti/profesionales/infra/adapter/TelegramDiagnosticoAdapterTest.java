@@ -45,8 +45,10 @@ class TelegramDiagnosticoAdapterTest {
 
     @Test
     void chatsVistos_sinToken_lanzaFalloDefinitivo() {
-        TelegramDiagnosticoAdapter sinToken = new TelegramDiagnosticoAdapter(
-                RestClient.builder().build(),
+        // hermeticidad: cualquier petición inesperada revienta en el mock, sin red
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer.bindTo(builder).build();
+        TelegramDiagnosticoAdapter sinToken = new TelegramDiagnosticoAdapter(builder.build(),
                 new NotificacionesProperties(true,
                         new NotificacionesProperties.Telegram("  ", "-100123"), null),
                 new ObjectMapper());
@@ -76,6 +78,7 @@ class TelegramDiagnosticoAdapterTest {
                 new ChatVisto("-100123", "group", "hola grupo"));
         assertThat(chats.get(1)).isEqualTo(
                 new ChatVisto("42", "channel", "aviso canal"));
+        servidor.verify();
     }
 
     @Test
@@ -89,6 +92,7 @@ class TelegramDiagnosticoAdapterTest {
         List<ChatVisto> chats = adapter.chatsVistos();
 
         assertThat(chats).containsExactly(new ChatVisto("7", "private", "primer texto"));
+        servidor.verify();
     }
 
     @Test
@@ -102,6 +106,7 @@ class TelegramDiagnosticoAdapterTest {
         List<ChatVisto> chats = adapter.chatsVistos();
 
         assertThat(chats.get(0).textoMuestra()).hasSize(81).endsWith("\u2026");
+        servidor.verify();
     }
 
     @Test
@@ -114,6 +119,8 @@ class TelegramDiagnosticoAdapterTest {
                     assertThat(e).hasMessage("Telegram devolvió ok=false: Unauthorized");
                     assertThat(e.esReintentable()).isFalse();
                 });
+
+        servidor.verify();
     }
 
     @Test
@@ -126,6 +133,8 @@ class TelegramDiagnosticoAdapterTest {
                     assertThat(e).hasMessage("Respuesta de Telegram no interpretable");
                     assertThat(e.esReintentable()).isTrue();
                 });
+
+        servidor.verify();
     }
 
     @Test
@@ -137,6 +146,8 @@ class TelegramDiagnosticoAdapterTest {
                     assertThat(e).hasMessage("Telegram devolvió una respuesta vacía");
                     assertThat(e.esReintentable()).isTrue();
                 });
+
+        servidor.verify();
     }
 
     @Test
@@ -149,6 +160,8 @@ class TelegramDiagnosticoAdapterTest {
                     assertThat(e).hasMessage("Telegram rechazó getUpdates (HTTP 403)");
                     assertThat(e.esReintentable()).isFalse();
                 });
+
+        servidor.verify();
     }
 
     @Test
@@ -161,6 +174,8 @@ class TelegramDiagnosticoAdapterTest {
                     assertThat(e).hasMessage("Telegram no disponible (HTTP 504)");
                     assertThat(e.esReintentable()).isTrue();
                 });
+
+        servidor.verify();
     }
 
     @Test
@@ -173,5 +188,7 @@ class TelegramDiagnosticoAdapterTest {
                     assertThat(e).hasMessage("Error de red con Telegram (ResourceAccessException)");
                     assertThat(e.esReintentable()).isTrue();
                 });
+
+        servidor.verify();
     }
 }
