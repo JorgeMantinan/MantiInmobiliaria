@@ -66,12 +66,26 @@ Fuentes consultadas (julio–agosto 2026):
 - El despliegue "Production" inicial del proyecto (creado por la conexión Git)
   está vacío (404): no sirve nada hasta el primer release real desde `master`;
   la rama de producción de AMBOS proyectos está confirmada en `master`.
-- **El contenedor DEBE escuchar en `$PORT`** (default del runtime: 80). La
-  imagen fija `ENV PORT=8080` y el entrypoint propaga `-Dserver.port=${PORT}`;
-  el proyecto Vercel fija `PORT=8080` en project settings/env para que el proxy
-  y la app coincidan (8080 permite usuario no-root).
-- `HEALTHCHECK` de la imagen contra `/actuator/health` (sólo afecta a
-  Docker local; Vercel no lo usa).
+- **Región de funciones = `fra1` (Fráncfort)**, la misma región de Neon
+  (`eu-central-1`): menos latencia por roundtrip durante el arranque y respuestas
+  más rápidas para los usuarios. Configurada vía
+  `vercel api /v9/projects/<id> -X PATCH -f serverlessFunctionRegion=fra1`.
+- **Arranque y el relay socat**: el Container Runtime exige que algo acepte
+  TCP en `$PORT` en ~28 s (startup timeout); el arranque medido de este backend
+  en Vercel es de **~35 s** (`Started MantiBackendApplication in 34.5 s`), así
+  que sin más, cada invocación en frío devolvía
+  `FUNCTION_INVOCATION_FAILED`. La imagen fronta Java con un relay socat:
+  escucha en `$PORT` (8080) al instante — el probe de la plataforma pasa — y
+  cada petición se RETIENE en `relay.sh` (bucle `nc` + `socat -`) hasta que
+  Tomcat escuche en el interno **8081**. Al ser TCP crudo, los `X-Forwarded-*`
+  que inyecta el proxy de Vercel viajan intactos. La PRIMERA petición en frío
+  tarda ~35-45 s en responder; las siguientes, instantáneas. Con la
+  inactividad (`scale-to-zero`: 5 min en prod, 30 s en preview) el ciclo se
+  repite. Medido en preview: `GET /actuator/health` ⇒ `UP` (primera petición
+  ~43 s) y `GET /api/v1/gremios` ⇒ 200 con el catálogo.
+- `HEALTHCHECK` de la imagen contra la APP en `8081` (no contra el relay: si
+  Java no arranca, el health del contenedor queda en rojo; sólo afecta a
+  Docker local, Vercel no lo usa).
 - El CI de GitHub Actions (`.github/workflows/ci.yml`) NO cambia: gitleaks +
   tests backend (JDK 25 + PG 18) + lint/test/build frontend. Los despliegues
   los hace la integración Git de Vercel, no Actions.
@@ -108,6 +122,7 @@ eliminan y sólo queda `backend/Dockerfile`.
 | `TELEGRAM_CHAT_ID` | `.env` | Chat del grupo. |
 | `NOTIF_EMAIL_FROM` | `.env` | Remitente. |
 | `NOTIFICACIONES_ENABLED` | literal `true` | Activa el despachador de outbox. |
+| `SPRING_JPA_PROPERTIES_HIBERNATE_BOOT_ALLOW_JDBC_METADATA_ACCESS` | literal `false` | Hibernate no sondea el `DatabaseMetaData` al arrancar: ahorra varios roundtrips a Neon en el arranque. |
 
 Omitidas a propósito: `SPRINGDOC_ENABLED` (el perfil `prod` ya la apaga),
 `DB_NAME` y `NEON_POOLER_URI` (la app no las lee).
@@ -133,15 +148,22 @@ Get-Content .env | ... | vercel env add JWT_SECRET production   # PowerShell
 docker build -t manti-backend -f backend/Dockerfile backend/
 docker run --rm -p 8080:8080 --env-file <envs de prod> manti-backend
 
-# Salud del backend
+# Salud del backend (la PRIMERA petición en frío tarda ~35-45 s: el relay
+# retiene la petición mientras arranca la JVM; las siguientes son instantáneas)
 curl https://mantiinmobiliaria-api.vercel.app/actuator/health   # {"status":"UP"}
+
+# Los PREVIEWS del API tienen Deployment Protection (SSO de Vercel):
+# para probarlos desde CLI hay que usar el bypass automático del CLI
+vercel curl https://mantiinmobiliaria-api-git-<rama>-manti.vercel.app/actuator/health
 ```
 
 ## 5. Checklist de producción (Git Flow)
 
 1. `develop` verde (CI + revisión IA) → rama `release/X.Y.Z`.
 2. Smoke en preview: frontend responde y
-   `https://mantiinmobiliaria-api.vercel.app/actuator/health` ⇒ `UP`.
+   `https://mantiinmobiliaria-api.vercel.app/actuator/health` ⇒ `UP`
+   (permitirse la primera petición en frío: ~35-45 s; en previews probar con
+   `vercel curl`, van protegidos por SSO).
 3. PR `release/X.Y.Z` → `master`, CI verde, merge.
 4. Vercel despliega ambos proyectos desde `master` (production).
 5. Smoke de producción (ver §7) y etiquetado `vX.Y.Z`.
@@ -163,7 +185,8 @@ curl https://mantiinmobiliaria-api.vercel.app/actuator/health   # {"status":"UP"
 ## 7. Smoke test de producción
 
 1. `GET https://mantiinmobiliaria.vercel.app/` ⇒ 200 (HTML del portal).
-2. `GET https://mantiinmobiliaria-api.vercel.app/actuator/health` ⇒ `{"status":"UP"}`.
+2. `GET https://mantiinmobiliaria-api.vercel.app/actuator/health` ⇒ `{"status":"UP"}`
+   (si lleva >5 min sin tráfico, la primera petición en frío tarda ~35-45 s).
 3. Listado público: `GET https://mantiinmobiliaria-api.vercel.app/api/v1/inmuebles` ⇒ 200/404-vacío (sin error 5xx).
 4. Login con Google completo desde el front (callback + cookie + refresh).
 5. Una solicitud a profesional ⇒ email/Telegram en los minutos siguientes.
@@ -173,8 +196,14 @@ curl https://mantiinmobiliaria-api.vercel.app/actuator/health   # {"status":"UP"
 - **Plan Hobby**: Container Runtime sigue los límites y la pricing Active CPU
   de Vercel Functions (cuota de CPU-hours incluida; el contenedor escala a
   cero a los 5 min sin tráfico en producción y 30 s en preview; máximo 300 s
-  por request). Un arranque en frío de Spring Boot se paga en la primera
-  petición.
+  por request).
+- **Cold start de ~35-45 s** (medido: `Started MantiBackendApplication in
+  34.5 s` en fra1): el arranque en frío se paga en la PRIMERA petición de cada
+  ciclo de vida del contenedor (el relay la retiene, no la falla). Mejoras
+  futuras, por orden de rentabilidad: Spring AOT (`process-aot` + runtime
+  `-Dspring.aot.enabled=true`) o imagen nativa GraalVM para bajar el arranque
+  a <10 s; sonda de keep-alive cada <5 min en producción si el tráfico es
+  muy esporádico.
 - **Cuota de builds de contenedores**: cada push construye la imagen del
   backend (capa de dependencias cacheada por Vercel). Si se agota la cuota de
   builds del plan, los pushes no despliegan hasta el reset.
