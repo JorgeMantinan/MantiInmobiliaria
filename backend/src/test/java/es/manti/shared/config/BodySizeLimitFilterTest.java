@@ -53,6 +53,21 @@ class BodySizeLimitFilterTest {
                         .value("https://api.manti.dev/problems/payload-too-large"));
     }
 
+    /** Chunked real (MockMvc no setea Content-Length): el stream contado da 413. */
+    @Test
+    void login_chunkedSinContentLength_conCuerpoGrande_devuelve413() throws Exception {
+        byte[] cuerpoGrande = new byte[300_000]; // > 256 KiB, sin Content-Length
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(cuerpoGrande))
+                .andExpect(status().isPayloadTooLarge())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(413))
+                .andExpect(jsonPath("$.type")
+                        .value("https://api.manti.dev/problems/payload-too-large"));
+    }
+
     /** Sin Content-Length declarada (chunked) el filtro deja pasar la petición:
      *  el login llega al controlador y sólo falla por credenciales (401). */
     @Test
