@@ -92,10 +92,11 @@ Fuentes consultadas (julio–agosto 2026):
 
 ### Sincronización de ficheros Docker (deuda conocida)
 
-`backend/Dockerfile` (canónico, para builds locales/CI) y
-`backend/Dockerfile.vercel` (para Vercel) son copias idénticas; sus
-`.dockerignore` gemelos son `Dockerfile.dockerignore` y
-`Dockerfile.vercel.dockerignore`. Al cambiar uno, cambiar los cuatro. Cuando se
+`backend/Dockerfile` (canónico) y `backend/Dockerfile.vercel` (para Vercel)
+comparten cuerpo de build idéntico; sólo difieren en las cabeceras-comentario.
+Sus `.dockerignore` gemelos son `Dockerfile.dockerignore` y
+`Dockerfile.vercel.dockerignore`. El job `docker-sync` de CI falla si los
+cuerpos divergen; al cambiar uno, cambiar los cuatro. Cuando se
 migre a Services con `vercel.json` raíz, `Dockerfile.vercel` y sus gemelos se
 eliminan y sólo queda `backend/Dockerfile`.
 
@@ -142,7 +143,9 @@ Verificación: `vercel env ls` (sólo nombres), jamás imprimir valores.
 vercel link --yes --project mantiinmobiliaria-api -S manti
 
 # Añadir una variable SIN imprimir el valor (lee de stdin)
-Get-Content .env | ... | vercel env add JWT_SECRET production   # PowerShell
+Get-Content .env | Where-Object { $_ -like 'JWT_SECRET=*' } |
+    ForEach-Object { $_ -replace '^JWT_SECRET=','' } |
+    vercel env add JWT_SECRET production   # PowerShell
 
 # Build y smoke local del contenedor
 docker build -t manti-backend -f backend/Dockerfile backend/

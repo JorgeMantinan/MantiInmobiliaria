@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1
-# ATENCIÓN: copia idéntica de ../Dockerfile para la integración Git de Vercel.
+# ATENCIÓN: copia idéntica de ./Dockerfile (mismo directorio) para la integración Git de Vercel.
 # El proyecto Vercel "mantiinmobiliaria-api" (Root Directory=backend, Framework
 # Preset=Container) construye este fichero como container image en cada push.
-# CUALQUIER cambio aquí debe replicarse en ../Dockerfile (y sus .dockerignore
-# gemelos: Dockerfile.vercel.dockerignore / Dockerfile.dockerignore). Ver
-# .github/DEPLOY.md.
+# CUALQUIER cambio aquí debe replicarse en ./Dockerfile (y sus .dockerignore
+# gemelos: Dockerfile.vercel.dockerignore / Dockerfile.dockerignore). El job
+# docker-sync de CI comprueba que los cuerpos no divergen. Ver .github/DEPLOY.md.
 #
 # POR QUÉ un relay delante de Java: el Container Runtime de Vercel exige que
 # algo acepte TCP en $PORT en ~28 s (startup timeout); el arranque de Spring
@@ -43,4 +43,4 @@ ENV PORT=8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=120s --retries=3 \
   CMD wget -qO- "http://127.0.0.1:8081/actuator/health" | grep -q '"status":"UP"' || exit 1
 # El relay acepta en $PORT (8080) de inmediato; Java escucha en el interno 8081.
-ENTRYPOINT ["sh","-c","socat TCP-LISTEN:8080,fork,reuseaddr SYSTEM:/app/relay.sh & exec java -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/urandom -Dserver.port=8081 -jar app.jar"]
+ENTRYPOINT ["sh","-c","socat TCP-LISTEN:${PORT:-8080},fork,reuseaddr SYSTEM:/app/relay.sh & exec java -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/urandom -Dserver.port=8081 -jar app.jar"]

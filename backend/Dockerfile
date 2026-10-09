@@ -41,4 +41,4 @@ ENV PORT=8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=120s --retries=3 \
   CMD wget -qO- "http://127.0.0.1:8081/actuator/health" | grep -q '"status":"UP"' || exit 1
 # El relay acepta en $PORT (8080) de inmediato; Java escucha en el interno 8081.
-ENTRYPOINT ["sh","-c","socat TCP-LISTEN:8080,fork,reuseaddr SYSTEM:/app/relay.sh & exec java -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/urandom -Dserver.port=8081 -jar app.jar"]
+ENTRYPOINT ["sh","-c","socat TCP-LISTEN:${PORT:-8080},fork,reuseaddr SYSTEM:/app/relay.sh & exec java -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/urandom -Dserver.port=8081 -jar app.jar"]
