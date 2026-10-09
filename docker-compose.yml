@@ -8,7 +8,9 @@ services:
       POSTGRES_USER: manti
       POSTGRES_PASSWORD: manti_dev
     ports:
-      - "5433:5432"
+      # Sólo localhost: el Postgres de desarrollo NO se expone en todas las
+      # interfaces (5433 en local; el equipo tiene otro PG nativo en el 5432).
+      - "127.0.0.1:5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql
     healthcheck:

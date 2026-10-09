@@ -105,6 +105,10 @@ public class AuthService {
             usuario.setPasswordHash(passwordHash);
             usuario.setRol(Rol.USER);
             usuario.setActivo(true);
+            // emailVerificado queda a false (default de la columna V5): una
+            // cuenta local sin verificar NO acepta vínculo Google (guard en
+            // Usuario.vincularGoogle). El flujo de verificación de email es un
+            // follow-up documentado en el PR.
             usuarios.save(usuario);
             return emitirSesion(usuario);
         });

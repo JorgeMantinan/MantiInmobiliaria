@@ -9,6 +9,7 @@ import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,11 @@ public class JwtService {
 
     private static final int CLAVE_MINIMA_BYTES = 32;
 
+    /** Issuer de los access tokens: lo firma al emitir y lo EXIGE el decoder
+     *  ({@link JwtValidators#createDefaultWithIssuer}), de modo que un token
+     *  firmado con la misma clave pero emitido por otra "app" no valida. */
+    private static final String ISSUER = "manti-backend";
+
     private final JwtEncoder encoder;
     private final JwtDecoder decoder;
     private final AuthProperties properties;
@@ -51,9 +57,15 @@ public class JwtService {
         }
         SecretKeySpec key = new SecretKeySpec(clave, "HmacSHA256");
         this.encoder = new NimbusJwtEncoder(new ImmutableSecret<>(key));
-        this.decoder = NimbusJwtDecoder.withSecretKey(key)
+        // Spring Security 7: el builder de clave simétrica no expone
+        // .validator(...), así que se fija tras construirlo. Valida expiración
+        // (default) Y el issuer: un token con la misma clave firmado por otra
+        // "app" no autentica.
+        NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withSecretKey(key)
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
+        jwtDecoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(ISSUER));
+        this.decoder = jwtDecoder;
         log.info("JWT HS256 inicializado (TTL access {}s)", properties.jwt().accessTokenTtl().toSeconds());
     }
 
@@ -64,7 +76,7 @@ public class JwtService {
     public String crearAccessToken(Usuario usuario) {
         Instant ahora = Instant.now();
         JwtClaimsSet claims = JwtClaimsSet.builder()
-                .issuer("manti-backend")
+                .issuer(ISSUER)
                 .subject(String.valueOf(usuario.getId()))
                 // jti único: dos tokens emitidos en el mismo segundo nunca son idénticos
                 // (firma HS256 determinista sobre claims idénticos).

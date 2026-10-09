@@ -15,6 +15,7 @@ class UsuarioVincularGoogleTest {
         usuario.setGoogleId(googleId);
         usuario.setRol(Rol.USER);
         usuario.setActivo(true);
+        usuario.setEmailVerificado(true); // cuenta verificada: acepta vínculo
         return usuario;
     }
 
@@ -53,5 +54,16 @@ class UsuarioVincularGoogleTest {
         usuario.vincularGoogle("gid-2", "Nombre De Google");
 
         assertThat(usuario.getNombre()).isEqualTo("Nombre De Google");
+    }
+
+    /** Guard anti-ATO: una cuenta local sin verificar su email no vincula Google. */
+    @Test
+    void vincularGoogle_cuentaSinVerificar_lanzaCuentaGoogleSinVerificar() {
+        Usuario usuario = usuario(null, "Ana");
+        usuario.setEmailVerificado(false);
+
+        assertThatThrownBy(() -> usuario.vincularGoogle("gid-atacante", "X"))
+                .isInstanceOf(CuentaGoogleSinVerificarException.class);
+        assertThat(usuario.getGoogleId()).isNull(); // nada cambia en la cuenta
     }
 }

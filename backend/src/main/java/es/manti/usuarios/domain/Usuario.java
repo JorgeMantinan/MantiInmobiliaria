@@ -53,6 +53,15 @@ public class Usuario {
     @Column(name = "activo", nullable = false)
     private boolean activo;
 
+    /**
+     * Email verificado por su propietario o por el proveedor OIDC. Nace a
+     * {@code false} en los registros locales (V5) y a {@code true} cuando la
+     * cuenta se crea desde Google. Es la condición para aceptar un vínculo
+     * Google (ver {@link #vincularGoogle}): cierra el pre-hijack de cuentas.
+     */
+    @Column(name = "email_verificado", nullable = false)
+    private boolean emailVerificado;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -63,14 +72,21 @@ public class Usuario {
 
     /**
      * Vincula la cuenta de Google al usuario (o la re-vincula si es el mismo
-     * google_id). Si la cuenta ya estaba vinculada a OTRO google_id, se
-     * rechaza con {@link CuentaGoogleConflictivaException}.
+     * google_id). Guard 1: si la cuenta local nunca verificó su email se
+     * rechaza con {@link CuentaGoogleSinVerificarException} — sin verificar,
+     * un registro local con un email ajeno podría "interceptar" el login con
+     * Google de su propietario real (pre-hijack / ATO). Guard 2: si la cuenta
+     * ya estaba vinculada a OTRO google_id, se rechaza con
+     * {@link CuentaGoogleConflictivaException}.
      *
      * @param googleId       identificador (sub) de Google
      * @param nombreSugerido nombre del perfil de Google; sólo se usa si el
      *                       usuario no tiene nombre propio
      */
     public void vincularGoogle(String googleId, String nombreSugerido) {
+        if (!this.emailVerificado) {
+            throw new CuentaGoogleSinVerificarException();
+        }
         if (this.googleId != null && !this.googleId.equals(googleId)) {
             throw new CuentaGoogleConflictivaException();
         }

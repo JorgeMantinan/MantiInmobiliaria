@@ -101,6 +101,12 @@ jobs:
       - name: Audit producción
         run: npm audit --omit=dev --audit-level=high
 
+      # Gate de CRITICAL desde ya, sin --omit=dev: los 5 high de dev (cadena
+      # eslint-config-next) van en el issue #11; NO subir este paso a
+      # --audit-level=high sin --omit=dev porque rompería el CI hoy.
+      - name: Audit crítica (incluye dev)
+        run: npm audit --audit-level=critical
+
       - name: Build
         run: npm run build
         env:
