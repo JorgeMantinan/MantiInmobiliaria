@@ -110,6 +110,20 @@ class GoogleOAuth2SuccessHandlerTest {
                 "Claim False", false);
     }
 
+    /** Fail-closed: claim AUSENTE → la cuenta creada desde Google queda sin verificar. */
+    @Test
+    void alAutenticarConGoogle_sinClaimEmailVerified_creaLaCuentaSinVerificar() throws Exception {
+        OidcUser oidc = oidcUser("google-id-222", "sin-claim@example.com", "Sin Claim");
+        when(oidc.getClaims()).thenReturn(Map.of());
+        when(cuentaGoogle.crearCodigoGoogle(anyString(), anyString(), anyString(), eq(false)))
+                .thenReturn("CODIGO-SIN-CLAIM");
+
+        handler.onAuthenticationSuccess(new MockHttpServletRequest(), response, autenticacion(oidc));
+
+        verify(cuentaGoogle).crearCodigoGoogle("google-id-222", "sin-claim@example.com",
+                "Sin Claim", false);
+    }
+
     @Test
     void alAutenticarConGoogle_invalidaLaSesionDelNavegador() throws Exception {
         OidcUser oidc = oidcUser("google-id-000", "sesion@example.com", "Sin Sesión");
@@ -124,6 +138,25 @@ class GoogleOAuth2SuccessHandlerTest {
         // El flujo JWT no deja JSESSIONID detrás del callback de Google
         assertThat(sesion.isInvalid()).isTrue();
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
+
+    /** Los caminos de ERROR también invalidan la sesión del navegador. */
+    @Test
+    void alAutenticarConGoogleConError_invalidaLaSesionDelNavegador() throws Exception {
+        OidcUser oidc = oidcUser("google-id-err", "error@example.com", "Con Error");
+        when(cuentaGoogle.crearCodigoGoogle(anyString(), anyString(), anyString(), anyBoolean()))
+                .thenThrow(new CuentaGoogleSinVerificarException());
+        MockHttpServletRequest peticion = new MockHttpServletRequest();
+        MockHttpSession sesion = new MockHttpSession();
+        peticion.setSession(sesion);
+
+        handler.onAuthenticationSuccess(peticion, response, autenticacion(oidc));
+
+        assertThat(response.getRedirectedUrl())
+                .isEqualTo("http://localhost:3000/auth/google/callback?error=account_conflict");
+        assertThat(sesion.isInvalid())
+                .as("el error no debe dejar JSESSIONID detrás del callback")
+                .isTrue();
     }
 
     // ------------------------------------------------------------------

@@ -49,31 +49,39 @@ public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler 
             invalidarSesionDeNavegador(request);
             response.sendRedirect(consultaFrontend("code=" + URLEncoder.encode(codigo, StandardCharsets.UTF_8)));
         } catch (MissingEmailException e) {
+            invalidarSesionDeNavegador(request);
             log.warn("Login con Google incompleto: {}", e.getMessage());
             response.sendRedirect(consultaFrontend("error=missing_email"));
         } catch (NonOidcException e) {
+            invalidarSesionDeNavegador(request);
             log.warn("Login con Google con principal no OIDC: {}", e.getMessage());
             response.sendRedirect(consultaFrontend("error=unsupported"));
         } catch (UsuarioInactivoException e) {
+            invalidarSesionDeNavegador(request);
             log.warn("Login con Google de cuenta desactivada");
             response.sendRedirect(consultaFrontend("error=account_disabled"));
         } catch (CuentaGoogleConflictivaException e) {
+            invalidarSesionDeNavegador(request);
             log.warn("Login con Google rechazado por conflicto de vinculación");
             response.sendRedirect(consultaFrontend("error=account_conflict"));
         } catch (CuentaGoogleSinVerificarException e) {
             // Pre-hijack: existe una cuenta local con ese email sin verificar.
             // Mismo código account_conflict que el frontend ya interpreta.
+            invalidarSesionDeNavegador(request);
             log.warn("Login con Google rechazado: la cuenta local con ese email no está verificada");
             response.sendRedirect(consultaFrontend("error=account_conflict"));
         }
     }
 
     /**
-     * Claim {@code email_verified} del token OIDC: {@code true} si está ausente
-     * (Google sólo envía {@code false} de forma explícita) o si es {@code true}.
+     * Claim {@code email_verified} del token OIDC. <b>Fail-closed</b>: sólo
+     * cuenta como verificada la afirmación EXPLÍCITA {@code true}; si el
+     * claim está ausente (o llega raro) la cuenta creada desde Google nace
+     * SIN verificar. Ese guard no la bloquea: su relogin posterior va por
+     * {@code google_id} (camino de búsqueda, no de vínculo).
      */
     private static boolean emailVerificado(OidcUser oidc) {
-        return !Boolean.FALSE.equals(oidc.getClaims().get("email_verified"));
+        return Boolean.TRUE.equals(oidc.getClaims().get("email_verified"));
     }
 
     private static OidcUser usuarioOidc(Authentication authentication) {
