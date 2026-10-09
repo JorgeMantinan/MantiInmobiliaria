@@ -74,6 +74,18 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * El stream contado de {@code BodySizeLimitFilter} detectó al LEER el
+     * cuerpo que supera los 256 KiB (cierra el hueco chunked, sin
+     * {@code Content-Length}). Mismo type que el rechazo por cabecera.
+     */
+    @ExceptionHandler(PayloadTooLargeException.class)
+    public ProblemDetail cuerpoDemasiadoGrande(HttpServletRequest request) {
+        return Problems.crear(HttpStatus.PAYLOAD_TOO_LARGE, "payload-too-large",
+                "Cuerpo demasiado grande",
+                "El cuerpo de la petición supera el máximo permitido (256 KiB)", request);
+    }
+
+    /**
      * Query param con un valor que no se puede convertir ({@code estado=XYZ},
      * {@code limit=abc}...). Se rellena {@code errors[] = [{field, message}]}
      * para que el cliente sepa qué parámetro ha fallado, igual que en la

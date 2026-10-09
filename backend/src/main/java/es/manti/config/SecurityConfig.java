@@ -1,5 +1,6 @@
 package es.manti.config;
 
+import es.manti.shared.config.BodySizeLimitFilter;
 import es.manti.usuarios.api.GoogleOAuth2FailureHandler;
 import es.manti.usuarios.api.GoogleOAuth2SuccessHandler;
 import es.manti.usuarios.application.AuthProperties;
@@ -51,6 +52,8 @@ import java.util.List;
  *       ({@link CookieEndpointCsrfFilter}); se documenta en el PR.</li>
  *   <li>Rate limit en memoria por IP para login/registro
  *       ({@link AuthRateLimitFilter}).</li>
+ *   <li>Límite de tamaño de cuerpo: {@code Content-Length} &gt; 256 KiB → 413
+ *       ({@link BodySizeLimitFilter}).</li>
  * </ul>
  */
 @Configuration
@@ -163,7 +166,10 @@ public class SecurityConfig {
                 .headers(headers -> headers
                         .addHeaderWriter(new StaticHeadersWriter("Referrer-Policy", "no-referrer")))
                 // Filtros propios antes de la comprobación de autorización:
-                // rate limit por IP y CSRF por cabecera en los endpoints con cookie.
+                // límite de tamaño de cuerpo (413), rate limit por IP y CSRF
+                // por cabecera en los endpoints con cookie. El de cuerpo va
+                // PRIMERO: se rechaza el payload antes de contar el rate limit.
+                .addFilterBefore(new BodySizeLimitFilter(), AuthorizationFilter.class)
                 .addFilterBefore(new CookieEndpointCsrfFilter(), AuthorizationFilter.class)
                 .addFilterBefore(new AuthRateLimitFilter(authProperties), AuthorizationFilter.class);
 

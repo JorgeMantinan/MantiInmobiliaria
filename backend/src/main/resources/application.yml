@@ -58,6 +58,14 @@ spring:
 
 server:
   port: 8080
+  tomcat:
+    # Límite de tamaño de cuerpo (A04): BodySizeLimitFilter devuelve 413 con
+    # Content-Length > 256 KiB; aquí se acota además lo que Tomcat "se traga"
+    # al desconectar una petición rechazada (es el respaldo para cuerpos
+    # chunked, sin Content-Length declarada). NOTA: max-http-post-size /
+    # max-http-form-post-size NO aplican a JSON: sólo miden cuerpos de
+    # formularios (application/x-www-form-urlencoded).
+    max-swallow-size: 256KB
 
 springdoc:
   # Se pueden apagar en prod con SPRINGDOC_ENABLED=false (recomendado junto al

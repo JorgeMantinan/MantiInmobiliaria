@@ -6,6 +6,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -21,6 +22,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * FASE 5, solicitudes de servicio (10/hora) y registro de profesionales
  * (5/hora). Cada ruta lleva SU ventana, configurable con
  * {@code auth.rate-limit.*}.
+ *
+ * <p>La respuesta 429 lleva la cabecera {@code Retry-After} con los segundos
+ * que faltan para liberar la primera plaza de la ventana (redondeo al alza).</p>
  *
  * <p>Nota despliegue: la IP se toma de {@code remoteAddr}; si el backend va
  * detrás de un reverse proxy hay que activar
@@ -65,7 +69,12 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         // La clave usa la ruta normalizada: si usara la cruda, cada
         // variante ";x=1", "%6C..." tendría su propia ventana y se evade el límite.
         String clave = ruta + '|' + ipDe(request);
-        if (!permitido(clave, limite)) {
+        long esperaMs = msDeEspera(clave, limite);
+        if (esperaMs > 0) {
+            // Segundos enteros hasta liberar la primera plaza de la ventana
+            // (redondeo al alza, mínimo 1): RFC 9110, Retry-After en segundos.
+            long segundos = Math.max(1, (esperaMs + 999) / 1000);
+            response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(segundos));
             ProblemResponseWriter.write(response, HttpStatus.TOO_MANY_REQUESTS,
                     "rate-limit", "Demasiadas peticiones",
                     "Límite de peticiones alcanzado; inténtelo de nuevo en " + espera(limite),
@@ -98,7 +107,13 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         return limite.ventanaMs() == VENTANA_HORA_MS ? "una hora" : "un minuto";
     }
 
-    private boolean permitido(String clave, Limite limite) {
+    /**
+     * Devuelve {@code 0} si la petición cabe en la ventana (y la registra);
+     * si no, los milisegundos que faltan para que expire la marca más antigua
+     * de la ventana (lo que tarda en liberarse la primera plaza), que es lo
+     * que se refleja en la cabecera {@code Retry-After} de la 429.
+     */
+    private long msDeEspera(String clave, Limite limite) {
         limpiarSiDesbordado();
         Ventana ventana = ventanas.computeIfAbsent(clave,
                 k -> new Ventana(limite.ventanaMs(), new ArrayDeque<>()));
@@ -108,11 +123,16 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             while (!marcas.isEmpty() && marcas.peekFirst() < ahora - ventana.ventanaMs()) {
                 marcas.pollFirst();
             }
-            if (marcas.size() >= limite.peticiones()) {
-                return false;
+            if (marcas.size() < limite.peticiones()) {
+                marcas.addLast(ahora);
+                return 0L;
             }
-            marcas.addLast(ahora);
-            return true;
+            Long primeraMarca = marcas.peekFirst();
+            // Límite 0 (o ventana vacía tras la limpieza): no hay marca de la
+            // que restar — se espera la ventana entera en vez de fallar con NPE.
+            return primeraMarca == null
+                    ? ventana.ventanaMs()
+                    : primeraMarca + ventana.ventanaMs() - ahora;
         }
     }
 
