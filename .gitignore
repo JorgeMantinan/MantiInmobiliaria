@@ -26,6 +26,13 @@ next-env.d.ts
 !.vscode/extensions.json
 !.vscode/settings.json
 
+# ===== Docs API =====
+# Metadata residual que openapi-generator deja en la raíz de la spec al
+# regenerar docs/openapi/gen (el contenido versionado está en gen/).
+docs/openapi/.openapi-generator/
+# Salida intermedia del perfil docs (se renombra a api-reference.pdf)
+docs/openapi/index.pdf
+
 # ===== Sistema =====
 .DS_Store
 Thumbs.db

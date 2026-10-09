@@ -1,0 +1,3415 @@
+= MantiInmobiliaria API
+team@openapitools.org
+v1
+:toc: left
+:numbered:
+:toclevels: 4
+:source-highlighter: highlightjs
+:keywords: openapi, rest, MantiInmobiliaria API
+:specDir: 
+:snippetDir: 
+:generator-template: v1 2019-12-20
+:info-url: https://openapi-generator.tech
+:app-name: MantiInmobiliaria API
+
+[abstract]
+.Abstract
+API del portal inmobiliario MantiInmobiliaria
+
+
+// markup not found, no include::{specDir}intro.adoc[opts=optional]
+
+
+== Access
+
+
+* *Bearer* Authentication 
+
+
+
+
+
+== Endpoints
+
+
+[.Auth]
+=== Auth
+
+
+[.canjearCodigoGoogle]
+==== canjearCodigoGoogle
+
+`POST /api/v1/auth/oauth2/token`
+
+Canjea el código del callback de Google por la sesión
+
+===== Description
+
+Segundo paso del flujo Google: el frontend intercambia aquí el código opaco de un solo uso recibido en /auth/google/callback.
+
+
+// markup not found, no include::{specDir}api/v1/auth/oauth2/token/POST/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+====== Body Parameter
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| OAuth2TokenRequest
+|  <<OAuth2TokenRequest>>
+| X
+| 
+| 
+
+|===
+
+
+
+
+
+===== Return Type
+
+<<AuthResponse>>
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| Código válido; sesión emitida
+|  <<AuthResponse>>
+
+
+| 400
+| Código ausente o inválido (ProblemDetail)
+|  <<ProblemDetail>>
+
+
+| 401
+| Código inválido o caducado
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/auth/oauth2/token/POST/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/auth/oauth2/token/POST/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/auth/oauth2/token/POST/POST.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/auth/oauth2/token/POST/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.cerrarSesion]
+==== cerrarSesion
+
+`POST /api/v1/auth/logout`
+
+Invalida el refresh token y borra la cookie
+
+===== Description
+
+Requiere la cabecera `X-Requested-With: XMLHttpRequest` (protección CSRF elegida).
+
+
+// markup not found, no include::{specDir}api/v1/auth/logout/POST/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+
+
+
+
+
+===== Return Type
+
+
+
+-
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 204
+| Sesión cerrada (siempre, aunque el token fuera inválido)
+|  <<>>
+
+
+| 403
+| Falta la cabecera X-Requested-With
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/auth/logout/POST/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/auth/logout/POST/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/auth/logout/POST/POST.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/auth/logout/POST/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.login]
+==== login
+
+`POST /api/v1/auth/login`
+
+Autentica con email y password
+
+===== Description
+
+
+
+
+// markup not found, no include::{specDir}api/v1/auth/login/POST/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+====== Body Parameter
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| LoginRequest
+|  <<LoginRequest>>
+| X
+| 
+| 
+
+|===
+
+
+
+
+
+===== Return Type
+
+<<AuthResponse>>
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| Credenciales válidas; sesión emitida
+|  <<AuthResponse>>
+
+
+| 401
+| Credenciales incorrectas (ProblemDetail)
+|  <<ProblemDetail>>
+
+
+| 429
+| Demasiados intentos (rate limit)
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/auth/login/POST/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/auth/login/POST/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/auth/login/POST/POST.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/auth/login/POST/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.refrescar]
+==== refrescar
+
+`POST /api/v1/auth/refresh`
+
+Rota el refresh token de la cookie y emite un nuevo access token
+
+===== Description
+
+Requiere la cookie httpOnly de refresh y la cabecera `X-Requested-With: XMLHttpRequest` (protección CSRF elegida).
+
+
+// markup not found, no include::{specDir}api/v1/auth/refresh/POST/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+
+
+
+
+
+===== Return Type
+
+<<AuthResponse>>
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| Sesión renovada
+|  <<AuthResponse>>
+
+
+| 401
+| Refresh token inválido o caducado
+|  <<ProblemDetail>>
+
+
+| 403
+| Falta la cabecera X-Requested-With
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/auth/refresh/POST/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/auth/refresh/POST/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/auth/refresh/POST/POST.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/auth/refresh/POST/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.registrar]
+==== registrar
+
+`POST /api/v1/auth/register`
+
+Registra un usuario y le devuelve la sesión (auto-login)
+
+===== Description
+
+
+
+
+// markup not found, no include::{specDir}api/v1/auth/register/POST/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+====== Body Parameter
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| RegistroRequest
+|  <<RegistroRequest>>
+| X
+| 
+| 
+
+|===
+
+
+
+
+
+===== Return Type
+
+<<AuthResponse>>
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 201
+| Usuario creado; sesión emitida
+|  <<AuthResponse>>
+
+
+| 400
+| Validación fallida (ProblemDetail)
+|  <<ProblemDetail>>
+
+
+| 409
+| Email ya registrado
+|  <<ProblemDetail>>
+
+
+| 429
+| Demasiados intentos (rate limit)
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/auth/register/POST/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/auth/register/POST/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/auth/register/POST/POST.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/auth/register/POST/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.usuarioActual]
+==== usuarioActual
+
+`GET /api/v1/auth/me`
+
+Devuelve el usuario autenticado (access token requerido)
+
+===== Description
+
+
+
+
+// markup not found, no include::{specDir}api/v1/auth/me/GET/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+
+
+
+
+
+===== Return Type
+
+<<UsuarioSummary>>
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| Usuario autenticado
+|  <<UsuarioSummary>>
+
+
+| 401
+| Sin token o token caducado
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/auth/me/GET/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/auth/me/GET/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/auth/me/GET/GET.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/auth/me/GET/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.Gremios]
+=== Gremios
+
+
+[.listarGremios]
+==== listarGremios
+
+`GET /api/v1/gremios`
+
+Lista el catálogo de gremios
+
+===== Description
+
+Devuelve todos los oficios disponibles con su `slug` (identificador que los formularios envían en `gremios[]`) y su `nombre`. Recurso estático: `Cache-Control: public, max-age=60`.
+
+
+// markup not found, no include::{specDir}api/v1/gremios/GET/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+
+
+
+
+
+===== Return Type
+
+array[<<GremioResponse>>]
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| Catálogo completo (array de {slug, nombre})
+| List[<<GremioResponse>>] 
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/gremios/GET/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/gremios/GET/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/gremios/GET/GET.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/gremios/GET/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.Inmuebles]
+=== Inmuebles
+
+
+[.detalle]
+==== detalle
+
+`GET /api/v1/inmuebles/{id}`
+
+Detalle completo de un inmueble
+
+===== Description
+
+404 si no existe o si fue eliminado (soft-delete).
+
+
+// markup not found, no include::{specDir}api/v1/inmuebles/\{id\}/GET/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+====== Path Parameters
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| id
+| Identificador del inmueble 
+| X
+| null
+| 
+
+|===
+
+
+
+
+
+
+===== Return Type
+
+<<InmuebleResponse>>
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| Inmueble encontrado
+|  <<InmuebleResponse>>
+
+
+| 404
+| Inexistente o eliminado (ProblemDetail)
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/inmuebles/\{id\}/GET/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/inmuebles/\{id\}/GET/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/inmuebles/{id}/GET/GET.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/inmuebles/\{id\}/GET/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.listar]
+==== listar
+
+`GET /api/v1/inmuebles`
+
+Lista inmuebles con filtros y paginación por cursor
+
+===== Description
+
+Orden por defecto `created_at DESC, id DESC` (o `sort=precio_asc|precio_desc`). La paginación es keyset: pase `nextCursor` como `cursor` para la página siguiente. `limit` se acota a 1..50 (20 por defecto).
+
+
+// markup not found, no include::{specDir}api/v1/inmuebles/GET/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+
+
+
+====== Query Parameters
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| estado
+| Estado comercial (VENTA o ALQUILER) 
+| -
+| null
+| 
+
+| tipo
+| Tipo de inmueble (PISO, CASA, ATICO, DUPLEX, ESTUDIO, LOCAL, TERRENO) 
+| -
+| null
+| 
+
+| municipio
+| Municipio, coincidencia parcial e insensible a mayúsculas (máx. 120) 
+| -
+| null
+| 
+
+| precioMin
+| Precio mínimo en euros (&gt;&#x3D; 0; no puede superar precioMax) 
+| -
+| null
+| 
+
+| precioMax
+| Precio máximo en euros (&gt;&#x3D; 0; no puede ser menor que precioMin) 
+| -
+| null
+| 
+
+| habitacionesMin
+| Número mínimo de habitaciones 
+| -
+| null
+| 
+
+| destacado
+| Sólo destacados (true) o sólo no destacados (false) 
+| -
+| null
+| 
+
+| cursor
+| Cursor opaco de la página anterior (base64); ausente en la primera página 
+| -
+| null
+| 
+
+| sort
+| Orden: precio_asc o precio_desc (por defecto, más recientes) 
+| -
+| null
+| 
+
+| limit
+| Tamaño de página, 1..50 (20 por defecto) 
+| -
+| 20
+| 
+
+|===
+
+
+===== Return Type
+
+<<InmueblePage>>
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| Página de inmuebles
+|  <<InmueblePage>>
+
+
+| 400
+| Cursor, sort, rango de filtros (precioMin&gt;precioMax, precios negativos, habitacionesMin&lt;0) o valor de parámetro no admitido (p. ej. estado&#x3D;XYZ, limit&#x3D;abc): ProblemDetail con errors:[{field, message}]
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/inmuebles/GET/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/inmuebles/GET/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/inmuebles/GET/GET.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/inmuebles/GET/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.InmueblesAdmin]
+=== InmueblesAdmin
+
+
+[.actualizar]
+==== actualizar
+
+`PUT /api/v1/admin/inmuebles/{id}`
+
+Actualiza un inmueble (PUT completo)
+
+===== Description
+
+Reemplaza la representación completa del recurso; los campos no enviados (opcional: `destacado`) conservan su valor.
+
+
+// markup not found, no include::{specDir}api/v1/admin/inmuebles/\{id\}/PUT/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+====== Path Parameters
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| id
+| Identificador del inmueble 
+| X
+| null
+| 
+
+|===
+
+====== Body Parameter
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| InmuebleRequest
+|  <<InmuebleRequest>>
+| X
+| 
+| 
+
+|===
+
+
+
+
+
+===== Return Type
+
+<<InmuebleResponse>>
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| Inmueble actualizado
+|  <<InmuebleResponse>>
+
+
+| 400
+| Validación fallida (ProblemDetail con errors[])
+|  <<ProblemDetail>>
+
+
+| 401
+| Sin token
+|  <<ProblemDetail>>
+
+
+| 403
+| Token sin rol ADMIN
+|  <<ProblemDetail>>
+
+
+| 404
+| Inexistente
+|  <<ProblemDetail>>
+
+
+| 409
+| Inmueble ya eliminado (soft-delete); no se reescribe un borrado
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/admin/inmuebles/\{id\}/PUT/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/admin/inmuebles/\{id\}/PUT/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/admin/inmuebles/{id}/PUT/PUT.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/admin/inmuebles/\{id\}/PUT/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.crear]
+==== crear
+
+`POST /api/v1/admin/inmuebles`
+
+Crea un inmueble
+
+===== Description
+
+
+
+
+// markup not found, no include::{specDir}api/v1/admin/inmuebles/POST/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+====== Body Parameter
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| InmuebleRequest
+|  <<InmuebleRequest>>
+| X
+| 
+| 
+
+|===
+
+
+
+
+
+===== Return Type
+
+<<InmuebleResponse>>
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 201
+| Creado; cabecera Location con el recurso público
+|  <<InmuebleResponse>>
+
+
+| 400
+| Validación fallida (ProblemDetail con errors[])
+|  <<ProblemDetail>>
+
+
+| 401
+| Sin token
+|  <<ProblemDetail>>
+
+
+| 403
+| Token sin rol ADMIN
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/admin/inmuebles/POST/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/admin/inmuebles/POST/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/admin/inmuebles/POST/POST.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/admin/inmuebles/POST/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.eliminar]
+==== eliminar
+
+`DELETE /api/v1/admin/inmuebles/{id}`
+
+Elimina un inmueble (soft-delete)
+
+===== Description
+
+Marca `eliminado_en`: desaparece del listado y del detalle público, pero la fila se conserva (auditoría).
+
+
+// markup not found, no include::{specDir}api/v1/admin/inmuebles/\{id\}/DELETE/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+====== Path Parameters
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| id
+| Identificador del inmueble 
+| X
+| null
+| 
+
+|===
+
+
+
+
+
+
+===== Return Type
+
+
+
+-
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 204
+| Eliminado (sin cuerpo)
+|  <<>>
+
+
+| 401
+| Sin token
+|  <<ProblemDetail>>
+
+
+| 403
+| Token sin rol ADMIN
+|  <<ProblemDetail>>
+
+
+| 404
+| Inexistente
+|  <<ProblemDetail>>
+
+
+| 409
+| Inmueble ya eliminado (soft-delete); no se repite el borrado
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/admin/inmuebles/\{id\}/DELETE/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/admin/inmuebles/\{id\}/DELETE/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/admin/inmuebles/{id}/DELETE/DELETE.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/admin/inmuebles/\{id\}/DELETE/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.Profesionales]
+=== Profesionales
+
+
+[.registrarProfesional]
+==== registrarProfesional
+
+`POST /api/v1/profesionales/registro`
+
+Registra un profesional (queda PENDIENTE)
+
+===== Description
+
+Alta anónima de una empresa o autónomo que quiere recibir solicitudes. Siempre nace con estado `PENDIENTE`: sólo un administrador puede moverla a `ACTIVO` o `RECHAZADO`. Rate limit: 5 peticiones/hora por IP.
+
+
+// markup not found, no include::{specDir}api/v1/profesionales/registro/POST/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+====== Body Parameter
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| ProfesionalRegistroRequest
+|  <<ProfesionalRegistroRequest>>
+| X
+| 
+| 
+
+|===
+
+
+
+
+
+===== Return Type
+
+<<ProfesionalEstadoResponse>>
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 201
+| Profesional registrado en estado PENDIENTE
+|  <<ProfesionalEstadoResponse>>
+
+
+| 400
+| Validación fallida o gremios inexistentes (ProblemDetail con errors[])
+|  <<ProblemDetail>>
+
+
+| 409
+| El email ya está registrado como profesional
+|  <<ProblemDetail>>
+
+
+| 429
+| Rate limit por IP superado (5/hora)
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/profesionales/registro/POST/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/profesionales/registro/POST/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/profesionales/registro/POST/POST.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/profesionales/registro/POST/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.ProfesionalesAdmin]
+=== ProfesionalesAdmin
+
+
+[.actualizarEstadoProfesional]
+==== actualizarEstadoProfesional
+
+`PATCH /api/v1/admin/profesionales/{id}`
+
+Cambia el estado de un profesional
+
+===== Description
+
+Sólo admite `ACTIVO` (puede recibir solicitudes) o `RECHAZADO`. Un profesional `PENDIENTE` aprobado pasa a `ACTIVO`; desde `ACTIVO` ya no vuelve a `PENDIENTE`.
+
+
+// markup not found, no include::{specDir}api/v1/admin/profesionales/\{id\}/PATCH/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+====== Path Parameters
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| id
+| Identificador del profesional 
+| X
+| null
+| 
+
+|===
+
+====== Body Parameter
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| ProfesionalEstadoRequest
+|  <<ProfesionalEstadoRequest>>
+| X
+| 
+| 
+
+|===
+
+
+
+
+
+===== Return Type
+
+<<ProfesionalEstadoResponse>>
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| Estado actualizado: {id, estado}
+|  <<ProfesionalEstadoResponse>>
+
+
+| 400
+| Validación fallida: el estado debe ser ACTIVO o RECHAZADO (ProblemDetail con errors[])
+|  <<ProblemDetail>>
+
+
+| 401
+| Sin token
+|  <<ProblemDetail>>
+
+
+| 403
+| Token sin rol ADMIN
+|  <<ProblemDetail>>
+
+
+| 404
+| Profesional inexistente
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/admin/profesionales/\{id\}/PATCH/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/admin/profesionales/\{id\}/PATCH/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/admin/profesionales/{id}/PATCH/PATCH.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/admin/profesionales/\{id\}/PATCH/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.listarProfesionales]
+==== listarProfesionales
+
+`GET /api/v1/admin/profesionales`
+
+Lista profesionales por estado
+
+===== Description
+
+Lista simple SIN paginación (MVP): devuelve todos los profesionales del estado indicado, más recientes primero, con sus gremios en `slug`. Si se omite `estado`, devuelve todos.
+
+
+// markup not found, no include::{specDir}api/v1/admin/profesionales/GET/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+
+
+
+====== Query Parameters
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| estado
+| Estado a filtrar (PENDIENTE, ACTIVO o RECHAZADO); si se omite, todos 
+| -
+| null
+| 
+
+|===
+
+
+===== Return Type
+
+array[<<ProfesionalAdminResponse>>]
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| Lista de profesionales (array)
+| List[<<ProfesionalAdminResponse>>] 
+
+
+| 400
+| &#x60;estado&#x60; no admitido (PENDIENTE, ACTIVO o RECHAZADO): ProblemDetail con errors[]
+|  <<ProblemDetail>>
+
+
+| 401
+| Sin token
+|  <<ProblemDetail>>
+
+
+| 403
+| Token sin rol ADMIN
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/admin/profesionales/GET/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/admin/profesionales/GET/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/admin/profesionales/GET/GET.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/admin/profesionales/GET/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.Solicitudes]
+=== Solicitudes
+
+
+[.crearSolicitud]
+==== crearSolicitud
+
+`POST /api/v1/solicitudes`
+
+Crea una solicitud de servicio
+
+===== Description
+
+Alta anónima de una petición de trabajo (municipio, descripción y 1..8 gremios del catálogo). En la MISMA transacción se encolan las notificaciones a los profesionales ACTIVOS que compartan algún gremio (outbox). Rate limit: 10 peticiones/hora por IP. Cabecera opcional `Idempotency-Key` (máx. 64 caracteres): reenviar la MISMA clave devuelve la respuesta original (replay, mismo id) en vez de crear una segunda solicitud, y una clave reutilizada con un cuerpo distinto responde 409. Sin `Location`: el recurso no tiene GET público.
+
+
+// markup not found, no include::{specDir}api/v1/solicitudes/POST/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+====== Body Parameter
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| SolicitudCreateRequest
+|  <<SolicitudCreateRequest>>
+| X
+| 
+| 
+
+|===
+
+
+====== Header Parameters
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| Idempotency-Key
+| Clave opcional de idempotencia (máx. 64 caracteres): la misma clave devuelve la respuesta original en vez de duplicar la solicitud 
+| -
+| null
+| 
+
+|===
+
+
+
+===== Return Type
+
+<<SolicitudResponse>>
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 201
+| Solicitud creada en estado NUEVA (sin &#x60;Location&#x60;: el recurso no tiene GET público)
+|  <<SolicitudResponse>>
+
+
+| 400
+| Validación fallida o gremios inexistentes (ProblemDetail con errors[])
+|  <<ProblemDetail>>
+
+
+| 409
+| &#x60;Idempotency-Key&#x60; reutilizada con un cuerpo distinto al de la petición original (ProblemDetail)
+|  <<ProblemDetail>>
+
+
+| 429
+| Rate limit por IP superado (10/hora)
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/solicitudes/POST/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/solicitudes/POST/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/solicitudes/POST/POST.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/solicitudes/POST/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.SolicitudesAdmin]
+=== SolicitudesAdmin
+
+
+[.listarSolicitudes]
+==== listarSolicitudes
+
+`GET /api/v1/admin/solicitudes`
+
+Lista las últimas solicitudes
+
+===== Description
+
+Devuelve las 50 solicitudes más recientes (array plano, sin paginación — MVP) con sus gremios pedidos en `slug`.
+
+
+// markup not found, no include::{specDir}api/v1/admin/solicitudes/GET/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+
+
+
+
+
+===== Return Type
+
+array[<<SolicitudAdminResponse>>]
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| Solicitudes más recientes (array, máx. 50)
+| List[<<SolicitudAdminResponse>>] 
+
+
+| 401
+| Sin token
+|  <<ProblemDetail>>
+
+
+| 403
+| Token sin rol ADMIN
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/admin/solicitudes/GET/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/admin/solicitudes/GET/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/admin/solicitudes/GET/GET.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/admin/solicitudes/GET/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.Swipes]
+=== Swipes
+
+
+[.deck]
+==== deck
+
+`GET /api/v1/swipes/deck`
+
+Deck de inmuebles pendientes del usuario
+
+===== Description
+
+Inmuebles ACTIVOS que el usuario todavía no ha swipeado (LIKE ni NOPE), orden `created_at DESC, id DESC`. Paginación keyset: pase `nextCursor` como `cursor`; `limit` 1..50 (20 por defecto).
+
+
+// markup not found, no include::{specDir}api/v1/swipes/deck/GET/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+
+
+
+====== Query Parameters
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| cursor
+| Cursor opaco de la página anterior (base64); ausente en la primera página 
+| -
+| null
+| 
+
+| limit
+| Tamaño de página, 1..50 (20 por defecto) 
+| -
+| 20
+| 
+
+|===
+
+
+===== Return Type
+
+<<SwipePage>>
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| Página del deck
+|  <<SwipePage>>
+
+
+| 400
+| Cursor inválido o &#x60;limit&#x60; fuera de rango (ProblemDetail con errors[])
+|  <<ProblemDetail>>
+
+
+| 401
+| Sin token
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/swipes/deck/GET/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/swipes/deck/GET/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/swipes/deck/GET/GET.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/swipes/deck/GET/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.eliminarFavorito]
+==== eliminarFavorito
+
+`DELETE /api/v1/swipes/favoritos/{inmuebleId}`
+
+Elimina un favorito
+
+===== Description
+
+Borra el swipe LIKE y el inmueble vuelve al deck. 404 si el USUARIO ACTUAL no tiene ese favorito (también si es favorito de otro usuario o si el swipe era un NOPE).
+
+
+// markup not found, no include::{specDir}api/v1/swipes/favoritos/\{inmuebleId\}/DELETE/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+====== Path Parameters
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| inmuebleId
+| Identificador del inmueble 
+| X
+| null
+| 
+
+|===
+
+
+
+
+
+
+===== Return Type
+
+
+
+-
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 204
+| Favorito eliminado (sin cuerpo)
+|  <<>>
+
+
+| 401
+| Sin token
+|  <<ProblemDetail>>
+
+
+| 404
+| No es un favorito del usuario actual
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/swipes/favoritos/\{inmuebleId\}/DELETE/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/swipes/favoritos/\{inmuebleId\}/DELETE/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/swipes/favoritos/{inmuebleId}/DELETE/DELETE.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/swipes/favoritos/\{inmuebleId\}/DELETE/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.favoritos]
+==== favoritos
+
+`GET /api/v1/swipes/favoritos`
+
+Lista los favoritos (likes) del usuario
+
+===== Description
+
+Swipes con decisión LIKE, orden `swipe creado_en DESC, id DESC`. Paginación keyset: pase `nextCursor` como `cursor`; `limit` 1..50 (20 por defecto).
+
+
+// markup not found, no include::{specDir}api/v1/swipes/favoritos/GET/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+
+
+
+====== Query Parameters
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| cursor
+| Cursor opaco de la página anterior (base64); ausente en la primera página 
+| -
+| null
+| 
+
+| limit
+| Tamaño de página, 1..50 (20 por defecto) 
+| -
+| 20
+| 
+
+|===
+
+
+===== Return Type
+
+<<SwipePage>>
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| Página de favoritos
+|  <<SwipePage>>
+
+
+| 400
+| Cursor inválido o &#x60;limit&#x60; fuera de rango (ProblemDetail con errors[])
+|  <<ProblemDetail>>
+
+
+| 401
+| Sin token
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/swipes/favoritos/GET/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/swipes/favoritos/GET/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/swipes/favoritos/GET/GET.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/swipes/favoritos/GET/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.registrarSwipe]
+==== registrarSwipe
+
+`POST /api/v1/swipes`
+
+Registra un like o nope sobre un inmueble
+
+===== Description
+
+Idempotente por DISEÑO (la constraint `uq_swipes_usuario_inmueble` garantiza una fila por pareja): 201 en la primera decisión; repetir la MISMA decisión → 200 sin crear fila; cambiar de opinión → 200 actualizando. No requiere cabecera `Idempotency-Key`: la unicidad natural es la idempotencia. Ante una carrera de inserción (doble tap del frontend) el servicio reintenta una vez en una transacción nueva y responde 200; sólo si la relectura sigue vacía devuelve 409. 404 si el inmueble no existe o está eliminado.
+
+
+// markup not found, no include::{specDir}api/v1/swipes/POST/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+====== Body Parameter
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| SwipeRequest
+|  <<SwipeRequest>>
+| X
+| 
+| 
+
+|===
+
+
+
+
+
+===== Return Type
+
+<<SwipeResponse>>
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 201
+| Primera decisión registrada
+|  <<SwipeResponse>>
+
+
+| 200
+| Repetición idempotente o cambio de decisión
+|  <<SwipeResponse>>
+
+
+| 400
+| Validación fallida (ProblemDetail con errors[])
+|  <<ProblemDetail>>
+
+
+| 401
+| Sin token
+|  <<ProblemDetail>>
+
+
+| 404
+| Inmueble inexistente o eliminado
+|  <<ProblemDetail>>
+
+
+| 409
+| Conflicto de unicidad no resuelto por el reintento (dos escrituras simultáneas sobre la misma pareja usuario+inmueble)
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/swipes/POST/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/swipes/POST/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/swipes/POST/POST.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/swipes/POST/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.TelegramAdmin]
+=== TelegramAdmin
+
+
+[.diagnosticoTelegram]
+==== diagnosticoTelegram
+
+`GET /api/v1/admin/telegram/diagnostico`
+
+Lista los chats que han escrito al bot
+
+===== Description
+
+Llama a `getUpdates` de la Bot API de Telegram (timeout 5 s) y resume los chats vistos: `chatId`, `tipo` (private/group/supergroup/channel) y un extracto del último mensaje. Útil para descubrir el `chat_id` de un grupo y configurar `TELEGRAM_CHAT_ID`.
+
+
+// markup not found, no include::{specDir}api/v1/admin/telegram/diagnostico/GET/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+
+
+
+
+
+===== Return Type
+
+<<TelegramDiagnosticoResponse>>
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| Chats vistos: {chatsVistos: [{chatId, tipo, textoMuestra}]}
+|  <<TelegramDiagnosticoResponse>>
+
+
+| 401
+| Sin token
+|  <<ProblemDetail>>
+
+
+| 403
+| Token sin rol ADMIN
+|  <<ProblemDetail>>
+
+
+| 409
+| Telegram sin credencial: falta &#x60;TELEGRAM_BOT_TOKEN&#x60; (ProblemDetail)
+|  <<ProblemDetail>>
+
+
+| 502
+| Telegram no disponible o ha rechazado &#x60;getUpdates&#x60; (ProblemDetail)
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/admin/telegram/diagnostico/GET/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/admin/telegram/diagnostico/GET/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/admin/telegram/diagnostico/GET/GET.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/admin/telegram/diagnostico/GET/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[#models]
+== Models
+
+
+[#AuthResponse]
+=== _AuthResponse_ 
+
+Sesión emitida: access token en body + refresh token en cookie httpOnly
+
+
+[.fields-AuthResponse]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| accessToken
+| 
+| 
+|   String  
+| Access token JWT (HS256, 15 min)
+|     
+
+| expiresIn
+| 
+| 
+|   Long  
+| Segundos hasta la expiración del access token
+| int64    
+
+| user
+| 
+| 
+| <<UsuarioSummary>>    
+| Usuario autenticado
+|     
+
+|===
+
+
+
+[#ChatVisto]
+=== _ChatVisto_ 
+
+
+
+
+[.fields-ChatVisto]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| chatId
+| 
+| 
+|   String  
+| 
+|     
+
+| tipo
+| 
+| 
+|   String  
+| 
+|     
+
+| textoMuestra
+| 
+| 
+|   String  
+| 
+|     
+
+|===
+
+
+
+[#GremioResponse]
+=== _GremioResponse_ 
+
+
+
+
+[.fields-GremioResponse]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| slug
+| 
+| 
+|   String  
+| 
+|     
+
+| nombre
+| 
+| 
+|   String  
+| 
+|     
+
+|===
+
+
+
+[#InmueblePage]
+=== _InmueblePage_ 
+
+Página del listado de inmuebles paginada por cursor
+
+
+[.fields-InmueblePage]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| content
+| 
+| 
+|   List   of <<InmuebleSummary>>
+| Filas de la página
+|     
+
+| nextCursor
+| 
+| 
+|   String  
+| Cursor opaco para la página siguiente; null si no hay más
+|     
+
+| totalElements
+| 
+| 
+|   Long  
+| Total de inmuebles que cumplen el filtro (sólo primera página)
+| int64    
+
+|===
+
+
+
+[#InmuebleRequest]
+=== _InmuebleRequest_ 
+
+Datos de alta/actualización de un inmueble
+
+
+[.fields-InmuebleRequest]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| titulo
+| X
+| 
+|   String  
+| Título del anuncio
+|     
+
+| descripcion
+| 
+| 
+|   String  
+| Descripción larga (opcional)
+|     
+
+| precio
+| X
+| 
+|   BigDecimal  
+| Precio en euros; debe ser mayor que 0
+|     
+
+| superficieM2
+| 
+| 
+|   Integer  
+| Superficie en m² (opcional)
+| int32    
+
+| habitaciones
+| 
+| 
+|   Integer  
+| Habitaciones (opcional)
+| int32    
+
+| banios
+| 
+| 
+|   Integer  
+| Baños (opcional)
+| int32    
+
+| tipo
+| X
+| 
+|  <<String>>  
+| Tipo de inmueble
+|  _Enum:_ PISO, CASA, ATICO, DUPLEX, ESTUDIO, LOCAL, TERRENO,  
+
+| estado
+| X
+| 
+|  <<String>>  
+| Estado comercial
+|  _Enum:_ VENTA, ALQUILER,  
+
+| direccion
+| X
+| 
+|   String  
+| Dirección completa
+|     
+
+| codigoPostal
+| 
+| 
+|   String  
+| Código postal español (5 dígitos, opcional)
+|     
+
+| municipio
+| X
+| 
+|   String  
+| Municipio
+|     
+
+| provincia
+| X
+| 
+|   String  
+| Provincia
+|     
+
+| lat
+| X
+| 
+|   Double  
+| Latitud WGS84 (España: 27..44)
+| double    
+
+| lng
+| X
+| 
+|   Double  
+| Longitud WGS84 (España: -19..5)
+| double    
+
+| imagenUrl
+| 
+| 
+|   String  
+| Imagen principal; sólo URL https con caracteres de URL (opcional)
+|     
+
+| destacado
+| 
+| 
+|   Boolean  
+| Marca de destacado; sólo ADMIN (opcional, por defecto false)
+|     
+
+|===
+
+
+
+[#InmuebleResponse]
+=== _InmuebleResponse_ 
+
+Detalle completo de un inmueble
+
+
+[.fields-InmuebleResponse]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| id
+| 
+| 
+|   Long  
+| Identificador
+| int64    
+
+| titulo
+| 
+| 
+|   String  
+| Título del anuncio
+|     
+
+| descripcion
+| 
+| 
+|   String  
+| Descripción completa
+|     
+
+| precio
+| 
+| 
+|   BigDecimal  
+| Precio en euros
+|     
+
+| superficieM2
+| 
+| 
+|   Integer  
+| Superficie en m²
+| int32    
+
+| habitaciones
+| 
+| 
+|   Integer  
+| Habitaciones
+| int32    
+
+| banios
+| 
+| 
+|   Integer  
+| Baños
+| int32    
+
+| tipo
+| 
+| 
+|  <<String>>  
+| Tipo de inmueble
+|  _Enum:_ PISO, CASA, ATICO, DUPLEX, ESTUDIO, LOCAL, TERRENO,  
+
+| estado
+| 
+| 
+|  <<String>>  
+| Estado comercial
+|  _Enum:_ VENTA, ALQUILER,  
+
+| direccion
+| 
+| 
+|   String  
+| Dirección completa
+|     
+
+| codigoPostal
+| 
+| 
+|   String  
+| Código postal español (5 dígitos)
+|     
+
+| municipio
+| 
+| 
+|   String  
+| Municipio
+|     
+
+| provincia
+| 
+| 
+|   String  
+| Provincia
+|     
+
+| lat
+| 
+| 
+|   Double  
+| Latitud WGS84
+| double    
+
+| lng
+| 
+| 
+|   Double  
+| Longitud WGS84
+| double    
+
+| imagenUrl
+| 
+| 
+|   String  
+| Imagen principal (URL https)
+|     
+
+| destacado
+| 
+| 
+|   Boolean  
+| Destacado en la portada
+|     
+
+| createdAt
+| 
+| 
+|   Date  
+| Fecha de alta (ISO-8601)
+| date-time    
+
+| updatedAt
+| 
+| 
+|   Date  
+| Última modificación (ISO-8601)
+| date-time    
+
+|===
+
+
+
+[#InmuebleSummary]
+=== _InmuebleSummary_ 
+
+Resumen de un inmueble para tarjetas de listado
+
+
+[.fields-InmuebleSummary]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| id
+| 
+| 
+|   Long  
+| Identificador
+| int64    
+
+| titulo
+| 
+| 
+|   String  
+| Título del anuncio
+|     
+
+| precio
+| 
+| 
+|   BigDecimal  
+| Precio en euros
+|     
+
+| tipo
+| 
+| 
+|  <<String>>  
+| Tipo de inmueble
+|  _Enum:_ PISO, CASA, ATICO, DUPLEX, ESTUDIO, LOCAL, TERRENO,  
+
+| estado
+| 
+| 
+|  <<String>>  
+| Estado comercial
+|  _Enum:_ VENTA, ALQUILER,  
+
+| superficieM2
+| 
+| 
+|   Integer  
+| Superficie en m²
+| int32    
+
+| habitaciones
+| 
+| 
+|   Integer  
+| Habitaciones
+| int32    
+
+| banios
+| 
+| 
+|   Integer  
+| Baños
+| int32    
+
+| municipio
+| 
+| 
+|   String  
+| Municipio
+|     
+
+| provincia
+| 
+| 
+|   String  
+| Provincia
+|     
+
+| imagenUrl
+| 
+| 
+|   String  
+| Imagen principal (URL https)
+|     
+
+| destacado
+| 
+| 
+|   Boolean  
+| Destacado en la portada
+|     
+
+| lat
+| 
+| 
+|   Double  
+| Latitud WGS84
+| double    
+
+| lng
+| 
+| 
+|   Double  
+| Longitud WGS84
+| double    
+
+| createdAt
+| 
+| 
+|   Date  
+| Fecha de alta (ISO-8601)
+| date-time    
+
+|===
+
+
+
+[#LoginRequest]
+=== _LoginRequest_ 
+
+Credenciales de login
+
+
+[.fields-LoginRequest]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| email
+| X
+| 
+|   String  
+| Email del usuario
+| email    
+
+| password
+| X
+| 
+|   String  
+| Contraseña en claro
+|     
+
+|===
+
+
+
+[#OAuth2TokenRequest]
+=== _OAuth2TokenRequest_ 
+
+Código de un solo uso devuelto por el callback de Google
+
+
+[.fields-OAuth2TokenRequest]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| code
+| X
+| 
+|   String  
+| Código opaco de un solo uso
+|     
+
+|===
+
+
+
+[#ProblemDetail]
+=== _ProblemDetail_ 
+
+
+
+
+[.fields-ProblemDetail]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| type
+| 
+| 
+|   URI  
+| 
+| uri    
+
+| title
+| 
+| 
+|   String  
+| 
+|     
+
+| status
+| 
+| 
+|   Integer  
+| 
+| int32    
+
+| detail
+| 
+| 
+|   String  
+| 
+|     
+
+| instance
+| 
+| 
+|   URI  
+| 
+| uri    
+
+| properties
+| 
+| 
+|   Map   of <<AnyType>>
+| 
+|     
+
+| errors
+| 
+| 
+|   List   of <<ProblemDetail_errors_inner>>
+| Errores campo/mensaje; presente en las respuestas 400
+|     
+
+|===
+
+
+
+[#ProblemDetailErrorsInner]
+=== _ProblemDetailErrorsInner_ 
+
+Error individual
+
+
+[.fields-ProblemDetailErrorsInner]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| field
+| 
+| 
+|   String  
+| Campo o parámetro que falló (p. ej. precioMin, estado); ausente cuando sólo procede el mensaje
+|     
+
+| message
+| X
+| 
+|   String  
+| Motivo fijo del error, sin datos internos de la petición
+|     
+
+|===
+
+
+
+[#ProfesionalAdminResponse]
+=== _ProfesionalAdminResponse_ 
+
+
+
+
+[.fields-ProfesionalAdminResponse]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| id
+| 
+| 
+|   Long  
+| 
+| int64    
+
+| nombre
+| 
+| 
+|   String  
+| 
+|     
+
+| email
+| 
+| 
+|   String  
+| 
+|     
+
+| telefono
+| 
+| 
+|   String  
+| 
+|     
+
+| municipio
+| 
+| 
+|   String  
+| 
+|     
+
+| estado
+| 
+| 
+|   String  
+| 
+|     
+
+| gremios
+| 
+| 
+|   List   of <<string>>
+| 
+|     
+
+| creadoEn
+| 
+| 
+|   Date  
+| 
+| date-time    
+
+|===
+
+
+
+[#ProfesionalEstadoRequest]
+=== _ProfesionalEstadoRequest_ 
+
+
+
+
+[.fields-ProfesionalEstadoRequest]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| estado
+| X
+| 
+|   String  
+| 
+|     
+
+|===
+
+
+
+[#ProfesionalEstadoResponse]
+=== _ProfesionalEstadoResponse_ 
+
+
+
+
+[.fields-ProfesionalEstadoResponse]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| id
+| 
+| 
+|   Long  
+| 
+| int64    
+
+| estado
+| 
+| 
+|   String  
+| 
+|     
+
+|===
+
+
+
+[#ProfesionalRegistroRequest]
+=== _ProfesionalRegistroRequest_ 
+
+
+
+
+[.fields-ProfesionalRegistroRequest]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| nombre
+| X
+| 
+|   String  
+| 
+|     
+
+| email
+| X
+| 
+|   String  
+| 
+| email    
+
+| telefono
+| 
+| 
+|   String  
+| 
+|     
+
+| municipio
+| 
+| 
+|   String  
+| 
+|     
+
+| gremios
+| X
+| 
+|   List   of <<string>>
+| 
+|     
+
+|===
+
+
+
+[#RegistroRequest]
+=== _RegistroRequest_ 
+
+Datos de registro de un usuario
+
+
+[.fields-RegistroRequest]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| nombre
+| X
+| 
+|   String  
+| Nombre visible
+|     
+
+| email
+| X
+| 
+|   String  
+| Email único
+| email    
+
+| password
+| X
+| 
+|   String  
+| Contraseña: 8-72 caracteres
+|     
+
+|===
+
+
+
+[#SolicitudAdminResponse]
+=== _SolicitudAdminResponse_ 
+
+
+
+
+[.fields-SolicitudAdminResponse]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| id
+| 
+| 
+|   Long  
+| 
+| int64    
+
+| nombreContacto
+| 
+| 
+|   String  
+| 
+|     
+
+| emailContacto
+| 
+| 
+|   String  
+| 
+|     
+
+| telefono
+| 
+| 
+|   String  
+| 
+|     
+
+| municipio
+| 
+| 
+|   String  
+| 
+|     
+
+| descripcion
+| 
+| 
+|   String  
+| 
+|     
+
+| estado
+| 
+| 
+|   String  
+| 
+|     
+
+| gremios
+| 
+| 
+|   List   of <<string>>
+| 
+|     
+
+| creadoEn
+| 
+| 
+|   Date  
+| 
+| date-time    
+
+|===
+
+
+
+[#SolicitudCreateRequest]
+=== _SolicitudCreateRequest_ 
+
+
+
+
+[.fields-SolicitudCreateRequest]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| nombreContacto
+| X
+| 
+|   String  
+| 
+|     
+
+| emailContacto
+| X
+| 
+|   String  
+| 
+| email    
+
+| telefono
+| 
+| 
+|   String  
+| 
+|     
+
+| municipio
+| X
+| 
+|   String  
+| 
+|     
+
+| descripcion
+| X
+| 
+|   String  
+| 
+|     
+
+| gremios
+| X
+| 
+|   List   of <<string>>
+| 
+|     
+
+|===
+
+
+
+[#SolicitudResponse]
+=== _SolicitudResponse_ 
+
+
+
+
+[.fields-SolicitudResponse]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| id
+| 
+| 
+|   Long  
+| 
+| int64    
+
+| estado
+| 
+| 
+|   String  
+| 
+|     
+
+| creadoEn
+| 
+| 
+|   Date  
+| 
+| date-time    
+
+|===
+
+
+
+[#SwipePage]
+=== _SwipePage_ 
+
+Página del deck o de favoritos, paginada por cursor
+
+
+[.fields-SwipePage]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| content
+| 
+| 
+|   List   of <<InmuebleSummary>>
+| Filas de la página
+|     
+
+| nextCursor
+| 
+| 
+|   String  
+| Cursor opaco para la página siguiente; null si no hay más
+|     
+
+| totalElements
+| 
+| 
+|   Long  
+| Total de filas del listado (sólo primera página)
+| int64    
+
+|===
+
+
+
+[#SwipeRequest]
+=== _SwipeRequest_ 
+
+Decisión de un swipe sobre un inmueble
+
+
+[.fields-SwipeRequest]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| inmuebleId
+| X
+| 
+|   Long  
+| Identificador del inmueble
+| int64    
+
+| decision
+| X
+| 
+|  <<String>>  
+| Decisión: LIKE (favorito) o NOPE (descartar)
+|  _Enum:_ LIKE, NOPE,  
+
+|===
+
+
+
+[#SwipeResponse]
+=== _SwipeResponse_ 
+
+Decisión registrada sobre un inmueble
+
+
+[.fields-SwipeResponse]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| inmuebleId
+| 
+| 
+|   Long  
+| Inmueble sobre el que se decidió
+| int64    
+
+| decision
+| 
+| 
+|  <<String>>  
+| Decisión final
+|  _Enum:_ LIKE, NOPE,  
+
+|===
+
+
+
+[#TelegramDiagnosticoResponse]
+=== _TelegramDiagnosticoResponse_ 
+
+
+
+
+[.fields-TelegramDiagnosticoResponse]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| chatsVistos
+| 
+| 
+|   List   of <<ChatVisto>>
+| 
+|     
+
+|===
+
+
+
+[#UsuarioSummary]
+=== _UsuarioSummary_ 
+
+Resumen del usuario autenticado
+
+
+[.fields-UsuarioSummary]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| id
+| 
+| 
+|   Long  
+| Identificador
+| int64    
+
+| email
+| 
+| 
+|   String  
+| Email
+|     
+
+| nombre
+| 
+| 
+|   String  
+| Nombre visible
+|     
+
+| rol
+| 
+| 
+|   String  
+| Rol
+|     
+
+| activo
+| 
+| 
+|   Boolean  
+| Cuenta activa
+|     
+
+| createdAt
+| 
+| 
+|   Date  
+| Fecha de alta (ISO-8601)
+| date-time    
+
+|===
+
+
+
