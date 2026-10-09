@@ -44,7 +44,30 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # health e info quedan ANÓNIMOS (SecurityConfig); metrics y prometheus
+        # sólo con rol ADMIN (issue #25). En prod se puede recortar la lista con
+        # MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE si no se scrapea Prometheus.
+        include: health,info,metrics,prometheus
+  # Export de métricas a Prometheus (issue #25). En Boot 4 la condición
+  # @ConditionalOnEnabledMetricsExport es opt-in: sin esto el registry ni se
+  # crea y /actuator/prometheus sale 404 (la clave antigua
+  # management.metrics.export.prometheus.* está deprecada desde 3.0).
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  defaults:
+    metrics:
+      export:
+        enabled: true
+  metrics:
+    distribution:
+      # Percentiles de http.server.requests, hikaricp_* y JVM: mirar p95/p99,
+      # no la media (skill rendimiento). Se calculan en memoria por timer.
+      percentiles:
+        - 0.5
+        - 0.95
+        - 0.99
 
 # ---------------------------------------------------------------------------
 # Autenticación (FASE 1). Los secretos sólo existen como variables de entorno
