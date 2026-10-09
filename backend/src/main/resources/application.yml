@@ -17,6 +17,14 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+  # FASE 7 (issue #26) — virtual threads en el servidor (Tomcat) y en las tareas
+  # @Scheduled: los hilos HTTP sólo esperan I/O (JDBC, llamadas a Brevo/Telegram,
+  # Google), así que el pool de platform threads deja de ser el cuello de
+  # botella. NO es default en Boot 4.1. Para vigilar hilos pinned en producción:
+  # jcmd <pid> Thread.print y las métricas de threads del actuator.
+  threads:
+    virtual:
+      enabled: true
   security:
     oauth2:
       client:
