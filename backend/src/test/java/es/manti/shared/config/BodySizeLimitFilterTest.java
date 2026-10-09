@@ -68,6 +68,17 @@ class BodySizeLimitFilterTest {
                         .value("https://api.manti.dev/problems/payload-too-large"));
     }
 
+    /** multipart/* queda exento del filtro (futuro upload de fotos). */
+    @Test
+    void multipart_conContentLengthGrande_noDevuelve413() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.MULTIPART_FORM_DATA)
+                        .header(HttpHeaders.CONTENT_LENGTH, "999999")
+                        .content(new byte[1_000]))
+                // Pasa el filtro; el login no admite multipart → 415, no 413
+                .andExpect(status().isUnsupportedMediaType());
+    }
+
     /** Sin Content-Length declarada (chunked) el filtro deja pasar la petición:
      *  el login llega al controlador y sólo falla por credenciales (401). */
     @Test

@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 /**
  * Límite de tamaño del cuerpo de la petición (A04 — diseño inseguro), 256 KiB,
@@ -35,6 +36,11 @@ import java.nio.charset.StandardCharsets;
  *       sin {@code Content-Length} (transfer-encoding chunked), que la vía 1
  *       no puede medir.</li>
  * </ol>
+ *
+ * <p>Exención: {@code Content-Type: multipart/*} pasa SIN envolver — el
+ * futuro upload de fotos de inmuebles se servirá por aquí y el propio
+ * multipart resolver de Spring ya acota el tamaño con
+ * {@code spring.servlet.multipart.*}.</p>
  */
 public class BodySizeLimitFilter extends OncePerRequestFilter {
 
@@ -44,6 +50,11 @@ public class BodySizeLimitFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
+        String contentType = request.getContentType();
+        if (contentType != null && contentType.toLowerCase(Locale.ROOT).startsWith("multipart/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
         String contentLength = request.getHeader(HttpHeaders.CONTENT_LENGTH);
         if (contentLength != null && excede(contentLength)) {
             ProblemResponseWriter.write(response, HttpStatus.PAYLOAD_TOO_LARGE,
