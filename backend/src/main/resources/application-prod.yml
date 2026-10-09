@@ -27,3 +27,26 @@ springdoc:
     enabled: ${SPRINGDOC_ENABLED:false}
   swagger-ui:
     enabled: ${SPRINGDOC_ENABLED:false}
+
+# FASE 7 — recorte duro del actuator en producción (issue #25, revisión del PR).
+#   1. Exposición por defecto SÓLO health,info: metrics y prometheus quedan
+#      fuera y hay que abrirlos a mano con
+#      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE si se scrapea Prometheus (el
+#      endpoint sigue exigiendo rol ADMIN aunque se exponga).
+#   2. El export a Prometheus apagado por defecto: sin scraper no se gasta CPU
+#      ni memoria en series que nadie lee; PROMETHEUS_EXPORT_ENABLED=true lo
+#      reabre junto a la exposure anterior.
+#   3. health sin detalle: fuera de componentes/indicators (ni versions de
+#      Hibernate/JDBC ni estado de discos) para el healthcheck anónimo.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health,info}
+  prometheus:
+    metrics:
+      export:
+        enabled: ${PROMETHEUS_EXPORT_ENABLED:false}
+  endpoint:
+    health:
+      show-details: never
