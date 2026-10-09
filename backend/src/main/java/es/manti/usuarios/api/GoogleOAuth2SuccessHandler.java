@@ -3,6 +3,7 @@ package es.manti.usuarios.api;
 import es.manti.usuarios.application.AuthProperties;
 import es.manti.usuarios.application.CuentaGoogleService;
 import es.manti.usuarios.domain.CuentaGoogleConflictivaException;
+import es.manti.usuarios.domain.CuentaGoogleSinVerificarException;
 import es.manti.usuarios.domain.UsuarioInactivoException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -41,7 +42,8 @@ public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler 
             String codigo = cuentaGoogle.crearCodigoGoogle(
                     oidc.getSubject(),
                     oidc.getEmail(),
-                    oidc.getFullName() != null ? oidc.getFullName() : oidc.getPreferredUsername());
+                    oidc.getFullName() != null ? oidc.getFullName() : oidc.getPreferredUsername(),
+                    emailVerificado(oidc));
             // El flujo JWT no necesita JSESSIONID persistente: la sesión sólo
             // existía para el baile OAuth2, así que se invalida antes de salir.
             invalidarSesionDeNavegador(request);
@@ -58,7 +60,20 @@ public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler 
         } catch (CuentaGoogleConflictivaException e) {
             log.warn("Login con Google rechazado por conflicto de vinculación");
             response.sendRedirect(consultaFrontend("error=account_conflict"));
+        } catch (CuentaGoogleSinVerificarException e) {
+            // Pre-hijack: existe una cuenta local con ese email sin verificar.
+            // Mismo código account_conflict que el frontend ya interpreta.
+            log.warn("Login con Google rechazado: la cuenta local con ese email no está verificada");
+            response.sendRedirect(consultaFrontend("error=account_conflict"));
         }
+    }
+
+    /**
+     * Claim {@code email_verified} del token OIDC: {@code true} si está ausente
+     * (Google sólo envía {@code false} de forma explícita) o si es {@code true}.
+     */
+    private static boolean emailVerificado(OidcUser oidc) {
+        return !Boolean.FALSE.equals(oidc.getClaims().get("email_verified"));
     }
 
     private static OidcUser usuarioOidc(Authentication authentication) {

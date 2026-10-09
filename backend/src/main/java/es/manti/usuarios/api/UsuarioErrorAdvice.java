@@ -5,6 +5,7 @@ import es.manti.usuarios.domain.AuthException;
 import es.manti.usuarios.domain.CodigoInvalidoException;
 import es.manti.usuarios.domain.CredencialesInvalidasException;
 import es.manti.usuarios.domain.CuentaGoogleConflictivaException;
+import es.manti.usuarios.domain.CuentaGoogleSinVerificarException;
 import es.manti.usuarios.domain.EmailYaRegistradoException;
 import es.manti.usuarios.domain.TokenInvalidoException;
 import es.manti.usuarios.domain.UsuarioInactivoException;
@@ -45,6 +46,19 @@ public class UsuarioErrorAdvice {
     @ExceptionHandler({EmailYaRegistradoException.class, CuentaGoogleConflictivaException.class})
     public ProblemDetail conflicto(AuthException e, HttpServletRequest request) {
         return Problems.crear(HttpStatus.CONFLICT, "conflicto",
+                "Conflicto", e.getMessage(), request);
+    }
+
+    /**
+     * 409: cuenta local SIN verificar que intenta vincular Google (pre-hijack).
+     * Usa el mismo código {@code account_conflict} que el redirect OAuth2 del
+     * flujo Google, que es el que el frontend ya sabe interpretar — ningún
+     * cambio en la UI.
+     */
+    @ExceptionHandler(CuentaGoogleSinVerificarException.class)
+    public ProblemDetail cuentaGoogleSinVerificar(CuentaGoogleSinVerificarException e,
+                                                  HttpServletRequest request) {
+        return Problems.crear(HttpStatus.CONFLICT, "account_conflict",
                 "Conflicto", e.getMessage(), request);
     }
 
