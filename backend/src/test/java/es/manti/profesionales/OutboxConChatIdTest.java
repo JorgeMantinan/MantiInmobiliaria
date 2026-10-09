@@ -49,9 +49,15 @@ class OutboxConChatIdTest {
 
         long solicitud = crearSolicitud("fontanero", "albañil");
 
+        // La fila de Telegram es del GRUPO: una sola, independientemente de
+        // cuántos profesionales activos compartan gremios (también los que no
+        // sean de las fixtures y existan en la BD de desarrollo).
         assertThat(FixturesProfesionales.contarOutbox(jdbc, solicitud, "TELEGRAM")).isEqualTo(1);
         assertThat(FixturesProfesionales.destinatariosDeEmail(jdbc, solicitud))
-                .containsExactly(activo);
+                .contains(activo);
+        // ...y UNA fila de email por profesional activo, sin duplicar por gremio
+        assertThat(FixturesProfesionales.contarOutboxDestinatario(jdbc, solicitud, "EMAIL", activo))
+                .isEqualTo(1);
 
         List<String> destinos = jdbc.queryForList(
                 "SELECT destino FROM notificaciones_outbox WHERE solicitud_id = ? AND canal = 'TELEGRAM'",

@@ -40,7 +40,8 @@ import java.util.List;
  *
  * <ul>
  *   <li>Abiertos: rutas de autenticación, GET de {@code /api/v1/inmuebles}
- *       (portal público, FASE 2), {@code /actuator/health} y springdoc.</li>
+ *       (portal público, FASE 2), {@code /actuator/health} y springdoc. El
+ *       resto de {@code /actuator} (metrics, prometheus...) exige rol ADMIN.</li>
  *   <li>Todo lo demás autenticado con Bearer JWT (resource server) — sin
  *       {@code httpBasic} ni {@code formLogin}.</li>
  *   <li>CORS: allowlist desde {@code ALLOWED_ORIGINS} con credenciales
@@ -132,7 +133,15 @@ public class SecurityConfig {
                                 "/api/v1/profesionales/registro").permitAll()
                         // /api/v1/public/** queda sin abrir hasta que exista el
                         // módulo de contenido público con consumidores reales.
+                        // FASE 7 (issue #25) — ACTUADOR:
+                        //   * /actuator/health SÍ sigue anónimo (lo usan el
+                        //     healthcheck del hosting y docker);
+                        //   * TODO lo demás bajo /actuator (metrics, prometheus,
+                        //     info, env...) exige rol ADMIN: no se publican p50/p95
+                        //     ni el estado interno a cualquiera. Orden importa:
+                        //     el matcher del health va ANTES del comodín.
                         .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/actuator/**").hasRole("ADMIN")
                         // springdoc: /v3/api-docs (+ .yaml/.yml/.json y swagger-config)
                         .requestMatchers("/v3/api-docs", "/v3/api-docs.*", "/v3/api-docs/**",
                                 "/swagger-ui/**", "/swagger-ui.html").permitAll()

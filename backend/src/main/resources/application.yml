@@ -11,12 +11,40 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5433/manti}
     username: ${DB_USER:manti}
     password: ${DB_PASSWORD:manti_dev}
+    # FASE 7 (issue #31) — Hikari explícito. NO se sube sin mirar antes
+    # hikaricp.connections.pending en /actuator/metrics (issue #25): subir el
+    # pool no arregla queries lentas y satura PostgreSQL (18 admite 100
+    # clientes). El tamaño queda tunneable por variable de entorno para poder
+    # subirlo con una métrica que lo justifique, sin redeplegar. El resto de
+    # timeouts dejan los defaults de Hikari (connection-timeout 30 s).
+    hikari:
+      maximum-pool-size: ${HIKARI_MAXIMUM_POOL_SIZE:10}
   jpa:
     hibernate:
       ddl-auto: validate
     open-in-view: false
   flyway:
     enabled: true
+  # FASE 7 (issue #31) — timeouts PREVENTIVOS del cliente HTTP que Spring Boot
+  # auto-configura (RestClient.Builder/RestTemplateBuilder): 3 s de conexión y
+  # 5 s de lectura para que una llamada externa caída no colgue un hilo.
+  # Sólo afecta a esos clientes auto-configurados: Brevo y Telegram ya llevan
+  # sus propios timeouts de 3 s/5 s (NotificacionesHttpConfig) y el OAuth2 de
+  # Google usa la pila de Spring Security. Clave vigente en Boot 4.1
+  # (spring.http.client.* se deprecó en 4.0); exige spring-boot-restclient en
+  # el classpath (pom.xml).
+  http:
+    clients:
+      connect-timeout: 3s
+      read-timeout: 5s
+  # FASE 7 (issue #26) — virtual threads en el servidor (Tomcat) y en las tareas
+  # @Scheduled: los hilos HTTP sólo esperan I/O (JDBC, llamadas a Brevo/Telegram,
+  # Google), así que el pool de platform threads deja de ser el cuello de
+  # botella. NO es default en Boot 4.1. Para vigilar hilos pinned en producción:
+  # jcmd <pid> Thread.print y las métricas de threads del actuator.
+  threads:
+    virtual:
+      enabled: true
   security:
     oauth2:
       client:
@@ -44,7 +72,27 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # Sólo /actuator/health es anónimo; info, metrics y prometheus exigen
+        # rol ADMIN (SecurityConfig, issue #25). En prod la lista se recorta a
+        # health,info (application-prod.yml) y se reabre con
+        # MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE si hace falta scrapear.
+        include: health,info,metrics,prometheus
+  # Export a Prometheus (issue #25): la clave POR REGISTRY es la que decide.
+  # Si no está a true, la condición @ConditionalOnEnabledMetricsExport no crea
+  # el registry (aunque los defaults del resto de registries estén a true) y
+  # /actuator/prometheus responde 404 — lo cubre ActuatorSeguridadTest.
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  metrics:
+    distribution:
+      # Percentiles de http.server.requests, hikaricp_* y JVM: mirar p95/p99,
+      # no la media (skill rendimiento). Se calculan en memoria por timer.
+      percentiles:
+        - 0.5
+        - 0.95
+        - 0.99
 
 # ---------------------------------------------------------------------------
 # Autenticación (FASE 1). Los secretos sólo existen como variables de entorno
@@ -78,6 +126,23 @@ manti:
     # Allowlist explícita (nunca '*'): separada por comas.
     allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000}
   # ---------------------------------------------------------------------------
+  # FASE 7 — planificador global de Spring (@Scheduled): despachador de
+  # notificaciones y purga de refresh_tokens. Guard PROPIO e independiente del
+  # envío (manti.notificaciones.enabled) y de la purga (manti.purgas.enabled):
+  # apagar uno ya no apaga los demás (issue #8, revisión del PR). Sólo el
+  # perfil de test lo apaga (application-test.yml); se puede desactivar con
+  # MANTI_SCHEDULING_ENABLED=false.
+  # ---------------------------------------------------------------------------
+  scheduling:
+    enabled: true
+  # ---------------------------------------------------------------------------
+  # FASE 7 — purga diaria de refresh_tokens caducados (issue #8).
+  # true salvo en el perfil de test (application-test.yml), donde el job ni se
+  # crea. Apagar desde el entorno con PURGAS_ENABLED=false.
+  # ---------------------------------------------------------------------------
+  purgas:
+    enabled: ${PURGAS_ENABLED:true}
+  # ---------------------------------------------------------------------------
   # FASE 5 — notificaciones (outbox transaccional + despachador @Scheduled).
   # Los secretos llegan SOLO por variables de entorno (.env en local, hosting
   # en prod): nunca se escriben literales aquí.
@@ -85,12 +150,9 @@ manti:
   notificaciones:
     # Interruptor global del ENVÍO. Apagado (local y CI) el despachador no
     # llama a ningún proveedor: las filas siguen en PENDIENTE y se envían al
-    # activarlo con NOTIFICACIONES_ENABLED=true.
+    # activarlo con NOTIFICACIONES_ENABLED=true. Es independiente de si el
+    # planificador está encendido (manti.scheduling.enabled).
     enabled: ${NOTIFICACIONES_ENABLED:false}
-    # false SÓLO en el perfil test (application-test.yml): sin planificador,
-    # los tests invocan el despachador a mano sin que una tarea programada
-    # los ensucie. En cualquier otro entorno, el despachador corre solo.
-    programado: true
     telegram:
       bot-token: ${TELEGRAM_BOT_TOKEN:}
       chat-id: ${TELEGRAM_CHAT_ID:}

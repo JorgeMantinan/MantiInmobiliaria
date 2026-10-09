@@ -59,6 +59,21 @@ final class FixturesProfesionales {
         return total == null ? 0 : total;
     }
 
+    /**
+     * Nº de filas del outbox de un canal para UNA solicitud Y UN destinatario.
+     * Los tests lo usan para no depender de que la BD de desarrollo esté vacía
+     * de profesionales ajenos (si alguien da de alta un profesional ACTIVO con
+     * el mismo gremio, el outbox de la solicitud lo incluye legítimamente).
+     */
+    static int contarOutboxDestinatario(JdbcTemplate jdbc, long solicitudId,
+                                        String canal, long destinatarioId) {
+        Integer total = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM notificaciones_outbox "
+                        + "WHERE solicitud_id = ? AND canal = ? AND destinatario_id = ?",
+                Integer.class, solicitudId, canal, destinatarioId);
+        return total == null ? 0 : total;
+    }
+
     /** Ids de los profesionales destinatarios del email de una solicitud. */
     static List<Long> destinatariosDeEmail(JdbcTemplate jdbc, long solicitudId) {
         return jdbc.queryForList(

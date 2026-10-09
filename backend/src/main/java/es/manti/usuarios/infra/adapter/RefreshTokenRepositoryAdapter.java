@@ -37,4 +37,14 @@ public class RefreshTokenRepositoryAdapter implements RefreshTokenRepository {
     public long revokeAllFromUsuario(Long usuarioId) {
         return jpaRepository.revocarTodosDeUsuario(usuarioId);
     }
+
+    /**
+     * Purga de expirados (issue #8). La transacción de escritura la abre el
+     * servicio ({@code RefreshTokenPurgaService.purgar}); aquí sólo se
+     * delega, igual que en el resto de métodos de lectura/escritura simples.
+     */
+    @Override
+    public int purgarExpirados(int diasRetencion) {
+        return jpaRepository.purgarExpirados(diasRetencion);
+    }
 }
