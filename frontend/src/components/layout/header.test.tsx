@@ -54,4 +54,19 @@ describe('Header', () => {
     expect(screen.getByRole('link', { name: 'Iniciar sesión' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Crear cuenta' })).toBeInTheDocument();
   });
+
+  it('con_rol_admin_muestra_el_enlace_al_backoffice', () => {
+    renderHeader(sesion({ ...USUARIO, rol: 'ADMIN' }));
+
+    expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin');
+  });
+
+  it('con_rol_user_y_sin_sesion_no_muestra_el_enlace_de_administracion', () => {
+    const { unmount } = renderHeader(sesion(USUARIO));
+    expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
+    unmount();
+
+    renderHeader(sesion(null));
+    expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
+  });
 });
