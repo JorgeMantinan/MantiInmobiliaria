@@ -109,6 +109,24 @@ class InmuebleRepositoryTest {
         assertThat(repository.contar(filtros)).isEqualTo(1);
     }
 
+    /**
+     * Regresión hotfix: todos los parámetros a null (listado sin filtros). El
+     * patrón de municipio NULL bindeado como JAVA_OBJECT→bytea rompía
+     * {@code LOWER(:p)} con {@code function lower(bytea) does not exist}.
+     */
+    @Test
+    void listar_y_contar_sinFiltros_devuelveVigentes() {
+        String municipio = municipioPrueba();
+        Inmueble creado = crear(municipio, "it-sin-filtros", "100000");
+        InmuebleFiltros sinFiltros = new InmuebleFiltros(null, null, null, null, null, null, null);
+
+        List<InmuebleResumen> filas = repository.listar(
+                sinFiltros, InmuebleOrden.CREADO_DESC, null, 10);
+
+        assertThat(filas).extracting(InmuebleResumen::id).contains(creado.getId());
+        assertThat(repository.contar(sinFiltros)).isGreaterThanOrEqualTo(1);
+    }
+
     @Test
     void listar_porMunicipioParcial_esCaseInsensitive() {
         // Contrato de InmuebleFiltros: el patrón viaja ya en minúsculas (lo
