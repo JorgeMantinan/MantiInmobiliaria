@@ -33,6 +33,11 @@ export function Header() {
               <Link href="/favoritos" className={ENLACE}>
                 Favoritos
               </Link>
+              {usuario.rol === 'ADMIN' ? (
+                <Link href="/admin" className={ENLACE}>
+                  Admin
+                </Link>
+              ) : null}
               <span className="hidden max-w-48 truncate text-sm text-texto-suave sm:inline" title={usuario.nombre}>
                 {usuario.email}
               </span>
