@@ -109,6 +109,13 @@ manti:
     # Allowlist explícita (nunca '*'): separada por comas.
     allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000}
   # ---------------------------------------------------------------------------
+  # FASE 7 — purga diaria de refresh_tokens caducados (issue #8).
+  # true salvo en el perfil de test (application-test.yml), donde el job ni se
+  # crea. Apagar desde el entorno con PURGAS_ENABLED=false.
+  # ---------------------------------------------------------------------------
+  purgas:
+    enabled: ${PURGAS_ENABLED:true}
+  # ---------------------------------------------------------------------------
   # FASE 5 — notificaciones (outbox transaccional + despachador @Scheduled).
   # Los secretos llegan SOLO por variables de entorno (.env en local, hosting
   # en prod): nunca se escriben literales aquí.

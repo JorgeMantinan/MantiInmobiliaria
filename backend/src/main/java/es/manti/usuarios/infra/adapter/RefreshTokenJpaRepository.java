@@ -17,4 +17,15 @@ public interface RefreshTokenJpaRepository extends JpaRepository<RefreshToken, L
     @Query("UPDATE RefreshToken t SET t.revoked = true "
             + "WHERE t.usuario.id = :usuarioId AND t.revoked = false")
     long revocarTodosDeUsuario(@Param("usuarioId") Long usuarioId);
+
+    /**
+     * Purga diaria (issue #8): borra los caducados hace más de
+     * {@code dias} días. Nativa para usar {@code now()} del servidor (el mismo
+     * reloj que escribe {@code expires_at}) y recorrer
+     * {@code idx_refresh_tokens_expires_at}.
+     */
+    @Modifying
+    @Query(value = "DELETE FROM refresh_tokens "
+            + "WHERE expires_at < now() - make_interval(days => :dias)", nativeQuery = true)
+    int purgarExpirados(@Param("dias") int dias);
 }

@@ -37,6 +37,11 @@ auth:
     registro-profesional-per-hour: 100000
 
 manti:
+  purgas:
+    # El job de purga de refresh_tokens (issue #8) NO existe en test: ninguna
+    # tarea programada puede borrar filas mientras corren los tests. La acción
+    # se prueba llamando a RefreshTokenPurgaService.purgar() a mano.
+    enabled: false
   notificaciones:
     # Sin planificador en test: los tests invocan el despachador a mano
     # (@Scheduled correría en paralelo y haría los resultados no deterministas).
