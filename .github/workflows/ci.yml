@@ -1,4 +1,4 @@
-name: CI
+﻿name: CI
 
 on:
   push:
@@ -34,7 +34,7 @@ jobs:
       DB_URL: jdbc:postgresql://localhost:5432/manti
     services:
       postgres:
-        image: postgres:18-alpine
+        image: ghcr.io/jorgemantinan/postgres:18-alpine
         env:
           POSTGRES_DB: manti
           POSTGRES_USER: manti
@@ -100,20 +100,20 @@ jobs:
       - name: Tests frontend (con coverage)
         run: npm run test:coverage
 
-      - name: Audit producción
+      - name: Audit producciÃ³n
         run: npm audit --omit=dev --audit-level=high
 
       # Gate de CRITICAL desde ya, sin --omit=dev: los 5 high de dev (cadena
       # eslint-config-next) van en el issue #11; NO subir este paso a
-      # --audit-level=high sin --omit=dev porque rompería el CI hoy.
-      - name: Audit crítica (incluye dev)
+      # --audit-level=high sin --omit=dev porque romperÃ­a el CI hoy.
+      - name: Audit crÃ­tica (incluye dev)
         run: npm audit --audit-level=critical
 
       - name: Build
         run: npm run build
         env:
-          # lib/auth.ts exige NEXT_PUBLIC_API_URL en producción y hace fallar el
-          # build si falta; en CI sólo comprobamos que compila con un valor dummy.
+          # lib/auth.ts exige NEXT_PUBLIC_API_URL en producciÃ³n y hace fallar el
+          # build si falta; en CI sÃ³lo comprobamos que compila con un valor dummy.
           NEXT_PUBLIC_API_URL: http://localhost:8080
 
   # Los dos Dockerfiles del backend deben mantener el mismo cuerpo de build
