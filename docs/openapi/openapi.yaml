@@ -1,0 +1,1743 @@
+openapi: 3.1.0
+info:
+  title: MantiInmobiliaria API
+  description: API del portal inmobiliario MantiInmobiliaria
+  version: v1
+servers:
+- url: http://localhost:8080
+  description: Generated server url
+tags:
+- name: Telegram (admin)
+  description: "Diagnóstico del bot de Telegram: chats que han escrito al bot (requiere\
+    \ rol ADMIN)"
+- name: Inmuebles (admin)
+  description: "Alta, actualización y borrado de inmuebles (requiere rol ADMIN)"
+- name: Solicitudes (admin)
+  description: Listado de solicitudes recibidas (requiere rol ADMIN)
+- name: Profesionales (admin)
+  description: Moderación de altas de profesionales (requiere rol ADMIN)
+- name: Swipes
+  description: Deck de swipes (like/nope) y favoritos del usuario autenticado
+- name: Gremios
+  description: Catálogo público de oficios (sin autenticación)
+- name: Inmuebles
+  description: Listado y detalle público de inmuebles (sin autenticación)
+- name: Profesionales
+  description: Registro público de profesionales (sin autenticación)
+- name: Solicitudes
+  description: Solicitud de servicio de un usuario del portal (sin autenticación)
+- name: Auth
+  description: "Registro, login email/password, refresh y login con Google"
+paths:
+  /api/v1/admin/inmuebles/{id}:
+    put:
+      tags:
+      - Inmuebles (admin)
+      summary: Actualiza un inmueble (PUT completo)
+      description: "Reemplaza la representación completa del recurso; los campos no\
+        \ enviados (opcional: `destacado`) conservan su valor."
+      operationId: actualizar
+      parameters:
+      - name: id
+        in: path
+        description: Identificador del inmueble
+        required: true
+        schema:
+          type: integer
+          format: int64
+        example: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InmuebleRequest"
+        required: true
+      responses:
+        "200":
+          description: Inmueble actualizado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/InmuebleResponse"
+        "400":
+          description: "Validación fallida (ProblemDetail con errors[])"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Sin token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Token sin rol ADMIN
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Inexistente
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Inmueble ya eliminado (soft-delete); no se reescribe un borrado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "413":
+          description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+      - bearerAuth: []
+    delete:
+      tags:
+      - Inmuebles (admin)
+      summary: Elimina un inmueble (soft-delete)
+      description: "Marca `eliminado_en`: desaparece del listado y del detalle pú\
+        blico, pero la fila se conserva (auditoría)."
+      operationId: eliminar
+      parameters:
+      - name: id
+        in: path
+        description: Identificador del inmueble
+        required: true
+        schema:
+          type: integer
+          format: int64
+        example: 1
+      responses:
+        "204":
+          description: Eliminado (sin cuerpo)
+        "401":
+          description: Sin token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Token sin rol ADMIN
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Inexistente
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Inmueble ya eliminado (soft-delete); no se repite el borrado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+      - bearerAuth: []
+  /api/v1/swipes:
+    post:
+      tags:
+      - Swipes
+      summary: Registra un like o nope sobre un inmueble
+      description: "Idempotente por DISEÑO (la constraint `uq_swipes_usuario_inmueble`\
+        \ garantiza una fila por pareja): 201 en la primera decisión; repetir la MISMA\
+        \ decisión → 200 sin crear fila; cambiar de opinión → 200 actualizando. No\
+        \ requiere cabecera `Idempotency-Key`: la unicidad natural es la idempotencia.\
+        \ Ante una carrera de inserción (doble tap del frontend) el servicio reintenta\
+        \ una vez en una transacción nueva y responde 200; sólo si la relectura sigue\
+        \ vacía devuelve 409. 404 si el inmueble no existe o está eliminado."
+      operationId: registrarSwipe
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SwipeRequest"
+        required: true
+      responses:
+        "201":
+          description: Primera decisión registrada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SwipeResponse"
+        "200":
+          description: Repetición idempotente o cambio de decisión
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SwipeResponse"
+        "400":
+          description: "Validación fallida (ProblemDetail con errors[])"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Sin token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Inmueble inexistente o eliminado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Conflicto de unicidad no resuelto por el reintento (dos escrituras
+            simultáneas sobre la misma pareja usuario+inmueble)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "413":
+          description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+      - bearerAuth: []
+  /api/v1/solicitudes:
+    post:
+      tags:
+      - Solicitudes
+      summary: Crea una solicitud de servicio
+      description: "Alta anónima de una petición de trabajo (municipio, descripció\
+        n y 1..8 gremios del catálogo). En la MISMA transacción se encolan las notificaciones\
+        \ a los profesionales ACTIVOS que compartan algún gremio (outbox). Rate limit:\
+        \ 10 peticiones/hora por IP. Cabecera opcional `Idempotency-Key` (máx. 64\
+        \ caracteres): reenviar la MISMA clave devuelve la respuesta original (replay,\
+        \ mismo id) en vez de crear una segunda solicitud, y una clave reutilizada\
+        \ con un cuerpo distinto responde 409. Sin `Location`: el recurso no tiene\
+        \ GET público."
+      operationId: crearSolicitud
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        description: "Clave opcional de idempotencia (máx. 64 caracteres): la misma\
+          \ clave devuelve la respuesta original en vez de duplicar la solicitud"
+        required: false
+        schema:
+          type: string
+          maxLength: 64
+          minLength: 0
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SolicitudCreateRequest"
+        required: true
+      responses:
+        "201":
+          description: "Solicitud creada en estado NUEVA (sin `Location`: el recurso\
+            \ no tiene GET público)"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SolicitudResponse"
+        "400":
+          description: "Validación fallida o gremios inexistentes (ProblemDetail con\
+            \ errors[])"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: '`Idempotency-Key` reutilizada con un cuerpo distinto al de
+            la petición original (ProblemDetail)'
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "429":
+          description: Rate limit por IP superado (10/hora)
+          headers:
+            Retry-After:
+              description: Segundos hasta liberar una petición en la ventana de rate
+                limit
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "413":
+          description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security: []
+  /api/v1/profesionales/registro:
+    post:
+      tags:
+      - Profesionales
+      summary: Registra un profesional (queda PENDIENTE)
+      description: "Alta anónima de una empresa o autónomo que quiere recibir solicitudes.\
+        \ Siempre nace con estado `PENDIENTE`: sólo un administrador puede moverla\
+        \ a `ACTIVO` o `RECHAZADO`. Rate limit: 5 peticiones/hora por IP."
+      operationId: registrarProfesional
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfesionalRegistroRequest"
+        required: true
+      responses:
+        "201":
+          description: Profesional registrado en estado PENDIENTE
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProfesionalEstadoResponse"
+        "400":
+          description: "Validación fallida o gremios inexistentes (ProblemDetail con\
+            \ errors[])"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: El email ya está registrado como profesional
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "429":
+          description: Rate limit por IP superado (5/hora)
+          headers:
+            Retry-After:
+              description: Segundos hasta liberar una petición en la ventana de rate
+                limit
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "413":
+          description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security: []
+  /api/v1/auth/register:
+    post:
+      tags:
+      - Auth
+      summary: Registra un usuario y le devuelve la sesión (auto-login)
+      operationId: registrar
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegistroRequest"
+        required: true
+      responses:
+        "201":
+          description: Usuario creado; sesión emitida
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validación fallida (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Email ya registrado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "429":
+          description: Demasiados intentos (rate limit)
+          headers:
+            Retry-After:
+              description: Segundos hasta liberar una petición en la ventana de rate
+                limit
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "413":
+          description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security: []
+  /api/v1/auth/refresh:
+    post:
+      tags:
+      - Auth
+      summary: Rota el refresh token de la cookie y emite un nuevo access token
+      description: "Requiere la cookie httpOnly de refresh y la cabecera `X-Requested-With:\
+        \ XMLHttpRequest` (protección CSRF elegida)."
+      operationId: refrescar
+      responses:
+        "200":
+          description: Sesión renovada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Refresh token inválido o caducado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Falta la cabecera X-Requested-With
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security: []
+  /api/v1/auth/oauth2/token:
+    post:
+      tags:
+      - Auth
+      summary: Canjea el código del callback de Google por la sesión
+      description: "Segundo paso del flujo Google: el frontend intercambia aquí el\
+        \ código opaco de un solo uso recibido en /auth/google/callback."
+      operationId: canjearCodigoGoogle
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OAuth2TokenRequest"
+        required: true
+      responses:
+        "200":
+          description: Código válido; sesión emitida
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Código ausente o inválido (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Código inválido o caducado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "413":
+          description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security: []
+  /api/v1/auth/logout:
+    post:
+      tags:
+      - Auth
+      summary: Invalida el refresh token y borra la cookie
+      description: "Requiere la cabecera `X-Requested-With: XMLHttpRequest` (protecció\
+        n CSRF elegida)."
+      operationId: cerrarSesion
+      responses:
+        "204":
+          description: "Sesión cerrada (siempre, aunque el token fuera inválido)"
+        "403":
+          description: Falta la cabecera X-Requested-With
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security: []
+  /api/v1/auth/login:
+    post:
+      tags:
+      - Auth
+      summary: Autentica con email y password
+      operationId: login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+        required: true
+      responses:
+        "200":
+          description: Credenciales válidas; sesión emitida
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Credenciales incorrectas (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "429":
+          description: Demasiados intentos (rate limit)
+          headers:
+            Retry-After:
+              description: Segundos hasta liberar una petición en la ventana de rate
+                limit
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "413":
+          description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security: []
+  /api/v1/admin/inmuebles:
+    post:
+      tags:
+      - Inmuebles (admin)
+      summary: Crea un inmueble
+      operationId: crear
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InmuebleRequest"
+        required: true
+      responses:
+        "201":
+          description: Creado; cabecera Location con el recurso público
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/InmuebleResponse"
+        "400":
+          description: "Validación fallida (ProblemDetail con errors[])"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Sin token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Token sin rol ADMIN
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "413":
+          description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+      - bearerAuth: []
+  /api/v1/admin/profesionales/{id}:
+    patch:
+      tags:
+      - Profesionales (admin)
+      summary: Cambia el estado de un profesional
+      description: Sólo admite `ACTIVO` (puede recibir solicitudes) o `RECHAZADO`.
+        Un profesional `PENDIENTE` aprobado pasa a `ACTIVO`; desde `ACTIVO` ya no
+        vuelve a `PENDIENTE`.
+      operationId: actualizarEstadoProfesional
+      parameters:
+      - name: id
+        in: path
+        description: Identificador del profesional
+        required: true
+        schema:
+          type: integer
+          format: int64
+        example: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfesionalEstadoRequest"
+        required: true
+      responses:
+        "200":
+          description: "Estado actualizado: {id, estado}"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProfesionalEstadoResponse"
+        "400":
+          description: "Validación fallida: el estado debe ser ACTIVO o RECHAZADO\
+            \ (ProblemDetail con errors[])"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Sin token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Token sin rol ADMIN
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Profesional inexistente
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "413":
+          description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+      - bearerAuth: []
+  /api/v1/swipes/favoritos:
+    get:
+      tags:
+      - Swipes
+      summary: Lista los favoritos (likes) del usuario
+      description: "Swipes con decisión LIKE, orden `swipe creado_en DESC, id DESC`.\
+        \ Paginación keyset: pase `nextCursor` como `cursor`; `limit` 1..50 (20 por\
+        \ defecto)."
+      operationId: favoritos
+      parameters:
+      - name: cursor
+        in: query
+        description: Cursor opaco de la página anterior (base64); ausente en la primera
+          página
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        description: "Tamaño de página, 1..50 (20 por defecto)"
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        "200":
+          description: Página de favoritos
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SwipePage"
+        "400":
+          description: "Cursor inválido o `limit` fuera de rango (ProblemDetail con\
+            \ errors[])"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Sin token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+      - bearerAuth: []
+  /api/v1/swipes/deck:
+    get:
+      tags:
+      - Swipes
+      summary: Deck de inmuebles pendientes del usuario
+      description: "Inmuebles ACTIVOS que el usuario todavía no ha swipeado (LIKE\
+        \ ni NOPE), orden `created_at DESC, id DESC`. Paginación keyset: pase `nextCursor`\
+        \ como `cursor`; `limit` 1..50 (20 por defecto)."
+      operationId: deck
+      parameters:
+      - name: cursor
+        in: query
+        description: Cursor opaco de la página anterior (base64); ausente en la primera
+          página
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        description: "Tamaño de página, 1..50 (20 por defecto)"
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        "200":
+          description: Página del deck
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SwipePage"
+        "400":
+          description: "Cursor inválido o `limit` fuera de rango (ProblemDetail con\
+            \ errors[])"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Sin token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+      - bearerAuth: []
+  /api/v1/inmuebles:
+    get:
+      tags:
+      - Inmuebles
+      summary: Lista inmuebles con filtros y paginación por cursor
+      description: "Orden por defecto `created_at DESC, id DESC` (o `sort=precio_asc|precio_desc`).\
+        \ La paginación es keyset: pase `nextCursor` como `cursor` para la página\
+        \ siguiente. `limit` se acota a 1..50 (20 por defecto)."
+      operationId: listar
+      parameters:
+      - name: estado
+        in: query
+        description: Estado comercial (VENTA o ALQUILER)
+        required: false
+        schema:
+          type: string
+          enum:
+          - VENTA
+          - ALQUILER
+      - name: tipo
+        in: query
+        description: "Tipo de inmueble (PISO, CASA, ATICO, DUPLEX, ESTUDIO, LOCAL,\
+          \ TERRENO)"
+        required: false
+        schema:
+          type: string
+          enum:
+          - PISO
+          - CASA
+          - ATICO
+          - DUPLEX
+          - ESTUDIO
+          - LOCAL
+          - TERRENO
+      - name: municipio
+        in: query
+        description: "Municipio, coincidencia parcial e insensible a mayúsculas (má\
+          x. 120)"
+        required: false
+        schema:
+          type: string
+          maxLength: 120
+          minLength: 0
+      - name: precioMin
+        in: query
+        description: Precio mínimo en euros (>= 0; no puede superar precioMax)
+        required: false
+        schema:
+          type: number
+      - name: precioMax
+        in: query
+        description: Precio máximo en euros (>= 0; no puede ser menor que precioMin)
+        required: false
+        schema:
+          type: number
+      - name: habitacionesMin
+        in: query
+        description: Número mínimo de habitaciones
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: destacado
+        in: query
+        description: Sólo destacados (true) o sólo no destacados (false)
+        required: false
+        schema:
+          type: boolean
+      - name: cursor
+        in: query
+        description: Cursor opaco de la página anterior (base64); ausente en la primera
+          página
+        required: false
+        schema:
+          type: string
+      - name: sort
+        in: query
+        description: "Orden: precio_asc o precio_desc (por defecto, más recientes)"
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        description: "Tamaño de página, 1..50 (20 por defecto)"
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        "200":
+          description: Página de inmuebles
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/InmueblePage"
+        "400":
+          description: "Cursor, sort, rango de filtros (precioMin>precioMax, precios\
+            \ negativos, habitacionesMin<0) o valor de parámetro no admitido (p. ej.\
+            \ estado=XYZ, limit=abc): ProblemDetail con errors:[{field, message}]"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security: []
+  /api/v1/inmuebles/{id}:
+    get:
+      tags:
+      - Inmuebles
+      summary: Detalle completo de un inmueble
+      description: 404 si no existe o si fue eliminado (soft-delete).
+      operationId: detalle
+      parameters:
+      - name: id
+        in: path
+        description: Identificador del inmueble
+        required: true
+        schema:
+          type: integer
+          format: int64
+        example: 1
+      responses:
+        "200":
+          description: Inmueble encontrado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/InmuebleResponse"
+        "404":
+          description: Inexistente o eliminado (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security: []
+  /api/v1/gremios:
+    get:
+      tags:
+      - Gremios
+      summary: Lista el catálogo de gremios
+      description: "Devuelve todos los oficios disponibles con su `slug` (identificador\
+        \ que los formularios envían en `gremios[]`) y su `nombre`. Recurso estático:\
+        \ `Cache-Control: public, max-age=60`."
+      operationId: listarGremios
+      responses:
+        "200":
+          description: "Catálogo completo (array de {slug, nombre})"
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GremioResponse"
+      security: []
+  /api/v1/auth/me:
+    get:
+      tags:
+      - Auth
+      summary: Devuelve el usuario autenticado (access token requerido)
+      operationId: usuarioActual
+      responses:
+        "200":
+          description: Usuario autenticado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UsuarioSummary"
+        "401":
+          description: Sin token o token caducado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+      - bearerAuth: []
+  /api/v1/admin/telegram/diagnostico:
+    get:
+      tags:
+      - Telegram (admin)
+      summary: Lista los chats que han escrito al bot
+      description: "Llama a `getUpdates` de la Bot API de Telegram (timeout 5 s) y\
+        \ resume los chats vistos: `chatId`, `tipo` (private/group/supergroup/channel)\
+        \ y un extracto del último mensaje. Útil para descubrir el `chat_id` de un\
+        \ grupo y configurar `TELEGRAM_CHAT_ID`."
+      operationId: diagnosticoTelegram
+      responses:
+        "200":
+          description: "Chats vistos: {chatsVistos: [{chatId, tipo, textoMuestra}]}"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TelegramDiagnosticoResponse"
+        "401":
+          description: Sin token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Token sin rol ADMIN
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Telegram sin credencial: falta `TELEGRAM_BOT_TOKEN` (ProblemDetail)"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "502":
+          description: Telegram no disponible o ha rechazado `getUpdates` (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+      - bearerAuth: []
+  /api/v1/admin/solicitudes:
+    get:
+      tags:
+      - Solicitudes (admin)
+      summary: Lista las últimas solicitudes
+      description: "Devuelve las 50 solicitudes más recientes (array plano, sin paginació\
+        n — MVP) con sus gremios pedidos en `slug`."
+      operationId: listarSolicitudes
+      responses:
+        "200":
+          description: "Solicitudes más recientes (array, máx. 50)"
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SolicitudAdminResponse"
+        "401":
+          description: Sin token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Token sin rol ADMIN
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+      - bearerAuth: []
+  /api/v1/admin/profesionales:
+    get:
+      tags:
+      - Profesionales (admin)
+      summary: Lista profesionales por estado
+      description: "Lista simple SIN paginación (MVP): devuelve todos los profesionales\
+        \ del estado indicado, más recientes primero, con sus gremios en `slug`. Si\
+        \ se omite `estado`, devuelve todos."
+      operationId: listarProfesionales
+      parameters:
+      - name: estado
+        in: query
+        description: "Estado a filtrar (PENDIENTE, ACTIVO o RECHAZADO); si se omite,\
+          \ todos"
+        required: false
+        schema:
+          type: string
+          enum:
+          - PENDIENTE
+          - ACTIVO
+          - RECHAZADO
+      responses:
+        "200":
+          description: Lista de profesionales (array)
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProfesionalAdminResponse"
+        "400":
+          description: "`estado` no admitido (PENDIENTE, ACTIVO o RECHAZADO): ProblemDetail\
+            \ con errors[]"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Sin token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Token sin rol ADMIN
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+      - bearerAuth: []
+  /api/v1/swipes/favoritos/{inmuebleId}:
+    delete:
+      tags:
+      - Swipes
+      summary: Elimina un favorito
+      description: Borra el swipe LIKE y el inmueble vuelve al deck. 404 si el USUARIO
+        ACTUAL no tiene ese favorito (también si es favorito de otro usuario o si
+        el swipe era un NOPE).
+      operationId: eliminarFavorito
+      parameters:
+      - name: inmuebleId
+        in: path
+        description: Identificador del inmueble
+        required: true
+        schema:
+          type: integer
+          format: int64
+        example: 42
+      responses:
+        "204":
+          description: Favorito eliminado (sin cuerpo)
+        "401":
+          description: Sin token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: No es un favorito del usuario actual
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+      - bearerAuth: []
+components:
+  schemas:
+    InmuebleRequest:
+      type: object
+      description: Datos de alta/actualización de un inmueble
+      properties:
+        titulo:
+          type: string
+          description: Título del anuncio
+          example: Piso céntrico con ascensor
+          maxLength: 200
+          minLength: 0
+        descripcion:
+          type: string
+          description: Descripción larga (opcional)
+          example: Luminoso piso reformado...
+          maxLength: 5000
+          minLength: 0
+        precio:
+          type: number
+          description: Precio en euros; debe ser mayor que 0
+          example: 245000.0
+          minimum: 0.01
+        superficieM2:
+          type: integer
+          format: int32
+          description: Superficie en m² (opcional)
+          example: 96
+          exclusiveMinimum: 0
+        habitaciones:
+          type: integer
+          format: int32
+          description: Habitaciones (opcional)
+          example: 3
+          maximum: 200
+          minimum: 0
+        banios:
+          type: integer
+          format: int32
+          description: Baños (opcional)
+          example: 1
+          maximum: 50
+          minimum: 0
+        tipo:
+          type: string
+          description: Tipo de inmueble
+          enum:
+          - PISO
+          - CASA
+          - ATICO
+          - DUPLEX
+          - ESTUDIO
+          - LOCAL
+          - TERRENO
+          example: PISO
+        estado:
+          type: string
+          description: Estado comercial
+          enum:
+          - VENTA
+          - ALQUILER
+          example: VENTA
+        direccion:
+          type: string
+          description: Dirección completa
+          example: "Calle Mayor 1, 3º B"
+          maxLength: 500
+          minLength: 0
+        codigoPostal:
+          type: string
+          description: "Código postal español (5 dígitos, opcional)"
+          example: "28013"
+          pattern: "^[0-9]{5}$"
+        municipio:
+          type: string
+          description: Municipio
+          example: Madrid
+          maxLength: 120
+          minLength: 0
+        provincia:
+          type: string
+          description: Provincia
+          example: Madrid
+          maxLength: 120
+          minLength: 0
+        lat:
+          type: number
+          format: double
+          description: "Latitud WGS84 (España: 27..44)"
+          example: 40.4168
+          maximum: 44.0
+          minimum: 27.0
+        lng:
+          type: number
+          format: double
+          description: "Longitud WGS84 (España: -19..5)"
+          example: -3.7038
+          maximum: 5.0
+          minimum: -19.0
+        imagenUrl:
+          type: string
+          description: Imagen principal; sólo URL https con caracteres de URL (opcional)
+          example: https://picsum.photos/seed/inm1/800/600
+          maxLength: 500
+          minLength: 0
+          pattern: "^https://[A-Za-z0-9\\-._~:/?#\\[\\]@!$&'()*+,;=%]+$"
+        destacado:
+          type: boolean
+          description: "Marca de destacado; sólo ADMIN (opcional, por defecto false)"
+          example: false
+      required:
+      - direccion
+      - estado
+      - lat
+      - lng
+      - municipio
+      - precio
+      - provincia
+      - tipo
+      - titulo
+    ProblemDetail:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+        properties:
+          type: object
+          additionalProperties: {}
+        errors:
+          type: array
+          description: Errores campo/mensaje; presente en las respuestas 400
+          items:
+            type: object
+            description: Error individual
+            properties:
+              field:
+                type: string
+                description: "Campo o parámetro que falló (p. ej. precioMin, estado);\
+                  \ ausente cuando sólo procede el mensaje"
+              message:
+                type: string
+                description: "Motivo fijo del error, sin datos internos de la petició\
+                  n"
+            required:
+            - message
+    InmuebleResponse:
+      type: object
+      description: Detalle completo de un inmueble
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identificador
+          example: 1
+        titulo:
+          type: string
+          description: Título del anuncio
+          example: Piso céntrico con ascensor
+        descripcion:
+          type: string
+          description: Descripción completa
+          example: Luminoso piso reformado...
+        precio:
+          type: number
+          description: Precio en euros
+          example: 245000.0
+        superficieM2:
+          type: integer
+          format: int32
+          description: Superficie en m²
+          example: 96
+        habitaciones:
+          type: integer
+          format: int32
+          description: Habitaciones
+          example: 3
+        banios:
+          type: integer
+          format: int32
+          description: Baños
+          example: 1
+        tipo:
+          type: string
+          description: Tipo de inmueble
+          enum:
+          - PISO
+          - CASA
+          - ATICO
+          - DUPLEX
+          - ESTUDIO
+          - LOCAL
+          - TERRENO
+          example: PISO
+        estado:
+          type: string
+          description: Estado comercial
+          enum:
+          - VENTA
+          - ALQUILER
+          example: VENTA
+        direccion:
+          type: string
+          description: Dirección completa
+          example: "Calle Mayor 1, 3º B"
+        codigoPostal:
+          type: string
+          description: Código postal español (5 dígitos)
+          example: "28013"
+        municipio:
+          type: string
+          description: Municipio
+          example: Madrid
+        provincia:
+          type: string
+          description: Provincia
+          example: Madrid
+        lat:
+          type: number
+          format: double
+          description: Latitud WGS84
+          example: 40.4168
+        lng:
+          type: number
+          format: double
+          description: Longitud WGS84
+          example: -3.7038
+        imagenUrl:
+          type: string
+          description: Imagen principal (URL https)
+          example: https://picsum.photos/seed/inm1/800/600
+        destacado:
+          type: boolean
+          description: Destacado en la portada
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+          description: Fecha de alta (ISO-8601)
+          example: 2026-09-01T10:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          description: Última modificación (ISO-8601)
+          example: 2026-09-01T10:00:00Z
+    SwipeRequest:
+      type: object
+      description: Decisión de un swipe sobre un inmueble
+      properties:
+        inmuebleId:
+          type: integer
+          format: int64
+          description: Identificador del inmueble
+          example: 42
+          exclusiveMinimum: 0
+        decision:
+          type: string
+          description: "Decisión: LIKE (favorito) o NOPE (descartar)"
+          enum:
+          - LIKE
+          - NOPE
+          example: LIKE
+          pattern: LIKE|NOPE
+      required:
+      - decision
+      - inmuebleId
+    SwipeResponse:
+      type: object
+      description: Decisión registrada sobre un inmueble
+      properties:
+        inmuebleId:
+          type: integer
+          format: int64
+          description: Inmueble sobre el que se decidió
+          example: 42
+        decision:
+          type: string
+          description: Decisión final
+          enum:
+          - LIKE
+          - NOPE
+          example: LIKE
+    SolicitudCreateRequest:
+      type: object
+      properties:
+        nombreContacto:
+          type: string
+          maxLength: 120
+          minLength: 0
+        emailContacto:
+          type: string
+          format: email
+          maxLength: 255
+          minLength: 0
+        telefono:
+          type: string
+          maxLength: 30
+          minLength: 0
+        municipio:
+          type: string
+          maxLength: 120
+          minLength: 0
+        descripcion:
+          type: string
+          maxLength: 2000
+          minLength: 10
+        gremios:
+          type: array
+          items:
+            type: string
+            maxLength: 40
+            minLength: 0
+          maxItems: 8
+          minItems: 0
+      required:
+      - descripcion
+      - emailContacto
+      - gremios
+      - municipio
+      - nombreContacto
+    SolicitudResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        estado:
+          type: string
+        creadoEn:
+          type: string
+          format: date-time
+    ProfesionalRegistroRequest:
+      type: object
+      properties:
+        nombre:
+          type: string
+          maxLength: 120
+          minLength: 0
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          minLength: 0
+        telefono:
+          type: string
+          maxLength: 30
+          minLength: 0
+        municipio:
+          type: string
+          maxLength: 120
+          minLength: 0
+        gremios:
+          type: array
+          items:
+            type: string
+            maxLength: 40
+            minLength: 0
+          maxItems: 8
+          minItems: 0
+      required:
+      - email
+      - gremios
+      - nombre
+    ProfesionalEstadoResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        estado:
+          type: string
+    RegistroRequest:
+      type: object
+      description: Datos de registro de un usuario
+      properties:
+        nombre:
+          type: string
+          description: Nombre visible
+          example: Ana Pérez
+          maxLength: 120
+          minLength: 0
+        email:
+          type: string
+          format: email
+          description: Email único
+          example: ana@example.com
+          maxLength: 255
+          minLength: 0
+        password:
+          type: string
+          description: "Contraseña: 8-72 caracteres"
+          example: secreto123
+          maxLength: 72
+          minLength: 8
+      required:
+      - email
+      - nombre
+      - password
+    AuthResponse:
+      type: object
+      description: "Sesión emitida: access token en body + refresh token en cookie\
+        \ httpOnly"
+      properties:
+        accessToken:
+          type: string
+          description: "Access token JWT (HS256, 15 min)"
+          example: eyJhbGciOiJIUzI1NiJ9...
+        expiresIn:
+          type: integer
+          format: int64
+          description: Segundos hasta la expiración del access token
+          example: 900
+        user:
+          $ref: "#/components/schemas/UsuarioSummary"
+          description: Usuario autenticado
+    UsuarioSummary:
+      type: object
+      description: Resumen del usuario autenticado
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identificador
+          example: 1
+        email:
+          type: string
+          description: Email
+          example: ana@example.com
+        nombre:
+          type: string
+          description: Nombre visible
+          example: Ana Pérez
+        rol:
+          type: string
+          description: Rol
+          example: USER
+        activo:
+          type: boolean
+          description: Cuenta activa
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          description: Fecha de alta (ISO-8601)
+          example: 2026-01-01T10:00:00Z
+    OAuth2TokenRequest:
+      type: object
+      description: Código de un solo uso devuelto por el callback de Google
+      properties:
+        code:
+          type: string
+          description: Código opaco de un solo uso
+          example: Y29kaWdvLW9wYXF1ZQ
+          maxLength: 255
+          minLength: 0
+      required:
+      - code
+    LoginRequest:
+      type: object
+      description: Credenciales de login
+      properties:
+        email:
+          type: string
+          format: email
+          description: Email del usuario
+          example: ana@example.com
+          maxLength: 255
+          minLength: 0
+        password:
+          type: string
+          description: Contraseña en claro
+          example: secreto123
+          maxLength: 72
+          minLength: 0
+      required:
+      - email
+      - password
+    ProfesionalEstadoRequest:
+      type: object
+      properties:
+        estado:
+          type: string
+          minLength: 1
+          pattern: ACTIVO|RECHAZADO
+      required:
+      - estado
+    InmuebleSummary:
+      type: object
+      description: Resumen de un inmueble para tarjetas de listado
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identificador
+          example: 1
+        titulo:
+          type: string
+          description: Título del anuncio
+          example: Piso céntrico con ascensor
+        precio:
+          type: number
+          description: Precio en euros
+          example: 245000.0
+        tipo:
+          type: string
+          description: Tipo de inmueble
+          enum:
+          - PISO
+          - CASA
+          - ATICO
+          - DUPLEX
+          - ESTUDIO
+          - LOCAL
+          - TERRENO
+          example: PISO
+        estado:
+          type: string
+          description: Estado comercial
+          enum:
+          - VENTA
+          - ALQUILER
+          example: VENTA
+        superficieM2:
+          type: integer
+          format: int32
+          description: Superficie en m²
+          example: 96
+        habitaciones:
+          type: integer
+          format: int32
+          description: Habitaciones
+          example: 3
+        banios:
+          type: integer
+          format: int32
+          description: Baños
+          example: 1
+        municipio:
+          type: string
+          description: Municipio
+          example: Madrid
+        provincia:
+          type: string
+          description: Provincia
+          example: Madrid
+        imagenUrl:
+          type: string
+          description: Imagen principal (URL https)
+          example: https://picsum.photos/seed/inm1/800/600
+        destacado:
+          type: boolean
+          description: Destacado en la portada
+          example: false
+        lat:
+          type: number
+          format: double
+          description: Latitud WGS84
+          example: 40.4168
+        lng:
+          type: number
+          format: double
+          description: Longitud WGS84
+          example: -3.7038
+        createdAt:
+          type: string
+          format: date-time
+          description: Fecha de alta (ISO-8601)
+          example: 2026-09-01T10:00:00Z
+    SwipePage:
+      type: object
+      description: "Página del deck o de favoritos, paginada por cursor"
+      properties:
+        content:
+          type: array
+          description: Filas de la página
+          items:
+            $ref: "#/components/schemas/InmuebleSummary"
+        nextCursor:
+          type: string
+          description: Cursor opaco para la página siguiente; null si no hay más
+          example: REVRLfDIwMjYtMTAtMDdUMTE6MjA6MDAuMDAwMDAwMHw0Mg
+        totalElements:
+          type: integer
+          format: int64
+          description: Total de filas del listado (sólo primera página)
+          example: 35
+    InmueblePage:
+      type: object
+      description: Página del listado de inmuebles paginada por cursor
+      properties:
+        content:
+          type: array
+          description: Filas de la página
+          items:
+            $ref: "#/components/schemas/InmuebleSummary"
+        nextCursor:
+          type: string
+          description: Cursor opaco para la página siguiente; null si no hay más
+          example: Q1JFQURPX0RFU0N8MjAyNi0wOS0wMVQxMDowMDowMFp8Mw
+        totalElements:
+          type: integer
+          format: int64
+          description: Total de inmuebles que cumplen el filtro (sólo primera página)
+          example: 35
+    GremioResponse:
+      type: object
+      properties:
+        slug:
+          type: string
+        nombre:
+          type: string
+    ChatVisto:
+      type: object
+      properties:
+        chatId:
+          type: string
+        tipo:
+          type: string
+        textoMuestra:
+          type: string
+    TelegramDiagnosticoResponse:
+      type: object
+      properties:
+        chatsVistos:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatVisto"
+    SolicitudAdminResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        nombreContacto:
+          type: string
+        emailContacto:
+          type: string
+        telefono:
+          type: string
+        municipio:
+          type: string
+        descripcion:
+          type: string
+        estado:
+          type: string
+        gremios:
+          type: array
+          items:
+            type: string
+        creadoEn:
+          type: string
+          format: date-time
+    ProfesionalAdminResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        nombre:
+          type: string
+        email:
+          type: string
+        telefono:
+          type: string
+        municipio:
+          type: string
+        estado:
+          type: string
+        gremios:
+          type: array
+          items:
+            type: string
+        creadoEn:
+          type: string
+          format: date-time
+  securitySchemes:
+    bearerAuth:
+      type: http
+      description: "Access token JWT (HS256, 15 min) devuelto por /api/v1/auth/login"
+      scheme: bearer
+      bearerFormat: JWT

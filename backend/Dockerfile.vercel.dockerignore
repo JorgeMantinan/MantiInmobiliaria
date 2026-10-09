@@ -1,0 +1,18 @@
+# Contexto de build = backend/. Excluye todo lo que no hace falta en la imagen.
+# Gemelo de Dockerfile.dockerignore (mantener sincronizados).
+target/
+node_modules/
+.git/
+.gitignore
+.gitattributes
+*.md
+*.log
+.env
+.env.*
+!.env.example
+.vscode/
+.idea/
+*.iml
+Dockerfile
+Dockerfile.vercel
+*.dockerignore

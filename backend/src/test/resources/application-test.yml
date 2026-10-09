@@ -1,0 +1,62 @@
+# Perfil activo en los tests (@ActiveProfiles("test")).
+# Proporciona valores de PRUEBA (no son secretos reales) para que el build
+# funcione también en CI, donde no existe el .env de la raíz.
+
+spring:
+  flyway:
+    # El esquema local de desarrollo ya tiene los seeds V900/V901 aplicados
+    # (perfil dev), así que el historial está en 901 y una migración real nueva
+    # (V3) es de versión MENOR: sin esta bandera Flyway la marcaría como
+    # "ignorada" y el esquema no avanzaría (ddl-auto: validate fallaría).
+    # En CI la BD arranca vacía y la bandera no tiene ningún efecto.
+    # Igual que application-dev.yml; application-prod.yml la fija a false.
+    out-of-order: true
+  datasource:
+    hikari:
+      # Cada contexto de prueba (propias las clases con @SpringBootTest(properties=...))
+      # mantiene SU pool abierto hasta que termina la JVM. Con 10+ contextos y el
+      # mínimo de 10 conexiones por pool se superan los 100 clientes que admite
+      # PostgreSQL por defecto: "FATAL: sorry, too many clients already".
+      # Los tests son secuenciales y monohilo: 3 conexiones por contexto bastan.
+      maximum-pool-size: 3
+      minimum-idle: 3
+
+JWT_SECRET: manti-test-only-secret-000000000000000000000000000000000000000000
+GOOGLE_CLIENT_ID: test-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET: test-client-secret
+FRONTEND_URL: http://localhost:3000
+ALLOWED_ORIGINS: http://localhost:3000
+
+# Los tests MockMvc comparten la misma IP de origen; se suben los límites para
+# no interferir con el rate limiting (que se testea en una clase propia).
+auth:
+  rate-limit:
+    login-per-minute: 100000
+    register-per-minute: 100000
+    solicitudes-per-hour: 100000
+    registro-profesional-per-hour: 100000
+
+manti:
+  scheduling:
+    # Sin planificador en test: NINGUNA tarea @Scheduled se dispara sola; los
+    # tests invocan el despachador y la purga a mano y los resultados no
+    # dependen de un cron corriendo en paralelo. Guard propio, independiente
+    # de manti.notificaciones.enabled y manti.purgas.enabled.
+    enabled: false
+  purgas:
+    # El job de purga de refresh_tokens (issue #8) NO existe en test: ninguna
+    # tarea programada puede borrar filas mientras corren los tests. La acción
+    # se prueba llamando a RefreshTokenPurgaService.purgar() a mano.
+    enabled: false
+  notificaciones:
+    # Guard del ENVÍO (no del planificador): con false el despachador no lee
+    # ni envía nada aunque se le llame a mano. Si un test quiere probar el
+    # envío, lo activa con @SpringBootTest(properties=...).
+    enabled: false
+    telegram:
+      bot-token: ${TELEGRAM_BOT_TOKEN:}
+      chat-id: ${TELEGRAM_CHAT_ID:}
+    brevo:
+      api-key: ${BREVO_API_KEY:}
+      from-email: no-reply@manti.test
+      from-name: MantiInmobiliaria

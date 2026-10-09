@@ -1,0 +1,52 @@
+# Perfil PROD (skill config-secrets).
+# Activación: --spring.profiles.active=prod (o SPRING_PROFILES_ACTIVE=prod).
+#
+# Reglas duras de este perfil:
+#   1. Flyway sólo mira db/migration. Los seeds de desarrollo (db/dev/V900,
+#      V901 — inmuebles de ejemplo y el admin local) quedan FUERA del jar lógico
+#      de producción: aunque el fichero viaje en el classpath, Flyway no lo ve y
+#      jamás se ejecuta. Es la garantía de que las credenciales/datos de ejemplo
+#      no pueden colarse en prod (además, el usuario admin sólo se crea con el
+#      perfil dev).
+#   2. springdoc apagado por defecto: la especificación y el Swagger UI no se
+#      publican en producción. Se puede reabrir puntualmente con
+#      SPRINGDOC_ENABLED=true sin tocar este fichero (nunca con secretos).
+spring:
+  flyway:
+    locations: classpath:db/migration
+    # En prod NO out-of-order: si alguien intenta meter una migración antigua
+    # sobre un esquema más avanzado, debe fallar en vez de aplicarse a ciegas.
+    out-of-order: false
+  jpa:
+    # Nunca update/create en prod: el esquema sólo cambia por Flyway.
+    hibernate:
+      ddl-auto: validate
+
+springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_ENABLED:false}
+  swagger-ui:
+    enabled: ${SPRINGDOC_ENABLED:false}
+
+# FASE 7 — recorte duro del actuator en producción (issue #25, revisión del PR).
+#   1. Exposición por defecto SÓLO health,info: metrics y prometheus quedan
+#      fuera y hay que abrirlos a mano con
+#      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE si se scrapea Prometheus (el
+#      endpoint sigue exigiendo rol ADMIN aunque se exponga).
+#   2. El export a Prometheus apagado por defecto: sin scraper no se gasta CPU
+#      ni memoria en series que nadie lee; PROMETHEUS_EXPORT_ENABLED=true lo
+#      reabre junto a la exposure anterior.
+#   3. health sin detalle: fuera de componentes/indicators (ni versions de
+#      Hibernate/JDBC ni estado de discos) para el healthcheck anónimo.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health,info}
+  prometheus:
+    metrics:
+      export:
+        enabled: ${PROMETHEUS_EXPORT_ENABLED:false}
+  endpoint:
+    health:
+      show-details: never

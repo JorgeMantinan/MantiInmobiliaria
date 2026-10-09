@@ -1,0 +1,34 @@
+# Perfil DEV: sólo datos de ejemplo (skill config-secrets + base-de-datos).
+# Los seeds viven en db/dev y NUNCA en db/migration: en prod no se aplican.
+# Activación: ./mvnw spring-boot:run "-Dspring-boot.run.profiles=dev"
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/dev
+    # Los seeds de desarrollo van en V900/V901, muy por encima de cualquier
+    # migración real que llegue después (V3, V4...). Sin esta bandera, si el
+    # esquema local ya está en 901 y aparece una V3, Flyway la marcaría como
+    # "ignorada" (versión anterior a la actual) y el esquema real NO avanzaría.
+    # Con out-of-order se aplican las migraciones reales en su orden aunque el
+    # historial contenga los seeds. Sólo aquí: application-prod.yml fija
+    # locations a classpath:db/migration, de modo que en prod no hay seeds
+    # tampoco aunque esta bandera no esté activa.
+    out-of-order: true
+  jpa:
+    properties:
+      # FASE 7 (issue #31) — sólo DEV: al cierre de cada sesión Hibernate
+      # imprime queries, tiempo de carga/flush y statements (INFO), que es lo
+      # que hace falta para cazar N+1 sin añadir ruido. Se decidió NO activar
+      # también org.hibernate.SQL=DEBUG: imprimiría cada SELECT completo y el
+      # conteo/tiempos de generate_statistics ya orientan; si un día se
+      # necesita la query concreta se sube puntualmente el logger.
+      hibernate:
+        generate_statistics: true
+
+manti:
+  scheduling:
+    # En dev el planificador SÍ corre (despachador de notificaciones cada 15 s
+    # y purga de refresh_tokens a las 04:17 Europe/Madrid). Es el default de
+    # application.yml, escrito aquí explícito: es el único perfil donde las
+    # tareas programadas se ejecutan de verdad (test lo apaga; prod hereda el
+    # true de la base).
+    enabled: true
