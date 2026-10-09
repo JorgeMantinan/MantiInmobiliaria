@@ -2,6 +2,7 @@ package es.manti.usuarios.api;
 
 import es.manti.usuarios.application.CuentaGoogleService;
 import es.manti.usuarios.domain.CuentaGoogleConflictivaException;
+import es.manti.usuarios.domain.CuentaGoogleSinVerificarException;
 import es.manti.usuarios.domain.Rol;
 import es.manti.usuarios.domain.Usuario;
 import es.manti.usuarios.domain.UsuarioRepository;
@@ -19,8 +20,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Vínculo de cuenta Google contra PostgreSQL real (no mocks): usuario con
- * password que se vincula al llegar el perfil de Google y conflicto cuando la
- * cuenta ya estaba vinculada a otro google_id.
+ * password que se vincula al llegar el perfil de Google, conflicto cuando la
+ * cuenta ya estaba vinculada a otro google_id y, desde la seguridad
+ * pre-release, rechazo del vínculo cuando la cuenta local NO verificó su
+ * email (anti pre-hijack / ATO).
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -43,12 +46,12 @@ class CuentaGoogleVinculoTest {
     }
 
     @Test
-    void crearCodigoGoogle_usuarioConPassword_vinculaElGoogleId() {
+    void crearCodigoGoogle_usuarioConPasswordVerificado_vinculaElGoogleId() {
         email = emailNuevo();
-        Usuario conPassword = nuevaCuentaPassword(email);
+        Usuario conPassword = nuevaCuentaPassword(email, true);
         assertThat(conPassword.getGoogleId()).isNull();
 
-        String codigo = cuentaGoogle.crearCodigoGoogle("gid-vinculo-1", email, "Ana Google");
+        String codigo = cuentaGoogle.crearCodigoGoogle("gid-vinculo-1", email, "Ana Google", true);
 
         assertThat(codigo).isNotBlank();
         Usuario recargado = usuarios.findByEmail(email).orElseThrow();
@@ -59,11 +62,11 @@ class CuentaGoogleVinculoTest {
     @Test
     void crearCodigoGoogle_cuentaVinculadaAOtroGoogleId_lanzaConflicto() {
         email = emailNuevo();
-        Usuario yaVinculado = nuevaCuentaPassword(email);
+        Usuario yaVinculado = nuevaCuentaPassword(email, true);
         yaVinculado.vincularGoogle("gid-original", null);
         usuarios.save(yaVinculado);
 
-        assertThatThrownBy(() -> cuentaGoogle.crearCodigoGoogle("gid-distinto", email, "Otra"))
+        assertThatThrownBy(() -> cuentaGoogle.crearCodigoGoogle("gid-distinto", email, "Otra", true))
                 .isInstanceOf(CuentaGoogleConflictivaException.class);
 
         assertThat(usuarios.findByEmail(email).orElseThrow().getGoogleId())
@@ -71,29 +74,60 @@ class CuentaGoogleVinculoTest {
     }
 
     @Test
-    void crearCodigoGoogle_perfilNuevo_creaLaCuenta() {
+    void crearCodigoGoogle_perfilNuevo_creaLaCuentaVerificada() {
         email = emailNuevo();
 
-        String codigo = cuentaGoogle.crearCodigoGoogle("gid-nuevo-usuario", email, "Nuevo Google");
+        String codigo = cuentaGoogle.crearCodigoGoogle("gid-nuevo-usuario", email, "Nuevo Google", true);
 
         assertThat(codigo).isNotBlank();
         Usuario creado = usuarios.findByGoogleId("gid-nuevo-usuario").orElseThrow();
         assertThat(creado.getEmail()).isEqualTo(email);
         assertThat(creado.getRol()).isEqualTo(Rol.USER);
         assertThat(creado.getPasswordHash()).isNull();
+        // Cuenta creada desde Google con email_verified=true (o ausente)
+        assertThat(creado.isEmailVerificado()).isTrue();
+    }
+
+    /** Guard anti-ATO: la cuenta local sin verificar NO se vincula con Google. */
+    @Test
+    void crearCodigoGoogle_cuentaLocalSinVerificar_lanzaCuentaSinVerificar() {
+        email = emailNuevo();
+        nuevaCuentaPassword(email, false);
+
+        assertThatThrownBy(() -> cuentaGoogle.crearCodigoGoogle("gid-atacante", email, "Atacante", true))
+                .isInstanceOf(CuentaGoogleSinVerificarException.class);
+
+        assertThat(usuarios.findByEmail(email).orElseThrow().getGoogleId()).isNull();
+    }
+
+    /** El claim explícito false crea la cuenta SIN verificar (no rompe su login por google_id). */
+    @Test
+    void crearCodigoGoogle_claimEmailVerifiedFalse_creaLaCuentaSinVerificar() {
+        email = emailNuevo();
+
+        String codigo = cuentaGoogle.crearCodigoGoogle("gid-sin-verificar", email, "Sin Verificar", false);
+
+        assertThat(codigo).isNotBlank();
+        Usuario creado = usuarios.findByGoogleId("gid-sin-verificar").orElseThrow();
+        assertThat(creado.isEmailVerificado()).isFalse();
+
+        // Repite el login por google_id: no pasa por el guard de vínculo
+        assertThat(cuentaGoogle.crearCodigoGoogle("gid-sin-verificar", email, "Sin Verificar", false))
+                .isNotBlank();
     }
 
     private String emailNuevo() {
         return "it-" + UUID.randomUUID() + "@example.com";
     }
 
-    private Usuario nuevaCuentaPassword(String email) {
+    private Usuario nuevaCuentaPassword(String email, boolean emailVerificado) {
         Usuario usuario = new Usuario();
         usuario.setEmail(email);
         usuario.setNombre("Ana Test");
         usuario.setPasswordHash("$2a$10$abcdefghijklmnopqrstuv");
         usuario.setRol(Rol.USER);
         usuario.setActivo(true);
+        usuario.setEmailVerificado(emailVerificado);
         return usuarios.save(usuario);
     }
 }

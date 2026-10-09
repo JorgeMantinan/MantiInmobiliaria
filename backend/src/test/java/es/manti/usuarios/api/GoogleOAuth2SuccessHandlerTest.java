@@ -3,6 +3,7 @@ package es.manti.usuarios.api;
 import es.manti.usuarios.application.AuthProperties;
 import es.manti.usuarios.application.CuentaGoogleService;
 import es.manti.usuarios.domain.CuentaGoogleConflictivaException;
+import es.manti.usuarios.domain.CuentaGoogleSinVerificarException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -13,10 +14,13 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 
 import java.time.Duration;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -47,14 +51,14 @@ class GoogleOAuth2SuccessHandlerTest {
     @Test
     void alAutenticarConGoogle_redirigeAlFrontendConCodigoDeUnSoloUso() throws Exception {
         OidcUser oidc = oidcUser("google-id-123", "ana@example.com", "Ana Pérez");
-        when(cuentaGoogle.crearCodigoGoogle("google-id-123", "ana@example.com", "Ana Pérez"))
+        when(cuentaGoogle.crearCodigoGoogle("google-id-123", "ana@example.com", "Ana Pérez", true))
                 .thenReturn("CODIGO-DE-UN-SOLO-USO");
 
         handler.onAuthenticationSuccess(new MockHttpServletRequest(), response, autenticacion(oidc));
 
         assertThat(response.getRedirectedUrl())
                 .isEqualTo("http://localhost:3000/auth/google/callback?code=CODIGO-DE-UN-SOLO-USO");
-        verify(cuentaGoogle).crearCodigoGoogle("google-id-123", "ana@example.com", "Ana Pérez");
+        verify(cuentaGoogle).crearCodigoGoogle("google-id-123", "ana@example.com", "Ana Pérez", true);
     }
 
     @Test
@@ -70,7 +74,7 @@ class GoogleOAuth2SuccessHandlerTest {
     @Test
     void alAutenticarConGoogleConConflictoDeVinculacion_redirigeConError() throws Exception {
         OidcUser oidc = oidcUser("google-id-789", "otra@example.com", "Otra Persona");
-        when(cuentaGoogle.crearCodigoGoogle(anyString(), anyString(), anyString()))
+        when(cuentaGoogle.crearCodigoGoogle(anyString(), anyString(), anyString(), anyBoolean()))
                 .thenThrow(new CuentaGoogleConflictivaException());
 
         handler.onAuthenticationSuccess(new MockHttpServletRequest(), response, autenticacion(oidc));
@@ -79,10 +83,37 @@ class GoogleOAuth2SuccessHandlerTest {
                 .isEqualTo("http://localhost:3000/auth/google/callback?error=account_conflict");
     }
 
+    /** Anti-ATO: cuenta local sin verificar con el mismo email → account_conflict. */
+    @Test
+    void alAutenticarConGoogleConCuentaLocalSinVerificar_redirigeConAccountConflict() throws Exception {
+        OidcUser oidc = oidcUser("google-id-999", "sin-verificar@example.com", "Sin Verificar");
+        when(cuentaGoogle.crearCodigoGoogle(anyString(), anyString(), anyString(), anyBoolean()))
+                .thenThrow(new CuentaGoogleSinVerificarException());
+
+        handler.onAuthenticationSuccess(new MockHttpServletRequest(), response, autenticacion(oidc));
+
+        assertThat(response.getRedirectedUrl())
+                .isEqualTo("http://localhost:3000/auth/google/callback?error=account_conflict");
+    }
+
+    /** El claim email_verified=false llega al servicio (cuenta creada sin verificar). */
+    @Test
+    void alAutenticarConGoogle_conEmailVerifiedFalse_pasaElClaimAlServicio() throws Exception {
+        OidcUser oidc = oidcUser("google-id-111", "claim-false@example.com", "Claim False");
+        when(oidc.getClaims()).thenReturn(Map.of("email_verified", false));
+        when(cuentaGoogle.crearCodigoGoogle(anyString(), anyString(), anyString(), eq(false)))
+                .thenReturn("CODIGO-CLAIM-FALSE");
+
+        handler.onAuthenticationSuccess(new MockHttpServletRequest(), response, autenticacion(oidc));
+
+        verify(cuentaGoogle).crearCodigoGoogle("google-id-111", "claim-false@example.com",
+                "Claim False", false);
+    }
+
     @Test
     void alAutenticarConGoogle_invalidaLaSesionDelNavegador() throws Exception {
         OidcUser oidc = oidcUser("google-id-000", "sesion@example.com", "Sin Sesión");
-        when(cuentaGoogle.crearCodigoGoogle("google-id-000", "sesion@example.com", "Sin Sesión"))
+        when(cuentaGoogle.crearCodigoGoogle("google-id-000", "sesion@example.com", "Sin Sesión", true))
                 .thenReturn("CODIGO-UN-USO");
         MockHttpServletRequest peticion = new MockHttpServletRequest();
         MockHttpSession sesion = new MockHttpSession();
@@ -102,6 +133,8 @@ class GoogleOAuth2SuccessHandlerTest {
         when(oidc.getSubject()).thenReturn(subject);
         when(oidc.getEmail()).thenReturn(email);
         when(oidc.getFullName()).thenReturn(nombre);
+        // Google manda email_verified=true para gmail verificado
+        when(oidc.getClaims()).thenReturn(Map.of("email_verified", true));
         return oidc;
     }
 
