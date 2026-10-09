@@ -23,3 +23,12 @@ spring:
       # necesita la query concreta se sube puntualmente el logger.
       hibernate:
         generate_statistics: true
+
+manti:
+  scheduling:
+    # En dev el planificador SÍ corre (despachador de notificaciones cada 15 s
+    # y purga de refresh_tokens a las 04:17 Europe/Madrid). Es el default de
+    # application.yml, escrito aquí explícito: es el único perfil donde las
+    # tareas programadas se ejecutan de verdad (test lo apaga; prod hereda el
+    # true de la base).
+    enabled: true

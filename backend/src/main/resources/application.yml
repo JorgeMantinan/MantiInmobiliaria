@@ -126,6 +126,16 @@ manti:
     # Allowlist explícita (nunca '*'): separada por comas.
     allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000}
   # ---------------------------------------------------------------------------
+  # FASE 7 — planificador global de Spring (@Scheduled): despachador de
+  # notificaciones y purga de refresh_tokens. Guard PROPIO e independiente del
+  # envío (manti.notificaciones.enabled) y de la purga (manti.purgas.enabled):
+  # apagar uno ya no apaga los demás (issue #8, revisión del PR). Sólo el
+  # perfil de test lo apaga (application-test.yml); se puede desactivar con
+  # MANTI_SCHEDULING_ENABLED=false.
+  # ---------------------------------------------------------------------------
+  scheduling:
+    enabled: true
+  # ---------------------------------------------------------------------------
   # FASE 7 — purga diaria de refresh_tokens caducados (issue #8).
   # true salvo en el perfil de test (application-test.yml), donde el job ni se
   # crea. Apagar desde el entorno con PURGAS_ENABLED=false.
@@ -140,12 +150,9 @@ manti:
   notificaciones:
     # Interruptor global del ENVÍO. Apagado (local y CI) el despachador no
     # llama a ningún proveedor: las filas siguen en PENDIENTE y se envían al
-    # activarlo con NOTIFICACIONES_ENABLED=true.
+    # activarlo con NOTIFICACIONES_ENABLED=true. Es independiente de si el
+    # planificador está encendido (manti.scheduling.enabled).
     enabled: ${NOTIFICACIONES_ENABLED:false}
-    # false SÓLO en el perfil test (application-test.yml): sin planificador,
-    # los tests invocan el despachador a mano sin que una tarea programada
-    # los ensucie. En cualquier otro entorno, el despachador corre solo.
-    programado: true
     telegram:
       bot-token: ${TELEGRAM_BOT_TOKEN:}
       chat-id: ${TELEGRAM_CHAT_ID:}

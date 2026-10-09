@@ -5,17 +5,24 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * Habilita el planificador de Spring para el despachador del outbox de
- * notificaciones ({@code @Scheduled(fixedDelay = 15000)}).
+ * Habilita el planificador global de Spring ({@code @Scheduled}) para el
+ * despachador del outbox de notificaciones y la purga diaria de refresh
+ * tokens.
  *
- * <p>Se puede apagar con {@code manti.notificaciones.programado=false} (lo
- * hace el perfil de test para que los tests invoquen el despachador a mano y
- * ninguna tarea programada los ensucie): sin planificador, el envío sigue
- * siendo invocable, simplemente no se dispara solo.</p>
+ * <p><b>Guard propio {@code manti.scheduling.enabled} (default true)</b>,
+ * independiente de las tareas que programa: apagar aquí no apaga el envío
+ * (su interruptor es {@code manti.notificaciones.enabled}) ni la purga
+ * ({@code manti.purgas.enabled}), y al revés cada tarea puede estar encendida
+ * con el planificador apagado (se invoca a mano). Antes el guard era
+ * {@code manti.notificaciones.programado}, así que desacoplaba la purga de
+ * refresh_tokens del disparo de notificaciones (issue #8, revisión del PR).</p>
+ *
+ * <p>Sólo el perfil de test lo apaga: sin planificador ninguna tarea se
+ * dispara sola y los tests invocan el despachador y la purga a mano.</p>
  */
 @Configuration
 @EnableScheduling
-@ConditionalOnProperty(prefix = "manti.notificaciones", name = "programado",
+@ConditionalOnProperty(prefix = "manti.scheduling", name = "enabled",
         havingValue = "true", matchIfMissing = true)
 public class SchedulingConfig {
 }

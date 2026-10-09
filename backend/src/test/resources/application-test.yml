@@ -37,16 +37,21 @@ auth:
     registro-profesional-per-hour: 100000
 
 manti:
+  scheduling:
+    # Sin planificador en test: NINGUNA tarea @Scheduled se dispara sola; los
+    # tests invocan el despachador y la purga a mano y los resultados no
+    # dependen de un cron corriendo en paralelo. Guard propio, independiente
+    # de manti.notificaciones.enabled y manti.purgas.enabled.
+    enabled: false
   purgas:
     # El job de purga de refresh_tokens (issue #8) NO existe en test: ninguna
     # tarea programada puede borrar filas mientras corren los tests. La acción
     # se prueba llamando a RefreshTokenPurgaService.purgar() a mano.
     enabled: false
   notificaciones:
-    # Sin planificador en test: los tests invocan el despachador a mano
-    # (@Scheduled correría en paralelo y haría los resultados no deterministas).
-    programado: false
-    # Si un test quiere probar el envío, lo activa con @SpringBootTest(properties=...)
+    # Guard del ENVÍO (no del planificador): con false el despachador no lee
+    # ni envía nada aunque se le llame a mano. Si un test quiere probar el
+    # envío, lo activa con @SpringBootTest(properties=...).
     enabled: false
     telegram:
       bot-token: ${TELEGRAM_BOT_TOKEN:}
