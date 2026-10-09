@@ -127,7 +127,12 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
                 marcas.addLast(ahora);
                 return 0L;
             }
-            return marcas.peekFirst() + ventana.ventanaMs() - ahora;
+            Long primeraMarca = marcas.peekFirst();
+            // Límite 0 (o ventana vacía tras la limpieza): no hay marca de la
+            // que restar — se espera la ventana entera en vez de fallar con NPE.
+            return primeraMarca == null
+                    ? ventana.ventanaMs()
+                    : primeraMarca + ventana.ventanaMs() - ahora;
         }
     }
 
