@@ -11,15 +11,14 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5433/manti}
     username: ${DB_USER:manti}
     password: ${DB_PASSWORD:manti_dev}
-    # FASE 7 (issue #31) — Hikari explícito. 10 conexiones es el default y NO
-    # se sube sin métrica que lo justifique: mirar hikaricp_connections_active
-    # y hikaricp_connections_pending en /actuator/metrics (issue #25) antes de
-    # tocarlo; más conexiones no arreglan queries lentas y saturan PostgreSQL.
-    # connection-timeout fija el default (30 s): nadie espera eternamente a una
-    # conexión libre del pool.
+    # FASE 7 (issue #31) — Hikari explícito. NO se sube sin mirar antes
+    # hikaricp.connections.pending en /actuator/metrics (issue #25): subir el
+    # pool no arregla queries lentas y satura PostgreSQL (18 admite 100
+    # clientes). El tamaño queda tunneable por variable de entorno para poder
+    # subirlo con una métrica que lo justifique, sin redeplegar. El resto de
+    # timeouts dejan los defaults de Hikari (connection-timeout 30 s).
     hikari:
-      maximum-pool-size: 10
-      connection-timeout: 30000
+      maximum-pool-size: ${HIKARI_MAXIMUM_POOL_SIZE:10}
   jpa:
     hibernate:
       ddl-auto: validate
