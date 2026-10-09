@@ -1,0 +1,29 @@
+# syntax=docker/dockerfile:1
+# Backend Spring Boot (skill docker del repo).
+# - Builder: Maven 3.9 + JDK 25 (temurin). Capa de dependencias cacheada:
+#   pom.xml + mvnw ANTES del código; sólo cambia si cambia el pom.
+# - Runtime: JRE 25 Alpine, usuario no-root, sin Maven ni fuentes.
+# Vercel (Container Runtime, vercel.json "services") enruta al puerto $PORT;
+# el default del runtime Vercel es 80, aquí fijamos 8080 (no privilegiado) y se
+# pinza la misma variable (PORT=8080) en project settings. Ver docs/guias/deploy.md.
+
+FROM maven:3.9-eclipse-temurin-25 AS builder
+WORKDIR /build
+COPY pom.xml mvnw ./
+COPY .mvn .mvn
+RUN chmod +x mvnw && ./mvnw -B -ntp -q dependency:go-offline
+COPY src ./src
+RUN ./mvnw -B -ntp -q package -DskipTests
+
+FROM eclipse-temurin:25-jre-alpine AS runtime
+RUN addgroup -S app && adduser -S app -G app
+WORKDIR /app
+COPY --from=builder /build/target/*.jar app.jar
+USER app
+EXPOSE 8080
+ENV PORT=8080
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
+  CMD wget -qO- "http://127.0.0.1:${PORT}/actuator/health" | grep -q '"status":"UP"' || exit 1
+# Shell-form: -Dserver.port tiene máxima precedencia en Spring y propaga el
+# $PORT del entorno (Vercel o -e PORT=... en local) sin tocar application.yml.
+ENTRYPOINT ["sh","-c","exec java -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/urandom -Dserver.port=${PORT:-8080} -jar app.jar"]
