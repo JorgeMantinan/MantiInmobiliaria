@@ -167,9 +167,12 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
-			<!-- Coverage: agente en test + informe en verify. SIN threshold por
-			     ahora; el gate del 80% (skill testing) se activa en la fase de
-			     tests con <check><rule> cuando el backend esté más cubierto. -->
+			<!-- Coverage (issue #13): prepare-agent instrumenta la ejecucion de tests, el goal
+			     report genera el informe HTML/CSV en la fase verify y el goal check actua de
+			     GATE: si la cobertura LINE global (BUNDLE) baja del umbral, el build falla
+			     (haltOnFailure). El umbral es un RATCHET — se sube en cada PR que mejore la
+			     cobertura y JAMAS se baja. Objetivo del repo 0.80 superado (94% medido el
+			     2026-10-09); umbral actual 0.90, siguiente objetivo 0.95+. -->
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
@@ -187,6 +190,28 @@
 						<goals>
 							<goal>report</goal>
 						</goals>
+					</execution>
+					<execution>
+						<id>check</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<configuration>
+							<haltOnFailure>true</haltOnFailure>
+							<rules>
+								<rule>
+									<element>BUNDLE</element>
+									<limits>
+										<limit>
+											<counter>LINE</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.90</minimum>
+										</limit>
+									</limits>
+								</rule>
+							</rules>
+						</configuration>
 					</execution>
 				</executions>
 			</plugin>

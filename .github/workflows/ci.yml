@@ -95,8 +95,10 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Tests frontend
-        run: npm test
+      # test:coverage ejecuta la misma suite que npm test y ademas publica el
+      # informe v8 (sin thresholds: no puede romper el CI; issue #13).
+      - name: Tests frontend (con coverage)
+        run: npm run test:coverage
 
       - name: Audit producción
         run: npm audit --omit=dev --audit-level=high

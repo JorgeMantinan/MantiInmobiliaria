@@ -3,7 +3,9 @@ package es.manti.inmuebles.domain;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Base64;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -51,5 +53,46 @@ class InmuebleCursorTest {
     void decodificar_noBase64_lanzaCursorInvalido() {
         assertThatThrownBy(() -> InmuebleCursor.decodificar("no es base 64 !!", InmuebleOrden.CREADO_DESC))
                 .isInstanceOf(CursorInvalidoException.class);
+    }
+
+    @Test
+    void decodificar_ordenDesconocido_lanzaCursorInvalido() {
+        assertThatThrownBy(() -> InmuebleCursor.decodificar(
+                cursor("VIEJO|2026-09-01T10:00:00Z|5"), InmuebleOrden.CREADO_DESC))
+                .isInstanceOf(CursorInvalidoException.class);
+    }
+
+    @Test
+    void decodificar_fechaNoValida_lanzaCursorInvalido() {
+        assertThatThrownBy(() -> InmuebleCursor.decodificar(
+                cursor("CREADO_DESC|ayer|5"), InmuebleOrden.CREADO_DESC))
+                .isInstanceOf(CursorInvalidoException.class);
+    }
+
+    @Test
+    void decodificar_precioNoNumerico_lanzaCursorInvalido() {
+        assertThatThrownBy(() -> InmuebleCursor.decodificar(
+                cursor("PRECIO_ASC|gratis|5"), InmuebleOrden.PRECIO_ASC))
+                .isInstanceOf(CursorInvalidoException.class);
+    }
+
+    @Test
+    void decodificar_idNoNumerico_lanzaCursorInvalido() {
+        assertThatThrownBy(() -> InmuebleCursor.decodificar(
+                cursor("CREADO_DESC|2026-09-01T10:00:00Z|abc"), InmuebleOrden.CREADO_DESC))
+                .isInstanceOf(CursorInvalidoException.class);
+    }
+
+    @Test
+    void decodificar_idNoPositivo_lanzaCursorInvalido() {
+        assertThatThrownBy(() -> InmuebleCursor.decodificar(
+                cursor("CREADO_DESC|2026-09-01T10:00:00Z|0"), InmuebleOrden.CREADO_DESC))
+                .isInstanceOf(CursorInvalidoException.class);
+    }
+
+    /** Codifica un cursor a mano para probar estados ilegales sin pasar por {@code codificar()}. */
+    private static String cursor(String bruto) {
+        return Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(bruto.getBytes(StandardCharsets.UTF_8));
     }
 }
