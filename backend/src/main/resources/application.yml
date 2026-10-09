@@ -26,12 +26,12 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
-  # FASE 7 (issue #31) — timeouts por defecto del cliente HTTP saliente de
-  # Spring (RestClient/RestTemplate auto-configurados): 3 s de conexión y 5 s
-  # de lectura para que una llamada externa caída no colgue un hilo. Ojo:
-  # Brevo/Telegram NO pasan por aquí — usan su propio cliente con los MISMOS
-  # 3 s/5 s (NotificacionesHttpConfig) — y el OAuth2 de Google usa la pila de
-  # Spring Security. La clave correcta en Boot 4.1 es spring.http.clients.*
+  # FASE 7 (issue #31) — timeouts PREVENTIVOS del cliente HTTP que Spring Boot
+  # auto-configura (RestClient.Builder/RestTemplateBuilder): 3 s de conexión y
+  # 5 s de lectura para que una llamada externa caída no colgue un hilo.
+  # Sólo afecta a esos clientes auto-configurados: Brevo y Telegram ya llevan
+  # sus propios timeouts de 3 s/5 s (NotificacionesHttpConfig) y el OAuth2 de
+  # Google usa la pila de Spring Security. Clave vigente en Boot 4.1
   # (spring.http.client.* se deprecó en 4.0); exige spring-boot-restclient en
   # el classpath (pom.xml).
   http:
@@ -73,19 +73,16 @@ management:
   endpoints:
     web:
       exposure:
-        # health e info quedan ANÓNIMOS (SecurityConfig); metrics y prometheus
-        # sólo con rol ADMIN (issue #25). En prod se puede recortar la lista con
-        # MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE si no se scrapea Prometheus.
+        # Sólo /actuator/health es anónimo; info, metrics y prometheus exigen
+        # rol ADMIN (SecurityConfig, issue #25). En prod la lista se recorta a
+        # health,info (application-prod.yml) y se reabre con
+        # MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE si hace falta scrapear.
         include: health,info,metrics,prometheus
-  # Export de métricas a Prometheus (issue #25). En Boot 4 la condición
-  # @ConditionalOnEnabledMetricsExport es opt-in: sin esto el registry ni se
-  # crea y /actuator/prometheus sale 404 (la clave antigua
-  # management.metrics.export.prometheus.* está deprecada desde 3.0).
+  # Export a Prometheus (issue #25): la clave POR REGISTRY es la que decide.
+  # Si no está a true, la condición @ConditionalOnEnabledMetricsExport no crea
+  # el registry (aunque los defaults del resto de registries estén a true) y
+  # /actuator/prometheus responde 404 — lo cubre ActuatorSeguridadTest.
   prometheus:
-    metrics:
-      export:
-        enabled: true
-  defaults:
     metrics:
       export:
         enabled: true
