@@ -42,20 +42,28 @@ class OutboxSolicitudTest {
         FixturesProfesionales.limpiar(jdbc);
     }
 
+    /**
+     * Todas las aserciones se limitan a los PROFESIONALES de las fixtures:
+     * el outbox de una solicitud incluye legítimamente a todo profesional
+     * ACTIVO que comparta gremio, también a los que existan en la BD de
+     * desarrollo (datos reales de la máquina, no del test).
+     */
     @Test
     void crear_soloEncolaEmailParaLosProfesionalesActivos() throws Exception {
         long activo = FixturesProfesionales.profesional(
                 jdbc, "it-pro-activo-" + fijo() + "@example.com", "ACTIVO", "fontanero");
-        FixturesProfesionales.profesional(
+        long pendiente = FixturesProfesionales.profesional(
                 jdbc, "it-pro-pendiente-" + fijo() + "@example.com", "PENDIENTE", "fontanero");
-        FixturesProfesionales.profesional(
+        long rechazado = FixturesProfesionales.profesional(
                 jdbc, "it-pro-rechazado-" + fijo() + "@example.com", "RECHAZADO", "fontanero");
 
         long solicitud = crearSolicitud("fontanero");
 
-        assertThat(FixturesProfesionales.contarOutbox(jdbc, solicitud, "EMAIL")).isEqualTo(1);
+        assertThat(FixturesProfesionales.contarOutboxDestinatario(jdbc, solicitud, "EMAIL", activo))
+                .isEqualTo(1);
         assertThat(FixturesProfesionales.destinatariosDeEmail(jdbc, solicitud))
-                .containsExactly(activo);
+                .contains(activo)
+                .doesNotContain(pendiente, rechazado);
         // Sin TELEGRAM_CHAT_ID no se encola NADA de Telegram
         assertThat(FixturesProfesionales.contarOutbox(jdbc, solicitud, "TELEGRAM")).isZero();
     }
@@ -68,26 +76,29 @@ class OutboxSolicitudTest {
 
         long solicitud = crearSolicitud("fontanero", "albañil");
 
-        // Dos gremios en común, pero UNA sola notificación
+        // Dos gremios en común, pero UNA sola notificación para este profesional
+        assertThat(FixturesProfesionales.contarOutboxDestinatario(jdbc, solicitud, "EMAIL", activo))
+                .isEqualTo(1);
         assertThat(FixturesProfesionales.destinatariosDeEmail(jdbc, solicitud))
-                .containsExactly(activo);
-        assertThat(FixturesProfesionales.contarOutbox(jdbc, solicitud, "EMAIL")).isEqualTo(1);
+                .contains(activo);
     }
 
     @Test
     void crear_profesionalSinGremiosPedidos_noRecibeNada() throws Exception {
-        FixturesProfesionales.profesional(
+        long pintor = FixturesProfesionales.profesional(
                 jdbc, "it-pro-pintor-" + fijo() + "@example.com", "ACTIVO", "pintor");
 
         long solicitud = crearSolicitud("fontanero");
 
-        assertThat(FixturesProfesionales.contarOutbox(jdbc, solicitud, "EMAIL")).isZero();
+        assertThat(FixturesProfesionales.contarOutboxDestinatario(jdbc, solicitud, "EMAIL", pintor))
+                .isZero();
+        // Sin chat de Telegram no hay fila de GRUPO, con o sin profesionales
         assertThat(FixturesProfesionales.contarOutbox(jdbc, solicitud, "TELEGRAM")).isZero();
     }
 
     @Test
     void crear_sinChatIdDeTelegram_noGeneraNingunaFilaDeTelegram() throws Exception {
-        FixturesProfesionales.profesional(
+        long activo = FixturesProfesionales.profesional(
                 jdbc, "it-pro-telegram-" + fijo() + "@example.com", "ACTIVO",
                 "fontanero", "albañil");
 
@@ -95,29 +106,33 @@ class OutboxSolicitudTest {
 
         assertThat(FixturesProfesionales.contarOutbox(jdbc, solicitud, "TELEGRAM")).isZero();
         // ...pero el email del profesional activo SÍ se ha encolado
-        assertThat(FixturesProfesionales.contarOutbox(jdbc, solicitud, "EMAIL")).isEqualTo(1);
+        assertThat(FixturesProfesionales.contarOutboxDestinatario(jdbc, solicitud, "EMAIL", activo))
+                .isEqualTo(1);
     }
 
     @Test
     void crear_lasFilasDelOutboxQuedanPendientesYConCuerpo() throws Exception {
-        FixturesProfesionales.profesional(
+        long activo = FixturesProfesionales.profesional(
                 jdbc, "it-pro-cuerpo-" + fijo() + "@example.com", "ACTIVO", "fontanero");
 
         long solicitud = crearSolicitud("fontanero");
 
         List<String> estados = jdbc.queryForList(
-                "SELECT estado FROM notificaciones_outbox WHERE solicitud_id = ?",
-                String.class, solicitud);
+                "SELECT estado FROM notificaciones_outbox WHERE solicitud_id = ? "
+                        + "AND destinatario_id = ?",
+                String.class, solicitud, activo);
         assertThat(estados).containsExactly("PENDIENTE");
 
         String asunto = jdbc.queryForObject(
-                "SELECT asunto FROM notificaciones_outbox WHERE solicitud_id = ?",
-                String.class, solicitud);
+                "SELECT asunto FROM notificaciones_outbox WHERE solicitud_id = ? "
+                        + "AND destinatario_id = ?",
+                String.class, solicitud, activo);
         assertThat(asunto).startsWith("Nueva solicitud en It-");
 
         String cuerpo = jdbc.queryForObject(
-                "SELECT cuerpo FROM notificaciones_outbox WHERE solicitud_id = ?",
-                String.class, solicitud);
+                "SELECT cuerpo FROM notificaciones_outbox WHERE solicitud_id = ? "
+                        + "AND destinatario_id = ?",
+                String.class, solicitud, activo);
         assertThat(cuerpo).contains("fontanero").contains("it-sol-");
     }
 
