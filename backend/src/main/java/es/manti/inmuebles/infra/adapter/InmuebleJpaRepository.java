@@ -36,11 +36,21 @@ import java.util.Optional;
  */
 public interface InmuebleJpaRepository extends JpaRepository<Inmueble, Long> {
 
-    /** Filtros comunes; los nulos se eliminan (cada parámetro sólo aparece en su rama). */
+    /**
+     * Filtros comunes; los nulos se eliminan (cada parámetro sólo aparece en su
+     * rama). El patrón de municipio NO se envuelve en {@code LOWER()}: Hibernate
+     * no infiere el tipo JDBC de un parámetro dentro de una función y lo bindea
+     * como {@code JAVA_OBJECT} (null → bytea en pgjdbc →
+     * {@code function lower(bytea) does not exist} al listar sin filtros). El
+     * plegado de mayúsculas del patrón se hace en Java
+     * ({@code BusquedaInmuebleService.patronMunicipio}); la columna sí lleva
+     * {@code LOWER()} para seguir usando el índice GIN trgm sobre
+     * {@code lower(municipio)}.
+     */
     String FILTROS = """
             AND (:estado IS NULL OR i.estado = :estado)
             AND (:tipo IS NULL OR i.tipo = :tipo)
-            AND (:municipioPatron IS NULL OR LOWER(i.municipio) LIKE LOWER(:municipioPatron) ESCAPE '!')
+            AND (:municipioPatron IS NULL OR LOWER(i.municipio) LIKE :municipioPatron ESCAPE '!')
             AND (:precioMin IS NULL OR i.precio >= :precioMin)
             AND (:precioMax IS NULL OR i.precio <= :precioMax)
             AND (:habitacionesMin IS NULL OR i.habitaciones >= :habitacionesMin)

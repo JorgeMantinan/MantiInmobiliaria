@@ -19,14 +19,17 @@ class BusquedaInmuebleServiceTest {
     }
 
     @Test
-    void patronMunicipio_conValor_loEnvuelveEnComodinesYRecorta() {
+    void patronMunicipio_conValor_loEnvuelveEnComodinesYRecortaEnMinusculas() {
+        // El plegado de mayúsculas se hace en Java: la query usa
+        // LOWER(columna) LIKE ? sin LOWER(:p) (bind JAVA_OBJECT→bytea en null).
         assertThat(BusquedaInmuebleService.patronMunicipio("  Madrid "))
-                .isEqualTo("%Madrid%");
+                .isEqualTo("%madrid%");
     }
 
     @Test
     void patronMunicipio_escapaLosComodinesDelLike() {
-        assertThat(BusquedaInmuebleService.patronMunicipio("100%_a!"))
+        // El escape va ANTES del toLowerCase: '!' no se altera al bajar el patrón.
+        assertThat(BusquedaInmuebleService.patronMunicipio("100%_A!"))
                 .isEqualTo("%100!%!_a!!%");
     }
 

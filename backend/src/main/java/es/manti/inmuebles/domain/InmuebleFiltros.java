@@ -21,8 +21,8 @@ import java.math.BigDecimal;
  * ({@code columna = null}): eso evaluaría a {@code NULL} y excluiría filas por
  * accidente.</p>
  *
- * @param municipioPatron patrón ya construido para
- *                        {@code LOWER(municipio) LIKE LOWER(?)} con comodines
+ * @param municipioPatron patrón ya construido (y ya en minúsculas) para
+ *                        {@code LOWER(municipio) LIKE ?} con comodines
  *                        escapados ({@code %foo%}), o null si no se filtra
  */
 public record InmuebleFiltros(
