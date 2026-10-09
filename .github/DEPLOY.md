@@ -47,14 +47,25 @@ Fuentes consultadas (julio–agosto 2026):
 - https://vercel.com/docs/services y /docs/services/routing, /docs/services/config-reference
 - https://vercel.com/changelog/bring-your-dockerfile-to-vercel-functions
 - https://github.com/vercel/examples/tree/main/container-images/demo
+- https://community.vercel.com/t/dockerfile-vercel-is-not-detected-in-standalone-pro-project/47791.md
+  y https://community.vercel.com/t/possibly-missing-steps-on-run-any-dockerfile-on-vercel-blog-post/44957
+  (preset Framework=Container obligatorio cuando la auto-detección no corre)
 
 ## 2. Cómo se construye y despliega
 
-- El proyecto `mantiinmobiliaria-api` tiene Root Directory `backend/` y la
-  integración Git de Vercel apunta al mismo repo. Vercel auto-detecta
-  `backend/Dockerfile.vercel`, construye la imagen OCI en cada push y la sirve
-  como Vercel Function en Fluid compute (Container Runtime, beta disponible en
-  todos los planes).
+- El proyecto `mantiinmobiliaria-api` tiene Root Directory `backend/`, **Framework
+  Preset = `Container`** y la integración Git de Vercel apunta al mismo repo.
+  Con ese preset, `vercel build` usa `backend/Dockerfile.vercel`, construye la
+  imagen OCI en cada push y la sirve como Vercel Function en Fluid compute
+  (Container Runtime, beta disponible en todos los planes).
+  > **OJO**: en proyectos creados vacíos (p. ej. `vercel project add`) la
+  > auto-detección NO asigna el preset Container y los builds de Git terminan
+  > en 169 ms sin construir nada (404 en el dominio). Hay que fijar el preset a
+  > mano: `vercel project update mantiinmobiliaria-api --framework container`.
+  > Los overrides de Build/Install/Output Command deben quedar en "None".
+- El despliegue "Production" inicial del proyecto (creado por la conexión Git)
+  está vacío (404): no sirve nada hasta el primer release real desde `master`;
+  la rama de producción de AMBOS proyectos está confirmada en `master`.
 - **El contenedor DEBE escuchar en `$PORT`** (default del runtime: 80). La
   imagen fija `ENV PORT=8080` y el entrypoint propaga `-Dserver.port=${PORT}`;
   el proyecto Vercel fija `PORT=8080` en project settings/env para que el proxy
