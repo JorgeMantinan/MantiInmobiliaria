@@ -10,6 +10,7 @@ import es.manti.usuarios.domain.UsuarioRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.Locale;
 import java.util.UUID;
@@ -17,6 +18,25 @@ import java.util.UUID;
 /**
  * Casos de uso de autenticación: registro, login email/password, rotación de
  * refresh token, logout y login con Google (vínculo de cuenta + código opaco).
+ *
+ * <p><b>BCrypt FUERA de la transacción (issue #24).</b> {@code matches} y
+ * {@code encode} cuestan 60-150 ms de CPU (cost 10): si corren dentro de un
+ * {@code @Transactional} retienen una de las 10 conexiones de Hikari todo ese
+ * tiempo y 10 logins concurrentes saturan el pool (el listado público
+ * responde 500). El flujo se parte en tres tramos:</p>
+ * <ol>
+ *   <li><b>lectura corta</b>: la llamada al repositorio abre su propia
+ *       transacción de sólo lectura (SimpleJpaRepository) y la cierra al
+ *       devolver;</li>
+ *   <li><b>BCrypt sin transacción</b>: {@code encode}/{@code matches} corren
+ *       con ninguna transacción activa (el hash dummy sigue garantizando el
+ *       anti-timing);</li>
+ *   <li><b>escritura en transacción NUEVA</b>: alta de usuario + emisión de la
+ *       sesión vía {@link TransactionTemplate} (registro) o vía
+ *       {@link RefreshTokenService#emitir}, ya {@code @Transactional} (login).</li>
+ * </ol>
+ * <p>El comportamiento visible es idéntico: mismos códigos, mismos mensajes,
+ * misma cookie y misma detección de reuso.</p>
  */
 @Service
 public class AuthService {
@@ -26,6 +46,14 @@ public class AuthService {
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final CuentaGoogleService cuentaGoogle;
+
+    /**
+     * Transacción de escritura del registro: alta de usuario + emisión de la
+     * sesión en UNA sola transacción (atómica) y NUNCA abierta mientras se
+     * calcula BCrypt. Sólo se usa fuera de transacción, así que con la
+     * propagación por defecto ({@code REQUIRED}) siempre crea una nueva.
+     */
+    private final TransactionTemplate transaccion;
 
     /**
      * Hash BCrypt de un password inexistente, precalculado UNA sola vez al
@@ -41,30 +69,40 @@ public class AuthService {
 
     public AuthService(UsuarioRepository usuarios, RefreshTokenService refreshTokens,
                        JwtService jwtService, PasswordEncoder passwordEncoder,
-                       CuentaGoogleService cuentaGoogle) {
+                       CuentaGoogleService cuentaGoogle, TransactionTemplate transaccion) {
         this.usuarios = usuarios;
         this.refreshTokens = refreshTokens;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
         this.cuentaGoogle = cuentaGoogle;
+        this.transaccion = transaccion;
         this.passwordHashDummy = passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
-    /** Registra un usuario email/password y devuelve su sesión (auto-login). */
-    @Transactional
+    /**
+     * Registra un usuario email/password y devuelve su sesión (auto-login).
+     *
+     * <p>SIN {@code @Transactional} en el método: el {@code encode} BCrypt
+     * (60-150 ms de CPU) se calcula ANTES de abrir transacción; sólo el alta y
+     * la emisión de la sesión entran en la transacción nueva
+     * ({@link TransactionTemplate}), que siguen siendo atómicas entre sí.</p>
+     */
     public AuthResult registrar(RegistroCommand comando) {
         String email = normalizarEmail(comando.email());
         if (usuarios.existsByEmail(email)) {
             throw new EmailYaRegistradoException();
         }
-        Usuario usuario = new Usuario();
-        usuario.setEmail(email);
-        usuario.setNombre(comando.nombre().trim());
-        usuario.setPasswordHash(passwordEncoder.encode(comando.password()));
-        usuario.setRol(Rol.USER);
-        usuario.setActivo(true);
-        usuarios.save(usuario);
-        return emitirSesion(usuario);
+        String passwordHash = passwordEncoder.encode(comando.password());
+        return transaccion.execute(estado -> {
+            Usuario usuario = new Usuario();
+            usuario.setEmail(email);
+            usuario.setNombre(comando.nombre().trim());
+            usuario.setPasswordHash(passwordHash);
+            usuario.setRol(Rol.USER);
+            usuario.setActivo(true);
+            usuarios.save(usuario);
+            return emitirSesion(usuario);
+        });
     }
 
     /**
@@ -72,8 +110,14 @@ public class AuthService {
      * inexistente, password incorrecta y cuenta sin password (sin enumeración);
      * cuando no hay usuario se compara igualmente contra el hash dummy para
      * que el coste temporal sea idéntico (sin enumeración por timing).
+     *
+     * <p>SIN {@code @Transactional} en el método (issue #24): la lectura del
+     * usuario cierra su transacción de sólo lectura al volver, {@code matches}
+     * (BCrypt) corre con NINGUNA transacción activa y la sesión se emite
+     * después en la transacción propia de
+     * {@link RefreshTokenService#emitir}. Ninguna conexión de Hikari queda
+     * retenida durante los 60-150 ms de CPU del hash.</p>
      */
-    @Transactional
     public AuthResult login(String email, String password) {
         Usuario usuario = usuarios.findByEmail(normalizarEmail(email)).orElse(null);
         if (usuario == null || usuario.getPasswordHash() == null) {
