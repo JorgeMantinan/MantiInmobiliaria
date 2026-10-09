@@ -51,4 +51,3 @@ docker-compose.override.yml
 
 # Git worktrees embebidos (desarrollo paralelo de agentes)
 worktrees/
-.env*
