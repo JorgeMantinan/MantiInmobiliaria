@@ -18,6 +18,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,7 +48,7 @@ class InmuebleRepositoryTest {
         String municipio = municipioPrueba();
         Inmueble primero = crear(municipio, "it-uno", "100000");
         Inmueble segundo = crear(municipio, "it-dos", "200000");
-        InmuebleFiltros soloMunicipio = new InmuebleFiltros(null, null, "%" + municipio + "%",
+        InmuebleFiltros soloMunicipio = new InmuebleFiltros(null, null, patron(municipio),
                 null, null, null, null);
 
         List<InmuebleResumen> filas = repository.listar(
@@ -60,7 +61,7 @@ class InmuebleRepositoryTest {
     @Test
     void listar_porPrecioAsc_devuelveOrdenAscendenteYDesempataPorId() {
         String municipio = municipioPrueba();
-        InmuebleFiltros soloMunicipio = new InmuebleFiltros(null, null, "%" + municipio + "%",
+        InmuebleFiltros soloMunicipio = new InmuebleFiltros(null, null, patron(municipio),
                 null, null, null, null);
         Inmueble alto = crear(municipio, "it-alto", "300000");
         Inmueble bajo = crear(municipio, "it-bajo", "100000");
@@ -76,7 +77,7 @@ class InmuebleRepositoryTest {
     @Test
     void listar_porPrecioDesc_devuelveOrdenDescendente() {
         String municipio = municipioPrueba();
-        InmuebleFiltros soloMunicipio = new InmuebleFiltros(null, null, "%" + municipio + "%",
+        InmuebleFiltros soloMunicipio = new InmuebleFiltros(null, null, patron(municipio),
                 null, null, null, null);
         Inmueble alto = crear(municipio, "it-alto", "300000");
         Inmueble bajo = crear(municipio, "it-bajo", "100000");
@@ -101,24 +102,45 @@ class InmuebleRepositoryTest {
         crear(municipio, "it-no-destacado", "250000", EstadoInmueble.VENTA, TipoInmueble.PISO, (short) 3, false);
 
         InmuebleFiltros filtros = new InmuebleFiltros(EstadoInmueble.VENTA, TipoInmueble.PISO,
-                "%" + municipio + "%", null, new BigDecimal("300000"), (short) 2, true);
+                patron(municipio), null, new BigDecimal("300000"), (short) 2, true);
         List<InmuebleResumen> filas = repository.listar(filtros, InmuebleOrden.CREADO_DESC, null, 10);
 
         assertThat(filas).extracting(InmuebleResumen::id).containsExactly(coincide.getId());
         assertThat(repository.contar(filtros)).isEqualTo(1);
     }
 
+    /**
+     * Regresión hotfix: todos los parámetros a null (listado sin filtros). El
+     * patrón de municipio NULL bindeado como JAVA_OBJECT→bytea rompía
+     * {@code LOWER(:p)} con {@code function lower(bytea) does not exist}.
+     */
+    @Test
+    void listar_y_contar_sinFiltros_devuelveVigentes() {
+        String municipio = municipioPrueba();
+        Inmueble creado = crear(municipio, "it-sin-filtros", "100000");
+        InmuebleFiltros sinFiltros = new InmuebleFiltros(null, null, null, null, null, null, null);
+
+        List<InmuebleResumen> filas = repository.listar(
+                sinFiltros, InmuebleOrden.CREADO_DESC, null, 10);
+
+        assertThat(filas).extracting(InmuebleResumen::id).contains(creado.getId());
+        assertThat(repository.contar(sinFiltros)).isGreaterThanOrEqualTo(1);
+    }
+
     @Test
     void listar_porMunicipioParcial_esCaseInsensitive() {
+        // Contrato de InmuebleFiltros: el patrón viaja ya en minúsculas (lo
+        // plega la capa de aplicación) y la columna conserva su caso original:
+        // LOWER(col) LIKE patrón sigue casando con entradas en mayúsculas.
         String municipio = municipioPrueba();
         Inmueble creado = crear(municipio, "it-casa", "150000");
 
-        List<InmuebleResumen> mayusculas = repository.listar(
-                new InmuebleFiltros(null, null, "%" + municipio.toUpperCase() + "%",
+        List<InmuebleResumen> minusculas = repository.listar(
+                new InmuebleFiltros(null, null, patron(municipio.toUpperCase()),
                         null, null, null, null),
                 InmuebleOrden.CREADO_DESC, null, 10);
 
-        assertThat(mayusculas).extracting(InmuebleResumen::id).containsExactly(creado.getId());
+        assertThat(minusculas).extracting(InmuebleResumen::id).containsExactly(creado.getId());
         assertThat(repository.contar(new InmuebleFiltros(null, null, "%no-existe-xyz%",
                 null, null, null, null))).isZero();
     }
@@ -126,7 +148,7 @@ class InmuebleRepositoryTest {
     @Test
     void listar_y_porId_excluyenLosInmueblesEliminados() {
         String municipio = municipioPrueba();
-        InmuebleFiltros soloMunicipio = new InmuebleFiltros(null, null, "%" + municipio + "%",
+        InmuebleFiltros soloMunicipio = new InmuebleFiltros(null, null, patron(municipio),
                 null, null, null, null);
         Inmueble vigente = crear(municipio, "it-vigente", "100000");
         Inmueble borrado = crear(municipio, "it-borrado", "100000");
@@ -147,7 +169,7 @@ class InmuebleRepositoryTest {
     @Test
     void listar_conCursor_keysetNoSeSolapaNiOmiteFilas() {
         String municipio = municipioPrueba();
-        InmuebleFiltros filtros = new InmuebleFiltros(null, null, "%" + municipio + "%",
+        InmuebleFiltros filtros = new InmuebleFiltros(null, null, patron(municipio),
                 null, null, null, null);
         for (int i = 1; i <= 5; i++) {
             crear(municipio, "it-" + i, String.valueOf(100000 + i * 1000));
@@ -177,6 +199,16 @@ class InmuebleRepositoryTest {
 
     private String municipioPrueba() {
         return "It-" + UUID.randomUUID().toString().substring(0, 8);
+    }
+
+    /**
+     * El patrón de municipio viaja ya en minúsculas (contrato de
+     * {@code InmuebleFiltros}): el plegado de mayúsculas lo hace la capa de
+     * aplicación ({@code BusquedaInmuebleService.patronMunicipio}), no
+     * {@code LOWER(:p)} en la query (bind JAVA_OBJECT→bytea con parámetro nulo).
+     */
+    private static String patron(String municipio) {
+        return "%" + municipio.toLowerCase(Locale.ROOT) + "%";
     }
 
     private Inmueble crear(String municipio, String titulo, String precio) {

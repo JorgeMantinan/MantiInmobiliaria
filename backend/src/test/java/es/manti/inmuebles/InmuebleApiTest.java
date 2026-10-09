@@ -31,7 +31,9 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -241,6 +243,54 @@ class InmuebleApiTest {
                 .andExpect(jsonPath("$.content", hasSize(2)))
                 .andReturn().getResponse().getContentAsString();
         assertThat(((Number) JsonPath.read(cuerpo, "$.totalElements")).intValue()).isEqualTo(2);
+    }
+
+    /**
+     * Regresión hotfix listado sin filtros: con ningún query param el patrón de
+     * municipio es NULL y Hibernate lo bindea como JAVA_OBJECT (null → bytea en
+     * pgjdbc), lo que rompía {@code LOWER(:p)} con
+     * {@code function lower(bytea) does not exist} → 500 en producción.
+     */
+    @Test
+    void listado_sinFiltros_devuelve200ConResultados() throws Exception {
+        String municipio = municipioPrueba();
+        crear(municipio, "it-regresion-uno", "100000");
+        crear(municipio, "it-regresion-dos", "200000");
+        // El total esperado se calcula contra la MISMA BD en este instante: el
+        // esquema de test comparte datos con el seed de dev.
+        Integer esperado = jdbc.queryForObject(
+                "SELECT count(*) FROM inmuebles WHERE eliminado_en IS NULL", Integer.class);
+
+        String cuerpo = mockMvc.perform(get("/api/v1/inmuebles"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content", not(empty())))
+                .andExpect(jsonPath("$.totalElements").value(esperado))
+                .andReturn().getResponse().getContentAsString();
+
+        // Nuestras fixtures son las más recientes: caben en la primera página.
+        List<String> titulos = JsonPath.read(cuerpo, "$.content[*].titulo");
+        assertThat(titulos).contains("it-regresion-uno", "it-regresion-dos");
+    }
+
+    /**
+     * El patrón llega a JDBC ya en minúsculas (toLowerCase del servicio); con el
+     * parámetro pre-plegado la query sigue siendo case-insensitive.
+     */
+    @Test
+    void listado_sinFiltros_caseInsensitive() throws Exception {
+        String municipio = "It-" + UUID.randomUUID().toString().substring(0, 8) + "-madrid";
+        Inmueble creado = crear(municipio, "it-case-insensitive", "175000");
+
+        String cuerpo = mockMvc.perform(get("/api/v1/inmuebles").param("municipio", "MADRid"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", not(empty())))
+                .andExpect(jsonPath("$.totalElements").isNumber())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(idsDe(cuerpo)).contains(creado.getId());
+        assertThat(((Number) JsonPath.read(cuerpo, "$.totalElements")).intValue()).isPositive();
     }
 
     @Test

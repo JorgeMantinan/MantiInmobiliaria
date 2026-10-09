@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Casos de uso de LECTURA pública de inmuebles: listado con filtros y
@@ -96,9 +97,13 @@ public class BusquedaInmuebleService {
     }
 
     /**
-     * Patrón para {@code LOWER(municipio) LIKE LOWER(?) ESCAPE '!'}: recorta,
-     * escapa los comodines del LIKE y envuelve en {@code %}; el plegado de
-     * mayúsculas lo hace la base de datos (mismas reglas para columna y patrón).
+     * Patrón para {@code LOWER(municipio) LIKE ? ESCAPE '!'}: recorta, escapa los
+     * comodines del LIKE y envuelve en {@code %}; el plegado de mayúsculas se
+     * hace AQUÍ ({@code toLowerCase}) y no con {@code LOWER(:p)} en la query:
+     * Hibernate no infiere el tipo JDBC de un parámetro dentro de una función y
+     * lo bindea como {@code JAVA_OBJECT} (null → bytea en pgjdbc), lo que
+     * rompía el listado sin filtros con {@code function lower(bytea) does not
+     * exist}. El escape va antes porque {@code toLowerCase} no altera {@code '!'}.
      */
     static String patronMunicipio(String municipio) {
         if (municipio == null || municipio.isBlank()) {
@@ -106,7 +111,7 @@ public class BusquedaInmuebleService {
         }
         String limpio = municipio.trim();
         String escapado = limpio.replace("!", "!!").replace("%", "!%").replace("_", "!_");
-        return "%" + escapado + "%";
+        return "%" + escapado.toLowerCase(Locale.ROOT) + "%";
     }
 
     private static String codificarCursor(InmuebleOrden orden, InmuebleResumen ultima) {
