@@ -107,3 +107,16 @@ jobs:
           # lib/auth.ts exige NEXT_PUBLIC_API_URL en producción y hace fallar el
           # build si falta; en CI sólo comprobamos que compila con un valor dummy.
           NEXT_PUBLIC_API_URL: http://localhost:8080
+
+  # Los dos Dockerfiles del backend deben mantener el mismo cuerpo de build
+  # (cabeceras-comentario aparte). Ver .github/DEPLOY.md.
+  docker-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Comparar cuerpos de build
+        run: |
+          strip() { grep -v '^[[:space:]]*#' "$1" | sed 's/\r$//'; }
+          diff <(strip backend/Dockerfile) <(strip backend/Dockerfile.vercel) \
+            || { echo "::error::backend/Dockerfile y Dockerfile.vercel divergen - sincronizar ambos (ver .github/DEPLOY.md)"; exit 1; }
