@@ -37,6 +37,11 @@ import java.util.UUID;
  * </ol>
  * <p>El comportamiento visible es idéntico: mismos códigos, mismos mensajes,
  * misma cookie y misma detección de reuso.</p>
+ *
+ * <p><b>Sesión revalidada (revisión del PR #54).</b> La emisión recarga al
+ * usuario dentro de su transacción: no nace una sesión para una cuenta
+ * desactivada en la ventana entre la lectura y el token, y el claim
+ * {@code rol} del JWT es el de la fila fresca.</p>
  */
 @Service
 public class AuthService {
@@ -162,10 +167,34 @@ public class AuthService {
         return emitirSesion(cuentaGoogle.usuarioPorCodigo(codigo));
     }
 
+    /**
+     * Emite la sesión (access + refresh) dentro de su transacción de
+     * escritura y con el usuario <b>releído de la BD</b>.
+     *
+     * <p>Cierra la ventana TOCTOU entre la primera lectura del login y el
+     * nacimiento del token: si la cuenta se desactiva (o se borra) en ese
+     * intervalo no se emite sesión — se lanza
+     * {@link UsuarioInactivoException} (401) o
+     * {@link UsuarioNoEncontradoException} (404) — y el claim {@code rol} del
+     * JWT sale siempre de la fila fresca, no de una copia ya cacheada.</p>
+     *
+     * <p>En registro/refresh/canjear el usuario ya está gestionado en la
+     * transacción en curso ({@code REQUIRED} la une), así que la relectura no
+     * cuesta SQL; sólo el login paga un SELECT por clave primaria. Al entrar
+     * en transacción aquí, {@link RefreshTokenService#emitir} se une a ella:
+     * relectura, token y refresh se emiten de forma atómica.</p>
+     */
     private AuthResult emitirSesion(Usuario usuario) {
-        String access = jwtService.crearAccessToken(usuario);
-        String refresh = refreshTokens.emitir(usuario);
-        return new AuthResult(access, jwtService.segundosDeExpiracion(), refresh, usuario);
+        return transaccion.execute(estado -> {
+            Usuario vigente = usuarios.findById(usuario.getId())
+                    .orElseThrow(UsuarioNoEncontradoException::new);
+            if (!vigente.isActivo()) {
+                throw new UsuarioInactivoException();
+            }
+            String access = jwtService.crearAccessToken(vigente);
+            String refresh = refreshTokens.emitir(vigente);
+            return new AuthResult(access, jwtService.segundosDeExpiracion(), refresh, vigente);
+        });
     }
 
     private static String normalizarEmail(String email) {
