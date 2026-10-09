@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>es.manti</groupId>
 	<artifactId>manti-backend</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0</version>
 	<name>manti-backend</name>
 	<description>API inmobiliaria Manti</description>
 	<url/>
@@ -35,7 +35,7 @@
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 		<!-- Registry Prometheus (issue #25): expone /actuator/prometheus con los
-		     percentiles p50/p95/p99 configurados en application.yml. Versión
+		     percentiles p50/p95/p99 configurados en application.yml. VersiÃ³n
 		     gestionada por el BOM de Spring Boot: sin <version>. -->
 		<dependency>
 			<groupId>io.micrometer</groupId>
@@ -57,7 +57,7 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security-oauth2-client</artifactId>
 		</dependency>
-		<!-- Emisión/validación de JWT (Nimbus via spring-security-oauth2-jose) y
+		<!-- EmisiÃ³n/validaciÃ³n de JWT (Nimbus via spring-security-oauth2-jose) y
 		     filtro Bearer del resource server para proteger endpoints con access token. -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -70,8 +70,8 @@
 		<!-- Cliente HTTP auto-configurado de Boot (RestClient/RestTemplate con
 		     HttpClientSettings). Hace falta para que apliquen las propiedades
 		     globales spring.http.clients.connect-timeout/read-timeout del issue
-		     #31: sin este starter el módulo spring-boot-http-client no está en el
-		     classpath y las claves no se bindean. Versión por el BOM. -->
+		     #31: sin este starter el mÃ³dulo spring-boot-http-client no estÃ¡ en el
+		     classpath y las claves no se bindean. VersiÃ³n por el BOM. -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-restclient</artifactId>
@@ -170,7 +170,7 @@
 			<!-- Coverage (issue #13): prepare-agent instrumenta la ejecucion de tests, el goal
 			     report genera el informe HTML/CSV en la fase verify y el goal check actua de
 			     GATE: si la cobertura LINE global (BUNDLE) baja del umbral, el build falla
-			     (haltOnFailure). El umbral es un RATCHET — se sube en cada PR que mejore la
+			     (haltOnFailure). El umbral es un RATCHET â€” se sube en cada PR que mejore la
 			     cobertura y JAMAS se baja. Objetivo del repo 0.80 superado (94% medido el
 			     2026-10-09); umbral actual 0.90, siguiente objetivo 0.95+. -->
 			<plugin>
@@ -274,11 +274,11 @@
 		</plugins>
 	</build>
 
-	<!-- Perfil de documentación: convierte los AsciiDoc generados en
+	<!-- Perfil de documentaciÃ³n: convierte los AsciiDoc generados en
 	     docs/openapi/gen (openapi-generator -g asciidoc) a PDF de referencia en
-	     docs/openapi/api-reference.pdf. Sólo actúa con -Pdocs; el build normal
-	     (test/package) no lo toca. Regeneración completa en el README,
-	     sección "Documentación de la API". -->
+	     docs/openapi/api-reference.pdf. SÃ³lo actÃºa con -Pdocs; el build normal
+	     (test/package) no lo toca. RegeneraciÃ³n completa en el README,
+	     secciÃ³n "DocumentaciÃ³n de la API". -->
 	<profiles>
 		<profile>
 			<id>docs</id>
@@ -311,7 +311,7 @@
 							<sourceDocumentName>index.adoc</sourceDocumentName>
 							<backend>pdf</backend>
 							<attributes>
-								<!-- highlightjs no existe para el backend PDF; coderay sí. -->
+								<!-- highlightjs no existe para el backend PDF; coderay sÃ­. -->
 								<source-highlighter>coderay</source-highlighter>
 								<toclevels>3</toclevels>
 							</attributes>
