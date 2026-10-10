@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { connection } from "next/server";
 import { Header } from "@/components/layout/header";
 import { ProveedorSesion } from "@/features/auth/session";
 import "./globals.css";
@@ -19,7 +20,11 @@ export const metadata: Metadata = {
   description: "Portal de viviendas con mapa geolocalizado, modo swipe y profesionales de confianza.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // CSP con nonce (src/proxy.ts): la guía de Next exige render dinámico para
+  // que cada petición lleve su nonce; `connection()` lo fuerza en todo el árbol.
+  await connection();
+
   return (
     <html
       lang="es"
