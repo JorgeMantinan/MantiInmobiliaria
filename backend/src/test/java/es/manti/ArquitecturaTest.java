@@ -210,4 +210,31 @@ class ArquitecturaTest {
                 .should().dependOnClassesThat().resideInAPackage("es.manti.profesionales.infra..")
                 .check(CLASES);
     }
+
+    // ------------------------------------------------------------------
+    // issue #57 — módulo usuarios
+    // ------------------------------------------------------------------
+
+    /**
+     * El módulo usuarios (TODAS sus capas) sólo depende de lo suyo y de
+     * {@code shared}: ni una sola clase del interior de los demás módulos.
+     *
+     * <p>Nació con el flujo de reset de contraseña (issue #57): el envío de
+     * email se resolvió moviendo el puerto y el adaptador de Brevo a
+     * {@code shared} —el único sentido de dependencia permitido— en lugar de
+     * importar {@code profesionales.domain.EmailNotificadorPort} desde
+     * usuarios. La regla impide que esa tentación vuelva.</p>
+     */
+    @Test
+    void usuariosNoDependeDelInteriorDeNingunOtroModulo() {
+        noClasses().that().resideInAPackage("es.manti.usuarios..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "es.manti.profesionales.domain..", "es.manti.profesionales.application..",
+                        "es.manti.profesionales.infra..",
+                        "es.manti.inmuebles.domain..", "es.manti.inmuebles.application..",
+                        "es.manti.inmuebles.infra..",
+                        "es.manti.swipes.domain..", "es.manti.swipes.application..",
+                        "es.manti.swipes.infra..")
+                .check(CLASES);
+    }
 }
