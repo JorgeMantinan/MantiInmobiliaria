@@ -11,6 +11,7 @@ import es.manti.shared.error.Problems;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -69,6 +70,22 @@ public class ProfesionalErrorAdvice {
                                            HttpServletRequest request) {
         return Problems.crear(HttpStatus.CONFLICT, "estado-no-permitido",
                 "Estado no permitido", e.getMessage(), request);
+    }
+
+    /**
+     * Control optimista del PATCH de moderación (issue #51): entre la lectura
+     * y la escritura OTRO administrador cambió el estado del mismo profesional,
+     * el UPDATE con {@code @Version} no afecta a ninguna fila y Spring lanza
+     * esta excepción (subclase {@code ConcurrencyFailureException}). El
+     * {@code type} y el {@code detail} son FIJOS: es el contrato que el
+     * front consume para recargar la lista (RFC 9457, sin datos internos).
+     */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ProblemDetail conflictoConcurrencia(OptimisticLockingFailureException e,
+                                               HttpServletRequest request) {
+        return Problems.crear(HttpStatus.CONFLICT, "conflicto-concurrencia",
+                "Conflicto de concurrencia",
+                "El profesional fue modificado por otro administrador; recarga la lista.", request);
     }
 
     /** Falta {@code TELEGRAM_BOT_TOKEN} en el diagnóstico → 409. */
