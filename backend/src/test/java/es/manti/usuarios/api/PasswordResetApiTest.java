@@ -38,9 +38,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>El puerto de email va mockeado: los tests verifican QUÉ enlace se envía
  * sin depender de Brevo (en test no hay credencial, así que el adaptador real
- * fallaría antes de salir a la red).</p>
+ * fallaría antes de salir a la red). Se activa
+ * {@code manti.notificaciones.enabled=true} porque el sender respeta ese
+ * interruptor (Bajo de la revisión) y su default en el perfil test es
+ * {@code false}.</p>
  */
-@SpringBootTest
+@SpringBootTest(properties = "manti.notificaciones.enabled=true")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class PasswordResetApiTest {
@@ -327,6 +330,33 @@ class PasswordResetApiTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.type").value(
                         "https://api.manti.dev/problems/token-invalido"));
+    }
+
+    /** Bajo (revisión del PR #64): cuenta desactivada tras emitir el enlace. */
+    @Test
+    void reset_conCuentaDesactivada_devuelve400YNoCambiaElPassword() throws Exception {
+        String email = emailNuevo();
+        registrar(email);
+        String token = pedirEnlace(email);
+        // Se desactiva la cuenta DESPUÉS de tener el enlace válido.
+        jdbc.update("UPDATE usuarios SET activo = false WHERE email = ?", email);
+
+        mockMvc.perform(post(RESET)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"token":"%s","password":"%s"}
+                                """.formatted(token, PASSWORD_NUEVA)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value(
+                        "https://api.manti.dev/problems/token-invalido"));
+
+        // El password no rotó: la vieja sigue siendo la válida.
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"%s"}
+                                """.formatted(email, PASSWORD_NUEVA)))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

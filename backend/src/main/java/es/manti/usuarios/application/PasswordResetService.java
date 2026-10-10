@@ -91,6 +91,12 @@ public class PasswordResetService {
      * cuenta Google sin password o una cuenta desactivada simplemente no
      * envían correo (y no emiten token), pero el flujo termina igual — el
      * controlador responde 202 en todos los casos.</p>
+     *
+     * <p>Con {@code manti.notificaciones.enabled=false} (local/CI) el token
+     * SÍ se crea pero no se envía (sólo un warn): el guard vive en
+     * {@link PasswordResetEmailSender#enviar}, común a ambos caminos. Si la
+     * cuenta se borra en la ventana entre la lectura y la transacción, se
+     * aborta sin enviar y sin 404 (mismo 202).</p>
      */
     public void solicitar(String email) {
         String normalizado = normalizar(email);
@@ -110,25 +116,34 @@ public class PasswordResetService {
             return;
         }
         String token = generar();
-        transaccion.execute(estado -> {
-            // Relectura en transacción: si la cuenta se borra aquí, no se emite token.
-            Usuario vigente = usuarios.findById(usuario.getId())
-                    .orElseThrow(UsuarioNoEncontradoException::new);
-            // Un solo enlace vivo por cuenta: los anteriores (usados o caducados) caen.
-            tokens.eliminarTodosDeUsuario(vigente.getId());
-            PasswordResetToken fila = new PasswordResetToken();
-            fila.setUsuario(vigente);
-            fila.setTokenHash(sha256(token));
-            fila.setExpiresAt(Instant.now().plus(properties.ttl()));
-            tokens.save(fila);
-            if (!properties.sync()) {
-                // Se publica DENTRO de la transacción a propósito: el listener
-                // AFTER_COMMIT sólo se dispara si el commit tiene éxito (una
-                // fila borrada en rollback no debe generar un email fantasma).
-                eventos.publishEvent(new EnlacePasswordReset(vigente.getEmail(), token));
-            }
-            return null;
-        });
+        try {
+            transaccion.execute(estado -> {
+                // Relectura en transacción: si la cuenta se borra aquí, no se emite token.
+                Usuario vigente = usuarios.findById(usuario.getId())
+                        .orElseThrow(UsuarioNoEncontradoException::new);
+                // Un solo enlace vivo por cuenta: los anteriores (usados o caducados) caen.
+                tokens.eliminarTodosDeUsuario(vigente.getId());
+                PasswordResetToken fila = new PasswordResetToken();
+                fila.setUsuario(vigente);
+                fila.setTokenHash(sha256(token));
+                fila.setExpiresAt(Instant.now().plus(properties.ttl()));
+                tokens.save(fila);
+                if (!properties.sync()) {
+                    // Se publica DENTRO de la transacción a propósito: el listener
+                    // AFTER_COMMIT sólo se dispara si el commit tiene éxito (una
+                    // fila borrada en rollback no debe generar un email fantasma).
+                    eventos.publishEvent(new EnlacePasswordReset(vigente.getEmail(), token));
+                }
+                return null;
+            });
+        } catch (UsuarioNoEncontradoException carrera) {
+            // Bajo (revisión del PR #64): la cuenta se dio de baja entre la
+            // lectura inicial y la relectura en transacción. Sin 404 — sería
+            // un oráculo de status que revela la carrera—; se aborta sin
+            // enviar y el 202 del endpoint sigue siendo el mismo.
+            log.debug("Restablecimiento abortado en carrera: la cuenta {} ya no existe", normalizado);
+            return;
+        }
         if (properties.sync()) {
             // Camino de test: envío en línea, verificable con el mock del puerto.
             sender.enviar(usuario.getEmail(), token);
@@ -164,6 +179,13 @@ public class PasswordResetService {
             }
             Usuario usuario = usuarios.findById(usuarioId)
                     .orElseThrow(UsuarioNoEncontradoException::new);
+            // Bajo (revisión del PR #64): re-verificar que la cuenta sigue
+            // activa EN el momento del canje. Si se desactivó después de emitir
+            // el enlace, no se rota la password; 400 genérico (mismo
+            // token-invalido), sin revelar el motivo real.
+            if (!usuario.isActivo()) {
+                throw new PasswordResetInvalidoException();
+            }
             usuario.setPasswordHash(passwordHash);
             usuarios.save(usuario);
             // Revoca TODA la familia de refresh (reutiliza revokeAllFromUsuario):

@@ -1,6 +1,7 @@
 package es.manti.usuarios.application;
 
 import es.manti.shared.notificaciones.EmailNotificadorPort;
+import es.manti.shared.notificaciones.NotificacionesProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -40,6 +41,7 @@ public class PasswordResetEmailSender {
     private static final String ASUNTO = "Restablece tu contraseña de MantiInmobiliaria";
 
     private final EmailNotificadorPort correo;
+    private final NotificacionesProperties notificaciones;
     private final PasswordResetProperties properties;
 
     /**
@@ -55,8 +57,20 @@ public class PasswordResetEmailSender {
     /**
      * Envía el enlace al email dado. Idéntico en ambos caminos; sólo lo
      * difiere cuándo se invoca.
+     *
+     * <p>Respeta el interruptor global {@code manti.notificaciones.enabled}
+     * (Bajo, revisión del PR #64): apagado (local/CI por defecto), el token
+     * ya creado no se envía y sólo queda un warn — el usuario puede volver a
+     * pedir el enlace cuando se reenciende el switch. El guard vive AQUÍ, en
+     * la puerta única de ambos caminos, para que sync y async no se diverjan.
+     * </p>
      */
     public void enviar(String email, String token) {
+        if (!notificaciones.enabled()) {
+            log.warn("Notificaciones apagadas (manti.notificaciones.enabled=false): token de "
+                    + "restablecimiento creado para {} pero sin enviar", mascararEmail(email));
+            return;
+        }
         String enlace = properties.frontendUrl() + "/restablecer?token=" + token;
         try {
             correo.enviar(email, ASUNTO, cuerpoEmail(enlace));
