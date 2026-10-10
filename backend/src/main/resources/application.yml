@@ -127,6 +127,10 @@ auth:
   password-reset:
     ttl: ${AUTH_PASSWORD_RESET_TTL:15m}
     frontend-url: ${FRONTEND_URL:http://localhost:3000}
+    # false (prod) = el email se envía tras el commit en un executor acotado
+    # (el 202 no espera a Brevo); true = envío en línea, sólo para tests
+    # (application-test.yml) que verifican el puerto con un mock.
+    sync: ${AUTH_PASSWORD_RESET_SYNC:false}
   rate-limit:
     login-per-minute: ${AUTH_RATE_LOGIN_PER_MINUTE:10}
     register-per-minute: ${AUTH_RATE_REGISTER_PER_MINUTE:5}

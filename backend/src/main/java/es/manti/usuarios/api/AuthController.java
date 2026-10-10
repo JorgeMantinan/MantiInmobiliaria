@@ -183,9 +183,11 @@ public class AuthController {
             summary = "Pide el enlace de restablecimiento de contraseña",
             description = "Si el email corresponde a una cuenta CON contraseña, se envía un enlace "
                     + "`FRONTEND_URL/restablecer?token=<opaco>` (el token, opaco y de un solo uso, "
-                    + "caduca en 15 minutos). La respuesta es SIEMPRE `202 Accepted` aunque la "
-                    + "cuenta no exista (sin enumeración de emails) y aunque el proveedor de email "
-                    + "falle. Rate limit: 5 peticiones/hora por IP.")
+                    + "caduca en `auth.password-reset.ttl`, 15 min por defecto). El envío del email "
+                    + "es asíncrono: el 202 no espera al proveedor. La respuesta es SIEMPRE "
+                    + "`202 Accepted` aunque la cuenta no exista (sin enumeración de emails ni por "
+                    + "tiempo de respuesta) y aunque el proveedor de email falle. Rate limit: "
+                    + "5 peticiones/hora por IP.")
     @ApiResponses({
             @ApiResponse(responseCode = "202", description = "Solicitud aceptada (siempre; "
                     + "no revela si la cuenta existe)"),

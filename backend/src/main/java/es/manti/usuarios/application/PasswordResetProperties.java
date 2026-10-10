@@ -14,12 +14,18 @@ import java.time.Duration;
  * {@code ${frontendUrl}/restablecer?token=<opaco>} — la página pública del
  * frontend la consume otro agente.</p>
  *
+ * <p>{@code sync} (default {@code false}) fuerza el envío del email EN LÍNEA
+ * en vez de asíncrono (revisión del PR #64): los tests de este repo lo
+ * activan ({@code application-test.yml}) para poder verificar el envío con el
+ * mock del puerto sin carreras de hilos; producción corre siempre por el
+ * executor para que el 202 no espere a Brevo.</p>
+ *
  * <p>Separado de {@link AuthProperties} a propósito: añadirlo allí obligaría
  * a reescribir todos los constructores de prueba de esa record y esta
- * configuración tiene vida propia (TTL y ruta del front).</p>
+ * configuración tiene vida propia (TTL, ruta del front y modo de envío).</p>
  */
 @ConfigurationProperties(prefix = "auth.password-reset")
-public record PasswordResetProperties(Duration ttl, String frontendUrl) {
+public record PasswordResetProperties(Duration ttl, String frontendUrl, boolean sync) {
 
     /** Falla al arrancar si falta algo (fail-fast, igual que AuthProperties). */
     @PostConstruct

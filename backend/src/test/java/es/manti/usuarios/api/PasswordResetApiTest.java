@@ -368,6 +368,10 @@ class PasswordResetApiTest {
                 .as("el email debe contener el enlace /restablecer?token=<opaco>")
                 .isTrue();
         assertThat(html.getValue()).contains("/restablecer?token=");
+        assertThat(html.getValue())
+                .as("el TTL del enlace se deriva de auth.password-reset.ttl (15m por defecto), "
+                        + "no está hardcodeado en el cuerpo")
+                .contains("caduca en 15 minutos");
         return matcher.group(1);
     }
 

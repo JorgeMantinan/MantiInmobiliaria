@@ -1,6 +1,5 @@
 package es.manti.usuarios.application;
 
-import es.manti.shared.notificaciones.EmailNotificadorPort;
 import es.manti.usuarios.domain.PasswordResetInvalidoException;
 import es.manti.usuarios.domain.PasswordResetToken;
 import es.manti.usuarios.domain.PasswordResetTokenRepository;
@@ -8,6 +7,7 @@ import es.manti.usuarios.domain.Usuario;
 import es.manti.usuarios.domain.UsuarioNoEncontradoException;
 import es.manti.usuarios.domain.UsuarioRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -32,17 +32,26 @@ import java.util.Locale;
  *
  * <p><b>Token.</b> 32 bytes {@link SecureRandom} → base64url (mismo patrón que
  * los códigos Google y los refresh tokens); en BD sólo vive su SHA-256, así
- * que un volcado de la tabla no permite canjear enlaces. Un solo uso y TTL de
- * {@code auth.password-reset.ttl} (15 min). Al emitir uno nuevo se borran los
- * anteriores del usuario: sólo el último enlace emitido queda vigente.</p>
+ * que un volcado de la tabla no permite canjear enlaces. Un solo uso y TTL
+ * configurable ({@code auth.password-reset.ttl}, 15 min por defecto). Al
+ * emitir uno nuevo se borran los anteriores del usuario: sólo el último
+ * enlace emitido queda vigente.</p>
+ *
+ * <p><b>Envío asíncrono (revisión del PR #64).</b> El email NO se envía en la
+ * petición: dentro de la transacción que crea el token se publica el evento
+ * {@link EnlacePasswordReset}, que
+ * {@link PasswordResetEmailSender} consume tras el commit en un executor
+ * acotado — el 202 sale ya y el tiempo de respuesta deja de revelar si la
+ * cuenta existe (oráculo de timing). Con {@code auth.password-reset.sync=true}
+ * (perfil de test) el envío es en línea, para poder verificarlo con el mock
+ * del puerto sin carreras.</p>
  *
  * <p><b>Transacciones y BCrypt (issue #24).</b> El método NO lleva
  * {@code @Transactional}: la lectura cierra su transacción de sólo lectura,
  * el {@code encode} BCrypt (60-150 ms de CPU) corre sin transacción abierta y
- * la escritura (canje + password + revocación de la familia refresh) entra en
- * una transacción propia vía {@link TransactionTemplate}. El envío de email es
- * SÍNCRONO y FUERA de transacción, con try/catch: un fallo de Brevo se loguea
- * y el 202 se devuelve igual.</p>
+ * la escritura (token) entra en una transacción propia vía
+ * {@link TransactionTemplate}. El envío —sincrónico o en el executor— ocurre
+ * SIEMPRE fuera de transacción.</p>
  */
 @Slf4j
 @Service
@@ -50,31 +59,32 @@ public class PasswordResetService {
 
     private static final SecureRandom ALEATORIO = new SecureRandom();
     private static final int BYTES_TOKEN = 32;
-    private static final String ASUNTO = "Restablece tu contraseña de MantiInmobiliaria";
 
     private final UsuarioRepository usuarios;
     private final PasswordResetTokenRepository tokens;
     private final RefreshTokenService refreshTokens;
     private final PasswordEncoder passwordEncoder;
-    private final EmailNotificadorPort correo;
+    private final PasswordResetEmailSender sender;
+    private final ApplicationEventPublisher eventos;
     private final PasswordResetProperties properties;
     private final TransactionTemplate transaccion;
 
     public PasswordResetService(UsuarioRepository usuarios, PasswordResetTokenRepository tokens,
                                 RefreshTokenService refreshTokens, PasswordEncoder passwordEncoder,
-                                EmailNotificadorPort correo, PasswordResetProperties properties,
-                                TransactionTemplate transaccion) {
+                                PasswordResetEmailSender sender, ApplicationEventPublisher eventos,
+                                PasswordResetProperties properties, TransactionTemplate transaccion) {
         this.usuarios = usuarios;
         this.tokens = tokens;
         this.refreshTokens = refreshTokens;
         this.passwordEncoder = passwordEncoder;
-        this.correo = correo;
+        this.sender = sender;
+        this.eventos = eventos;
         this.properties = properties;
         this.transaccion = transaccion;
     }
 
     /**
-     * Emite un token de restablecimiento y envía el enlace por email.
+     * Emite un token de restablecimiento y deja el enlace listo para enviar.
      *
      * <p>SIN transacción ni retorno condicional: un email inexistente, una
      * cuenta Google sin password o una cuenta desactivada simplemente no
@@ -101,9 +111,18 @@ public class PasswordResetService {
             fila.setTokenHash(sha256(token));
             fila.setExpiresAt(Instant.now().plus(properties.ttl()));
             tokens.save(fila);
+            if (!properties.sync()) {
+                // Se publica DENTRO de la transacción a propósito: el listener
+                // AFTER_COMMIT sólo se dispara si el commit tiene éxito (una
+                // fila borrada en rollback no debe generar un email fantasma).
+                eventos.publishEvent(new EnlacePasswordReset(vigente.getEmail(), token));
+            }
             return null;
         });
-        enviarEnlace(usuario.getEmail(), token);
+        if (properties.sync()) {
+            // Camino de test: envío en línea, verificable con el mock del puerto.
+            sender.enviar(usuario.getEmail(), token);
+        }
     }
 
     /**
@@ -144,36 +163,6 @@ public class PasswordResetService {
                     usuarioId, revocados);
             return null;
         });
-    }
-
-    /**
-     * Envío SÍNCRONO con los timeouts del cliente de notificaciones (3 s/5 s)
-     * y fuera de transacción. Un fallo del proveedor se loguea y NO cambia la
-     * respuesta: el 202 no depende del envío.
-     */
-    private void enviarEnlace(String email, String token) {
-        String enlace = properties.frontendUrl() + "/restablecer?token=" + token;
-        try {
-            correo.enviar(email, ASUNTO, cuerpoEmail(enlace));
-            log.debug("Enlace de restablecimiento enviado a {}", email);
-        } catch (RuntimeException fallo) {
-            log.warn("No se pudo enviar el email de restablecimiento a {}: {}", email,
-                    fallo.getMessage(), fallo);
-        }
-    }
-
-    /**
-     * Cuerpo del email. Sólo lleva datos propios (token base64url: A-Z, a-z,
-     * 0-9, {@code -}, {@code _}; y {@code FRONTEND_URL}, de configuración):
-     * no hay entrada de usuario que escapar.
-     */
-    private static String cuerpoEmail(String enlace) {
-        return """
-                <p>Has pedido restablecer tu contraseña de MantiInmobiliaria.</p>
-                <p><a href="%s">Haz clic aquí para elegir una contraseña nueva</a>.</p>
-                <p>El enlace caduca en 15 minutos y sólo puede usarse una vez.</p>
-                <p>Si no has sido tú, ignora este mensaje: tu contraseña no cambiará.</p>
-                """.formatted(enlace);
     }
 
     private static String generar() {
