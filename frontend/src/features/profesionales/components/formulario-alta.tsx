@@ -15,6 +15,7 @@ import {
   EMAIL_MAXIMO,
   MUNICIPIO_MAXIMO,
   NOMBRE_MAXIMO,
+  TELEFONO_MAXIMO,
   hayErrores,
   validarAlta,
 } from '../validacion';
@@ -73,13 +74,12 @@ export function FormularioAlta() {
       if (esApiError(causa) && causa.status === 409) {
         setErrorApi(MENSAJES.emailRepetido);
       } else {
-        // 400 con `errors[]` ⇒ error EN el campo; el aviso global es fallback.
+        // 400 con `errors[]` ⇒ error EN el campo; los campos desconocidos (y
+        // el resto de fallos) se conservan en el aviso global, que puede
+        // convivir con los de campo.
         const fallo = clasificarErrorEnvio(causa, CAMPOS_ALTA, MENSAJES.registro);
-        if (fallo.global === null) {
-          setErrores((prev): ErroresAlta => ({ ...prev, ...fallo.campos }));
-        } else {
-          setErrorApi(fallo.global);
-        }
+        setErrores((prev): ErroresAlta => ({ ...prev, ...fallo.campos }));
+        setErrorApi(fallo.global);
       }
     } finally {
       setEnviando(false);
@@ -128,6 +128,7 @@ export function FormularioAlta() {
         etiqueta="Teléfono (opcional)"
         type="tel"
         autoComplete="tel"
+        maxLength={TELEFONO_MAXIMO}
         error={errores.telefono}
       />
       <Campo

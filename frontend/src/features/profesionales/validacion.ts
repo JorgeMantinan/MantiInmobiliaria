@@ -9,6 +9,8 @@ export const MUNICIPIO_MAXIMO = 120;
 export const NOMBRE_MAXIMO = 120;
 /** `varchar(255)` en `profesionales.email` y `solicitudes.email_contacto`. */
 export const EMAIL_MAXIMO = 255;
+/** `@Size(max = 30)` del DTO: paridad de límite en los dos formularios. */
+export const TELEFONO_MAXIMO = 30;
 export const GREMIOS_MINIMOS = 1;
 export const GREMIOS_MAXIMOS = 8;
 
@@ -146,8 +148,9 @@ export function hayErrores(errores: Readonly<Record<string, string | undefined>>
 
 /**
  * Mapea los `errors[]` del ProblemDetail 400 a errores de campo (nombre de
- * campo ⇒ mensaje). Sólo devuelve claves presentes en `campos`: si ninguno
- * coincide, el llamador recurre al aviso global de fallback.
+ * campo ⇒ mensaje). Sólo devuelve claves presentes en `campos`: los mensajes
+ * de fields desconocidos los conserva `clasificarErrorEnvio` como aviso
+ * global; si nada encaja, el llamador recurre a su fallback.
  */
 export function erroresDeCampo(
   errores: readonly ErrorCampo[],
