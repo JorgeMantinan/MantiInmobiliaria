@@ -104,6 +104,11 @@ Segundo paso del flujo Google: el frontend intercambia aquí el código opaco de
 | Código inválido o caducado
 |  <<ProblemDetail>>
 
+
+| 413
+| Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+|  <<ProblemDetail>>
+
 |===
 
 ===== Samples
@@ -269,6 +274,11 @@ Autentica con email y password
 
 | 429
 | Demasiados intentos (rate limit)
+|  <<ProblemDetail>>
+
+
+| 413
+| Cuerpo de la petición superior a 256 KiB (ProblemDetail)
 |  <<ProblemDetail>>
 
 |===
@@ -447,6 +457,11 @@ Registra un usuario y le devuelve la sesión (auto-login)
 | Demasiados intentos (rate limit)
 |  <<ProblemDetail>>
 
+
+| 413
+| Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+|  <<ProblemDetail>>
+
 |===
 
 ===== Samples
@@ -466,6 +481,202 @@ ifdef::internal-generation[]
 ===== Implementation
 
 // markup not found, no include::{specDir}api/v1/auth/register/POST/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.restablecerPassword]
+==== restablecerPassword
+
+`POST /api/v1/auth/password/reset`
+
+Restablece la contraseña con el token del email
+
+===== Description
+
+Canjea el token de un solo uso: guarda la contraseña nueva con BCrypt, invalida el token y revoca TODA la familia de refresh tokens del usuario (las sesiones abiertas quedan fuera). Rate limit: 10 peticiones/hora por IP.
+
+
+// markup not found, no include::{specDir}api/v1/auth/password/reset/POST/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+====== Body Parameter
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| PasswordResetRequest
+|  <<PasswordResetRequest>>
+| X
+| 
+| 
+
+|===
+
+
+
+
+
+===== Return Type
+
+
+
+-
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 204
+| Contraseña actualizada; sesión cerrada
+|  <<>>
+
+
+| 400
+| Token inválido, caducado o ya usado, o validación fallida (ProblemDetail)
+|  <<ProblemDetail>>
+
+
+| 429
+| Demasiadas peticiones (rate limit)
+|  <<ProblemDetail>>
+
+
+| 413
+| Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/auth/password/reset/POST/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/auth/password/reset/POST/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/auth/password/reset/POST/POST.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/auth/password/reset/POST/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.solicitarPasswordOlvidada]
+==== solicitarPasswordOlvidada
+
+`POST /api/v1/auth/password/forgot`
+
+Pide el enlace de restablecimiento de contraseña
+
+===== Description
+
+Si el email corresponde a una cuenta CON contraseña, se envía un enlace `FRONTEND_URL/restablecer?token=<opaco>` (el token, opaco y de un solo uso, caduca en `auth.password-reset.ttl`, 15 min por defecto). Si la cuenta ya tiene un enlace vigente no se envía otro (el primero sigue siendo válido). El envío del email es asíncrono: el 202 no espera al proveedor. La respuesta es SIEMPRE `202 Accepted` aunque la cuenta no exista (sin enumeración de emails ni por tiempo de respuesta) y aunque el proveedor de email falle. Rate limit: 5 peticiones/hora por IP.
+
+
+// markup not found, no include::{specDir}api/v1/auth/password/forgot/POST/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+====== Body Parameter
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| PasswordForgotRequest
+|  <<PasswordForgotRequest>>
+| X
+| 
+| 
+
+|===
+
+
+
+
+
+===== Return Type
+
+
+
+-
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 202
+| Solicitud aceptada (siempre; no revela si la cuenta existe)
+|  <<>>
+
+
+| 400
+| Validación fallida (ProblemDetail)
+|  <<ProblemDetail>>
+
+
+| 429
+| Demasiadas peticiones (rate limit)
+|  <<ProblemDetail>>
+
+
+| 413
+| Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/auth/password/forgot/POST/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/auth/password/forgot/POST/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/auth/password/forgot/POST/POST.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/auth/password/forgot/POST/implementation.adoc[opts=optional]
 
 
 endif::internal-generation[]
@@ -950,6 +1161,11 @@ Reemplaza la representación completa del recurso; los campos no enviados (opcio
 | Inmueble ya eliminado (soft-delete); no se reescribe un borrado
 |  <<ProblemDetail>>
 
+
+| 413
+| Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+|  <<ProblemDetail>>
+
 |===
 
 ===== Samples
@@ -1045,6 +1261,11 @@ Crea un inmueble
 
 | 403
 | Token sin rol ADMIN
+|  <<ProblemDetail>>
+
+
+| 413
+| Cuerpo de la petición superior a 256 KiB (ProblemDetail)
 |  <<ProblemDetail>>
 
 |===
@@ -1251,6 +1472,11 @@ Alta anónima de una empresa o autónomo que quiere recibir solicitudes. Siempre
 | Rate limit por IP superado (5/hora)
 |  <<ProblemDetail>>
 
+
+| 413
+| Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+|  <<ProblemDetail>>
+
 |===
 
 ===== Samples
@@ -1368,6 +1594,11 @@ Sólo admite `ACTIVO` (puede recibir solicitudes) o `RECHAZADO`. Un profesional 
 
 | 404
 | Profesional inexistente
+|  <<ProblemDetail>>
+
+
+| 413
+| Cuerpo de la petición superior a 256 KiB (ProblemDetail)
 |  <<ProblemDetail>>
 
 |===
@@ -1579,6 +1810,11 @@ Alta anónima de una petición de trabajo (municipio, descripción y 1..8 gremio
 
 | 429
 | Rate limit por IP superado (10/hora)
+|  <<ProblemDetail>>
+
+
+| 413
+| Cuerpo de la petición superior a 256 KiB (ProblemDetail)
 |  <<ProblemDetail>>
 
 |===
@@ -2062,6 +2298,11 @@ Idempotente por DISEÑO (la constraint `uq_swipes_usuario_inmueble` garantiza un
 
 | 409
 | Conflicto de unicidad no resuelto por el reintento (dos escrituras simultáneas sobre la misma pareja usuario+inmueble)
+|  <<ProblemDetail>>
+
+
+| 413
+| Cuerpo de la petición superior a 256 KiB (ProblemDetail)
 |  <<ProblemDetail>>
 
 |===
@@ -2762,6 +3003,57 @@ Código de un solo uso devuelto por el callback de Google
 | 
 |   String  
 | Código opaco de un solo uso
+|     
+
+|===
+
+
+
+[#PasswordForgotRequest]
+=== _PasswordForgotRequest_ 
+
+Solicitud de restablecimiento de contraseña por email
+
+
+[.fields-PasswordForgotRequest]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| email
+| X
+| 
+|   String  
+| Email de la cuenta
+| email    
+
+|===
+
+
+
+[#PasswordResetRequest]
+=== _PasswordResetRequest_ 
+
+Restablecimiento de contraseña con el token recibido por email
+
+
+[.fields-PasswordResetRequest]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| token
+| X
+| 
+|   String  
+| Token opaco de un solo uso incluido en el enlace del email
+|     
+
+| password
+| X
+| 
+|   String  
+| Contraseña: 8-72 caracteres (mismas reglas que el registro)
 |     
 
 |===
