@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Boton } from '@/components/ui/boton';
 import { etiquetaEstado, formatoFecha } from '../formato';
 import type { EstadoModeracion, EstadoProfesional, ProfesionalAdmin } from '../types';
@@ -33,8 +33,24 @@ export function FilaProfesional({ profesional, ocupado, onCambio }: FilaProfesio
   const { nombre, email, telefono, municipio, gremios, estado, creadoEn } = profesional;
   /** Destino elegido en el primer clic; `null` ⇒ esperando la primera acción. */
   const [confirmacion, setConfirmacion] = useState<EstadoModeracion | null>(null);
-  /** Botón que abrió la confirmación: ahí vuelve el foco si se cancela. */
+  /** Botón que abrió la confirmación: ahí vuelve el foco al cerrarla. */
   const gatillo = useRef<HTMLButtonElement | null>(null);
+  /** Última confirmación vista: detecta el cierre (null) sin robar foco al montar. */
+  const confirmacionPrevia = useRef<EstadoModeracion | null>(null);
+
+  /**
+   * Al cerrar la confirmación (cancelar o confirmar) el foco vuelve al gatillo.
+   * Va en un effect y no sincrónicamente en el onClick: en el momento del clic
+   * el gatillo sigue oculto (`display: none`) y `focus()` sería no-op en
+   * navegador real. Si la fila se ha ido ya (triunfo del PATCH), el nodo está
+   * desmontado y el foco cae sin error.
+   */
+  useEffect(() => {
+    if (confirmacionPrevia.current !== null && confirmacion === null) {
+      gatillo.current?.focus();
+    }
+    confirmacionPrevia.current = confirmacion;
+  }, [confirmacion]);
 
   return (
     <li className="rounded-lg border border-borde bg-superficie p-5">
@@ -102,6 +118,7 @@ export function FilaProfesional({ profesional, ocupado, onCambio }: FilaProfesio
               <Boton
                 onClick={() => {
                   onCambio(profesional, confirmacion);
+                  // El effect de arriba devuelve el foco al gatillo al cerrar.
                   setConfirmacion(null);
                 }}
               >
@@ -112,7 +129,6 @@ export function FilaProfesional({ profesional, ocupado, onCambio }: FilaProfesio
                 autoFocus
                 onClick={() => {
                   setConfirmacion(null);
-                  gatillo.current?.focus();
                 }}
               >
                 Cancelar
