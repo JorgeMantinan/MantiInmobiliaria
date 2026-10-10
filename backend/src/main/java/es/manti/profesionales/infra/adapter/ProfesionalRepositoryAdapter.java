@@ -29,9 +29,16 @@ public class ProfesionalRepositoryAdapter implements ProfesionalRepository {
 
     private final ProfesionalJpaRepository jpaRepository;
 
+    /**
+     * Guarda con FLUSH explícito (issue #51): el conflicto de versión
+     * ({@code @Version} → {@code OptimisticLockingFailureException}) estalla
+     * DENTRO del servicio y antes del log de éxito, de modo que una moderación
+     * perdedora nunca se registra como si hubiera tenido efecto y puede
+     * mapearse a 409 en el advice del módulo.
+     */
     @Override
     public Profesional guardar(Profesional profesional) {
-        return jpaRepository.save(profesional);
+        return jpaRepository.saveAndFlush(profesional);
     }
 
     @Override
