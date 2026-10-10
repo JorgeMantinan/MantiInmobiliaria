@@ -40,13 +40,16 @@ export function mensajeDeError(error: unknown, mensajePorDefecto: string): strin
 export type FalloEnvio = Readonly<{
   /** `errors[]` del 400 ya mapeados a campos conocidos (vacío si no hay). */
   campos: Readonly<Record<string, string>>;
-  /** Mensaje global para el `role="alert"`; `null` si hay errores de campo. */
+  /** Mensaje global para el `role="alert"`; `null` si no queda nada suelto. */
   global: string | null;
 }>;
 
 /**
- * Un 400 con `errors[]` se muestra EN el campo correspondiente; el aviso
- * global queda como fallback (400 sin errores, 409, 429, red, etc.).
+ * Un 400 con `errors[]` se muestra EN el campo correspondiente; lo que NO
+ * encaja con `campos` (fields desconocidos o sin `field`) NO se descarta: se
+ * conserva como aviso global junto a los errores de campo. El aviso global es
+ * además el fallback cuando no hay ningún error de campo conocido (400 sin
+ * `errors[]`, 409, 429, red, etc.).
  */
 export function clasificarErrorEnvio(
   causa: unknown,
@@ -56,7 +59,11 @@ export function clasificarErrorEnvio(
   if (esApiError(causa) && causa.status === 400) {
     const deCampo = erroresDeCampo(causa.errors, campos);
     if (Object.keys(deCampo).length > 0) {
-      return { campos: deCampo, global: null };
+      const sueltos = causa.errors
+        .filter((error) => error.field === undefined || !campos.includes(error.field))
+        .map((error) => error.message)
+        .join(' · ');
+      return { campos: deCampo, global: sueltos.length > 0 ? sueltos : null };
     }
   }
   return { campos: {}, global: mensajeDeError(causa, mensajePorDefecto) };

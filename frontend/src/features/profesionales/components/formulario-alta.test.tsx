@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FormularioAlta } from '@/features/profesionales/components/formulario-alta';
@@ -42,6 +42,12 @@ async function rellenar(usuario: ReturnType<typeof userEvent.setup>): Promise<vo
 
 async function enviar(usuario: ReturnType<typeof userEvent.setup>): Promise<void> {
   await usuario.click(screen.getByRole('button', { name: 'Registrarme como profesional' }));
+}
+
+/** Número de POST al alta (el GET del catálogo de gremios no cuenta). */
+function contarPosts(): number {
+  return vi.mocked(apiFetch).mock.calls.filter(([ruta]) => ruta === '/api/v1/profesionales/registro')
+    .length;
 }
 
 beforeEach(() => {
@@ -130,5 +136,70 @@ describe('FormularioAlta', () => {
 
     expect(await screen.findByText('Demasiadas peticiones, inténtalo más tarde')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Registrarme como profesional' })).toBeEnabled();
+  });
+
+  it('el_telefono_de_los_30_caracteres_del_dto_del_backend', () => {
+    render(<FormularioAlta />);
+
+    // Paridad con `@Size(max = 30)` del DTO: el input no deja escribir más.
+    expect(screen.getByLabelText('Teléfono (opcional)')).toHaveAttribute('maxLength', '30');
+  });
+
+  it('un_segundo_submit_con_la_peticion_en_vuelo_no_dispara_un_segundo_post', async () => {
+    let confirmarAlta!: (valor: unknown) => void;
+    vi.mocked(apiFetch).mockImplementation((ruta: string) => {
+      if (ruta === '/api/v1/gremios') return Promise.resolve(GREMIOS);
+      return new Promise<unknown>((resolver) => {
+        confirmarAlta = resolver;
+      });
+    });
+    const usuario = userEvent.setup();
+    render(<FormularioAlta />);
+    await screen.findByRole('checkbox', { name: 'Fontanero' });
+    await rellenar(usuario);
+
+    const boton = screen.getByRole('button', { name: 'Registrarme como profesional' });
+    const formulario = boton.closest('form');
+    if (formulario === null) throw new Error('no se encontró el formulario');
+
+    fireEvent.submit(formulario);
+    // El botón ya indica que la petición está en vuelo...
+    expect(screen.getByRole('button', { name: 'Enviando registro…' })).toBeDisabled();
+    // ...y un Enter repetido mientras sigue pendiente se descarta.
+    fireEvent.submit(formulario);
+
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledTimes(2));
+    expect(contarPosts()).toBe(1);
+
+    await act(async () => {
+      confirmarAlta(REGISTRO);
+    });
+    expect(
+      await screen.findByText(
+        'Registro recibido — validaremos tu cuenta y recibirás notificaciones',
+      ),
+    ).toBeInTheDocument();
+    expect(contarPosts()).toBe(1);
+  });
+
+  it('con_un_400_mixto_pinta_los_conocidos_en_su_campo_y_conserva_los_desconocidos_en_el_global', async () => {
+    conRutas({
+      '/api/v1/gremios': GREMIOS,
+      '/api/v1/profesionales/registro': new ApiError(400, 'Validación fallida', '2 campos', [
+        { field: 'nombre', message: 'supera el máximo de caracteres' },
+        { field: 'campoInexistente', message: 'campo no reconocido' },
+      ]),
+    });
+    const usuario = userEvent.setup();
+    render(<FormularioAlta />);
+    await screen.findByRole('checkbox', { name: 'Fontanero' });
+
+    await rellenar(usuario);
+    await enviar(usuario);
+
+    expect(await screen.findByText('supera el máximo de caracteres')).toBeInTheDocument();
+    expect(screen.getByLabelText('Nombre o razón social')).toHaveAttribute('aria-invalid', 'true');
+    // El field desconocido NO se descarta: sigue visible en el aviso global.
+    expect(screen.getByText('campo no reconocido')).toHaveAttribute('aria-live', 'assertive');
   });
 });

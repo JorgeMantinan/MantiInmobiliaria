@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FormularioSolicitud } from '@/features/profesionales/components/formulario-solicitud';
@@ -48,6 +48,11 @@ async function rellenarValido(usuario: ReturnType<typeof userEvent.setup>): Prom
 
 async function enviar(usuario: ReturnType<typeof userEvent.setup>): Promise<void> {
   await usuario.click(screen.getByRole('button', { name: 'Enviar solicitud' }));
+}
+
+/** Número de POST de la solicitud (el GET del catálogo de gremios no cuenta). */
+function contarPosts(): number {
+  return vi.mocked(apiFetch).mock.calls.filter(([ruta]) => ruta === '/api/v1/solicitudes').length;
 }
 
 beforeEach(() => {
@@ -195,5 +200,71 @@ describe('FormularioSolicitud', () => {
     );
     expect(screen.getByRole('checkbox', { name: 'Fontanero' })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: 'Arquitecto' })).toBeInTheDocument();
+  });
+
+  it('el_telefono_de_los_30_caracteres_del_dto_del_backend', () => {
+    render(<FormularioSolicitud />);
+
+    // Paridad con `@Size(max = 30)` del DTO: el input no deja escribir más.
+    expect(screen.getByLabelText('Teléfono (opcional)')).toHaveAttribute('maxLength', '30');
+  });
+
+  it('un_segundo_submit_con_la_peticion_en_vuelo_no_dispara_un_segundo_post', async () => {
+    let confirmarSolicitud!: (valor: unknown) => void;
+    vi.mocked(apiFetch).mockImplementation((ruta: string) => {
+      if (ruta === '/api/v1/gremios') return Promise.resolve(GREMIOS);
+      return new Promise<unknown>((resolver) => {
+        confirmarSolicitud = resolver;
+      });
+    });
+    const usuario = userEvent.setup();
+    render(<FormularioSolicitud />);
+    await screen.findByRole('checkbox', { name: 'Fontanero' });
+    await rellenarValido(usuario);
+
+    const boton = screen.getByRole('button', { name: 'Enviar solicitud' });
+    const formulario = boton.closest('form');
+    if (formulario === null) throw new Error('no se encontró el formulario');
+
+    fireEvent.submit(formulario);
+    // El botón ya indica que la petición está en vuelo...
+    expect(screen.getByRole('button', { name: 'Enviando solicitud…' })).toBeDisabled();
+    // ...y un Enter repetido mientras sigue pendiente se descarta.
+    fireEvent.submit(formulario);
+
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledTimes(2));
+    expect(contarPosts()).toBe(1);
+
+    await act(async () => {
+      confirmarSolicitud(CREADA);
+    });
+    expect(
+      await screen.findByText('Solicitud enviada, te contactarán los profesionales'),
+    ).toBeInTheDocument();
+    expect(contarPosts()).toBe(1);
+  });
+
+  it('con_un_400_mixto_pinta_los_conocidos_en_su_campo_y_conserva_los_desconocidos_en_el_global', async () => {
+    conRutas({
+      '/api/v1/gremios': GREMIOS,
+      '/api/v1/solicitudes': new ApiError(400, 'Validación fallida', '2 campos', [
+        { field: 'descripcion', message: 'debe tener al menos 10 caracteres' },
+        { field: 'campoInexistente', message: 'campo no reconocido' },
+      ]),
+    });
+    const usuario = userEvent.setup();
+    render(<FormularioSolicitud />);
+    await screen.findByRole('checkbox', { name: 'Fontanero' });
+
+    await rellenarValido(usuario);
+    await enviar(usuario);
+
+    expect(await screen.findByText('debe tener al menos 10 caracteres')).toBeInTheDocument();
+    expect(screen.getByLabelText('Descripción del trabajo')).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    // El field desconocido NO se descarta: sigue visible en el aviso global.
+    expect(screen.getByText('campo no reconocido')).toHaveAttribute('aria-live', 'assertive');
   });
 });

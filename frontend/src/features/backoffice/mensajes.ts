@@ -10,15 +10,16 @@ export const MENSAJES = {
   cambioEstado: 'No se ha podido cambiar el estado del profesional.',
 } as const;
 
-/** Clase de los avisos de error: vive en las primitivas de UI, aquí se reexporta. */
-export { AVISO_ERROR } from '@/components/ui/avisos';
-
 /**
- * Traduce cualquier error a un mensaje mostrable: `ApiError` ⇒ `detail`
- * (o `title`); cualquier `Error` ⇒ su mensaje; el resto ⇒ `mensajePorDefecto`.
+ * Traduce cualquier error a un mensaje mostrable:
+ * - 5xx ⇒ `mensajePorDefecto`: el `detail` de un fallo interno es un volcado
+ *   técnico que no se pinta en pantalla.
+ * - resto de `ApiError` ⇒ `detail` (o `title` si viniera vacío).
+ * - cualquier `Error` ⇒ su mensaje; el resto ⇒ `mensajePorDefecto`.
  */
 export function mensajeDeError(error: unknown, mensajePorDefecto: string): string {
   if (esApiError(error)) {
+    if (error.status >= 500) return mensajePorDefecto;
     return error.detail.length > 0 ? error.detail : error.title;
   }
   if (error instanceof Error && error.message.length > 0) {

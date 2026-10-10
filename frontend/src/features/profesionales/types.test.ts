@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { GREMIOS_DE_RESERVA } from '@/features/profesionales/types';
 
 /**
- * Fijura literal del catálogo sembrado en
- * `V4__profesionales.sql` (PR `feature/08-profesionales`), en el MISMO orden.
- * Si el backend cambia un slug o un nombre, este test revienta el build:
+ * Fijura LITERAL de `GREMIOS_DE_RESERVA`: fija la constante del frontend
+ * (slugs y orden) para que cualquier cambio accidental aquí rompa el test;
  * los formularios pegan estos slugs en `POST /api/v1/solicitudes`.
+ *
+ * OJO: este test NO lee `V4__profesionales.sql`, sólo compara un literal del
+ * cliente contra otro literal del cliente. La sincronía con el catálogo del
+ * backend se revisa en el PR que toca la migración.
  */
 const CATALOGO_ESPERADO = [
   { slug: 'fontanero', nombre: 'Fontanero' },
@@ -23,7 +26,7 @@ const CATALOGO_ESPERADO = [
 ];
 
 describe('GREMIOS_DE_RESERVA', () => {
-  it('coincide_con_los_12_oficios_sembrados_en_v4_del_backend', () => {
+  it('fija_los_12_oficios_del_catalogo_de_reserva', () => {
     expect(GREMIOS_DE_RESERVA).toEqual(CATALOGO_ESPERADO);
     expect(GREMIOS_DE_RESERVA).toHaveLength(12);
     expect(new Set(GREMIOS_DE_RESERVA.map((gremio) => gremio.slug)).size).toBe(12);
