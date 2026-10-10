@@ -19,17 +19,13 @@ export type DatosRegistroConConfirmacion = Readonly<{
   confirmacion: string;
 }>;
 
-export function validarRegistro(datos: DatosRegistroConConfirmacion): ErroresRegistro {
-  return {
-    nombre: datos.nombre.trim().length === 0 ? 'Escribe tu nombre.' : undefined,
-    email: EMAIL_SENCILLO.test(datos.email.trim()) ? undefined : 'Escribe un email válido.',
-    password: validarPassword(datos.password),
-    confirmacion:
-      datos.confirmacion === datos.password ? undefined : 'Las contraseñas no coinciden.',
-  };
+/** ¿El email tiene formato aceptable? (compartido por registro y recuperación). */
+export function validarEmail(email: string): string | undefined {
+  return EMAIL_SENCILLO.test(email.trim()) ? undefined : 'Escribe un email válido.';
 }
 
-function validarPassword(password: string): string | undefined {
+/** Reglas 8-72 de la contraseña (idénticas a las del registro). */
+export function validarPassword(password: string): string | undefined {
   if (password.length < PASSWORD_MINIMO) {
     return `La contraseña debe tener al menos ${PASSWORD_MINIMO} caracteres.`;
   }
@@ -39,6 +35,30 @@ function validarPassword(password: string): string | undefined {
   return undefined;
 }
 
-export function hayErrores(errores: ErroresRegistro): boolean {
+export type ErroresRestablecer = Readonly<{
+  password?: string;
+  confirmacion?: string;
+}>;
+
+/** Validación del formulario de restablecimiento: contraseña nueva + confirmación. */
+export function validarRestablecer(password: string, confirmacion: string): ErroresRestablecer {
+  return {
+    password: validarPassword(password),
+    confirmacion:
+      confirmacion === password ? undefined : 'Las contraseñas no coinciden.',
+  };
+}
+
+export function validarRegistro(datos: DatosRegistroConConfirmacion): ErroresRegistro {
+  return {
+    nombre: datos.nombre.trim().length === 0 ? 'Escribe tu nombre.' : undefined,
+    email: validarEmail(datos.email),
+    password: validarPassword(datos.password),
+    confirmacion:
+      datos.confirmacion === datos.password ? undefined : 'Las contraseñas no coinciden.',
+  };
+}
+
+export function hayErrores(errores: ErroresRegistro | ErroresRestablecer): boolean {
   return Object.values(errores).some((mensaje) => mensaje !== undefined);
 }

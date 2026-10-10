@@ -4,7 +4,7 @@ import es.manti.profesionales.domain.ClaveIdempotenciaConflictivaException;
 import es.manti.profesionales.domain.EmailProfesionalYaRegistradoException;
 import es.manti.profesionales.domain.EstadoProfesionalNoPermitidoException;
 import es.manti.profesionales.domain.GremioInexistenteException;
-import es.manti.profesionales.domain.NotificacionException;
+import es.manti.shared.notificaciones.NotificacionException;
 import es.manti.profesionales.domain.ProfesionalNoEncontradoException;
 import es.manti.profesionales.domain.TelegramSinCredencialException;
 import es.manti.shared.error.Problems;

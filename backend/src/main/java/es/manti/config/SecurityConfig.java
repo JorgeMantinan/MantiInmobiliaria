@@ -5,6 +5,7 @@ import es.manti.usuarios.api.GoogleOAuth2FailureHandler;
 import es.manti.usuarios.api.GoogleOAuth2SuccessHandler;
 import es.manti.usuarios.application.AuthProperties;
 import es.manti.usuarios.application.JwtService;
+import es.manti.usuarios.application.PasswordResetProperties;
 import es.manti.usuarios.infra.filter.AuthRateLimitFilter;
 import es.manti.usuarios.infra.filter.CookieEndpointCsrfFilter;
 import es.manti.shared.error.ProblemAccessDeniedHandler;
@@ -59,7 +60,8 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@EnableConfigurationProperties({AuthProperties.class, CorsProperties.class})
+@EnableConfigurationProperties({AuthProperties.class, CorsProperties.class,
+        PasswordResetProperties.class})
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -102,7 +104,12 @@ public class SecurityConfig {
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/refresh",
                                 "/api/v1/auth/logout",
-                                "/api/v1/auth/oauth2/token").permitAll()
+                                "/api/v1/auth/oauth2/token",
+                                // issue #57 — restablecimiento de contraseña:
+                                // anónimos a propósito; el "factor" es el enlace
+                                // de un solo uso que sólo llega por email.
+                                "/api/v1/auth/password/forgot",
+                                "/api/v1/auth/password/reset").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         // FASE 2 — lectura PÚBLICA del portal de inmuebles.
                         // SÓLO GET, SÓLO el recurso de lectura y SÓLO id numérico:

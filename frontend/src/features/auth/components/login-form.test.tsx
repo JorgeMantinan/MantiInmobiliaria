@@ -109,4 +109,13 @@ describe('LoginForm', () => {
     expect(valor.iniciarSesion).not.toHaveBeenCalled();
     expect(navegacion.push).not.toHaveBeenCalled();
   });
+
+  it('muestra_el_enlace_a_recuperar_la_contrasena', () => {
+    renderizarLogin();
+
+    expect(screen.getByRole('link', { name: '¿Olvidaste tu contraseña?' })).toHaveAttribute(
+      'href',
+      '/recuperar',
+    );
+  });
 });

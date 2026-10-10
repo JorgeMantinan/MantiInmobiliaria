@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   hayErrores,
+  validarEmail,
   validarRegistro,
+  validarRestablecer,
 } from '@/features/auth/validacion';
 
 const VALIDO = {
@@ -55,5 +57,44 @@ describe('validarRegistro', () => {
     expect(hayErrores({ email: 'Escribe un email válido.' })).toBe(true);
     expect(hayErrores({ email: undefined })).toBe(false);
     expect(hayErrores({})).toBe(false);
+  });
+});
+
+describe('validarEmail', () => {
+  it('email_valido_no_produce_error', () => {
+    expect(validarEmail('ana@example.com')).toBe(undefined);
+  });
+
+  it('email_en_blanco_produce_error', () => {
+    expect(validarEmail('   ')).toBe('Escribe un email válido.');
+  });
+
+  it('email_sin_arroba_produce_error', () => {
+    expect(validarEmail('ana.example.com')).toBe('Escribe un email válido.');
+  });
+});
+
+describe('validarRestablecer', () => {
+  it('datos_validos_no_producen_errores', () => {
+    expect(hayErrores(validarRestablecer('claveNueva456', 'claveNueva456'))).toBe(false);
+  });
+
+  it('password_de_7_caracteres_produce_error', () => {
+    expect(validarRestablecer('1234567', '1234567').password).toBe(
+      'La contraseña debe tener al menos 8 caracteres.',
+    );
+  });
+
+  it('password_de_73_caracteres_produce_error', () => {
+    const larga = 'a'.repeat(73);
+    expect(validarRestablecer(larga, larga).password).toBe(
+      'La contraseña no puede superar los 72 caracteres.',
+    );
+  });
+
+  it('confirmacion_distinta_produce_error', () => {
+    expect(validarRestablecer('claveNueva456', 'otraClave123').confirmacion).toBe(
+      'Las contraseñas no coinciden.',
+    );
   });
 });

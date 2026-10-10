@@ -3,6 +3,7 @@ package es.manti.profesionales.application;
 import es.manti.profesionales.domain.ChatVisto;
 import es.manti.profesionales.domain.TelegramDiagnosticoPort;
 import es.manti.profesionales.domain.TelegramSinCredencialException;
+import es.manti.shared.notificaciones.NotificacionesProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

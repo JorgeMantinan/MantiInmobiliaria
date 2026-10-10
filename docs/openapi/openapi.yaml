@@ -410,6 +410,99 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
       security: []
+  /api/v1/auth/password/reset:
+    post:
+      tags:
+      - Auth
+      summary: Restablece la contraseña con el token del email
+      description: "Canjea el token de un solo uso: guarda la contraseña nueva con\
+        \ BCrypt, invalida el token y revoca TODA la familia de refresh tokens del\
+        \ usuario (las sesiones abiertas quedan fuera). Rate limit: 10 peticiones/hora\
+        \ por IP."
+      operationId: restablecerPassword
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordResetRequest"
+        required: true
+      responses:
+        "204":
+          description: Contraseña actualizada; sesión cerrada
+        "400":
+          description: "Token inválido, caducado o ya usado, o validación fallida\
+            \ (ProblemDetail)"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "429":
+          description: Demasiadas peticiones (rate limit)
+          headers:
+            Retry-After:
+              description: Segundos hasta liberar una petición en la ventana de rate
+                limit
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "413":
+          description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security: []
+  /api/v1/auth/password/forgot:
+    post:
+      tags:
+      - Auth
+      summary: Pide el enlace de restablecimiento de contraseña
+      description: "Si el email corresponde a una cuenta CON contraseña, se envía\
+        \ un enlace `FRONTEND_URL/restablecer?token=<opaco>` (el token, opaco y de\
+        \ un solo uso, caduca en `auth.password-reset.ttl`, 15 min por defecto). Si\
+        \ la cuenta ya tiene un enlace vigente no se envía otro (el primero sigue\
+        \ siendo válido). El envío del email es asíncrono: el 202 no espera al proveedor.\
+        \ La respuesta es SIEMPRE `202 Accepted` aunque la cuenta no exista (sin enumeració\
+        n de emails ni por tiempo de respuesta) y aunque el proveedor de email falle.\
+        \ Rate limit: 5 peticiones/hora por IP."
+      operationId: solicitarPasswordOlvidada
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordForgotRequest"
+        required: true
+      responses:
+        "202":
+          description: Solicitud aceptada (siempre; no revela si la cuenta existe)
+        "400":
+          description: Validación fallida (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "429":
+          description: Demasiadas peticiones (rate limit)
+          headers:
+            Retry-After:
+              description: Segundos hasta liberar una petición en la ventana de rate
+                limit
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "413":
+          description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security: []
   /api/v1/auth/oauth2/token:
     post:
       tags:
@@ -1505,6 +1598,38 @@ components:
           format: date-time
           description: Fecha de alta (ISO-8601)
           example: 2026-01-01T10:00:00Z
+    PasswordResetRequest:
+      type: object
+      description: Restablecimiento de contraseña con el token recibido por email
+      properties:
+        token:
+          type: string
+          description: Token opaco de un solo uso incluido en el enlace del email
+          example: dGVzdC10b2tlbi1kZS11bmUtc3Vzby11c28
+          maxLength: 128
+          minLength: 0
+        password:
+          type: string
+          description: "Contraseña: 8-72 caracteres (mismas reglas que el registro)"
+          example: secreto123
+          maxLength: 72
+          minLength: 8
+      required:
+      - password
+      - token
+    PasswordForgotRequest:
+      type: object
+      description: Solicitud de restablecimiento de contraseña por email
+      properties:
+        email:
+          type: string
+          format: email
+          description: Email de la cuenta
+          example: ana@example.com
+          maxLength: 255
+          minLength: 0
+      required:
+      - email
     OAuth2TokenRequest:
       type: object
       description: Código de un solo uso devuelto por el callback de Google

@@ -4,11 +4,14 @@ import es.manti.usuarios.api.dto.AuthMapper;
 import es.manti.usuarios.api.dto.AuthResponse;
 import es.manti.usuarios.api.dto.LoginRequest;
 import es.manti.usuarios.api.dto.OAuth2TokenRequest;
+import es.manti.usuarios.api.dto.PasswordForgotRequest;
+import es.manti.usuarios.api.dto.PasswordResetRequest;
 import es.manti.usuarios.api.dto.RegistroRequest;
 import es.manti.usuarios.api.dto.UsuarioSummary;
 import es.manti.usuarios.application.AuthProperties;
 import es.manti.usuarios.application.AuthResult;
 import es.manti.usuarios.application.AuthService;
+import es.manti.usuarios.application.PasswordResetService;
 import es.manti.usuarios.application.RegistroCommand;
 import es.manti.usuarios.domain.TokenInvalidoException;
 import es.manti.usuarios.domain.Usuario;
@@ -58,6 +61,7 @@ import java.time.Duration;
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordResetService passwordResetService;
     private final AuthMapper mapper;
     private final AuthProperties properties;
 
@@ -171,6 +175,51 @@ public class AuthController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookieSesion(result.refreshToken()).toString())
                 .body(mapper.toResponse(result));
+    }
+
+    @PostMapping("/password/forgot")
+    @SecurityRequirements   // endpoint público: security: [] en la spec
+    @Operation(operationId = "solicitarPasswordOlvidada",
+            summary = "Pide el enlace de restablecimiento de contraseña",
+            description = "Si el email corresponde a una cuenta CON contraseña, se envía un enlace "
+                    + "`FRONTEND_URL/restablecer?token=<opaco>` (el token, opaco y de un solo uso, "
+                    + "caduca en `auth.password-reset.ttl`, 15 min por defecto). Si la cuenta ya "
+                    + "tiene un enlace vigente no se envía otro (el primero sigue siendo válido). "
+                    + "El envío del email es asíncrono: el 202 no espera al proveedor. La "
+                    + "respuesta es SIEMPRE `202 Accepted` aunque la cuenta no exista (sin "
+                    + "enumeración de emails ni por tiempo de respuesta) y aunque el proveedor de "
+                    + "email falle. Rate limit: 5 peticiones/hora por IP.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "202", description = "Solicitud aceptada (siempre; "
+                    + "no revela si la cuenta existe)"),
+            @ApiResponse(responseCode = "400", description = "Validación fallida (ProblemDetail)",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "429", description = "Demasiadas peticiones (rate limit)",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
+    public ResponseEntity<Void> solicitarPasswordOlvidada(
+            @Valid @RequestBody PasswordForgotRequest request) {
+        passwordResetService.solicitar(request.email());
+        return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping("/password/reset")
+    @SecurityRequirements   // endpoint público: security: [] en la spec
+    @Operation(operationId = "restablecerPassword",
+            summary = "Restablece la contraseña con el token del email",
+            description = "Canjea el token de un solo uso: guarda la contraseña nueva con BCrypt, "
+                    + "invalida el token y revoca TODA la familia de refresh tokens del usuario "
+                    + "(las sesiones abiertas quedan fuera). Rate limit: 10 peticiones/hora por IP.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Contraseña actualizada; sesión cerrada"),
+            @ApiResponse(responseCode = "400", description = "Token inválido, caducado o ya usado, "
+                    + "o validación fallida (ProblemDetail)",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "429", description = "Demasiadas peticiones (rate limit)",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
+    public ResponseEntity<Void> restablecerPassword(
+            @Valid @RequestBody PasswordResetRequest request) {
+        passwordResetService.restablecer(request.token(), request.password());
+        return ResponseEntity.noContent().build();
     }
 
     // ------------------------------------------------------------------

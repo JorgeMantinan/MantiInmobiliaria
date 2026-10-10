@@ -1,7 +1,8 @@
 package es.manti.profesionales.application;
 
-import es.manti.profesionales.domain.EmailNotificadorPort;
-import es.manti.profesionales.domain.NotificacionException;
+import es.manti.shared.notificaciones.EmailNotificadorPort;
+import es.manti.shared.notificaciones.NotificacionException;
+import es.manti.shared.notificaciones.NotificacionesProperties;
 import es.manti.profesionales.domain.NotificacionOutbox;
 import es.manti.profesionales.domain.TelegramNotificadorPort;
 import lombok.RequiredArgsConstructor;

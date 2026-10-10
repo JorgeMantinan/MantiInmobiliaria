@@ -22,6 +22,20 @@ spring:
     hibernate:
       ddl-auto: validate
 
+server:
+  # Revisión del PR #64 (MEDIO 3) — el backend va DETRÁS de un proxy (Vercel):
+  # sin esto, todo el tráfico llega con la IP del proxy y el rate limit por IP
+  # de AuthRateLimitFilter (login, forgot/reset, solicitudes) se vuelve inútil
+  # —una sola ventana compartida para todos los usuarios— y la auditoría de
+  # intentos de login no ve la IP real. Con 'framework' Spring instala
+  # ForwardedHeaderFilter y confía en X-Forwarded-For/-Proto/-Host.
+  #
+  # La variable FORWARD_HEADERS_STRATEGY ya está en Vercel (la reescribe el
+  # edge); se expone por si hay que apagarla con 'none' sin redeploy de código.
+  # El perfil base (dev/local) NO se toca: ahí no hay proxy y confiar en esas
+  # cabeceras permitiría spoofing de IP.
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:framework}
+
 springdoc:
   api-docs:
     enabled: ${SPRINGDOC_ENABLED:false}

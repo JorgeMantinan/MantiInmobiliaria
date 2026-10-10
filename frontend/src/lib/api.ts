@@ -42,14 +42,23 @@ type ProblemDetail = Readonly<{
 /** Excepción tipada: todo error de la API (RFC 9457) se parsea aquí. */
 export class ApiError extends Error {
   readonly status: number;
+  /** `type` del ProblemDetail (p. ej. `https://api.manti.dev/problems/token-invalido`). */
+  readonly type: string;
   readonly title: string;
   readonly detail: string;
   readonly errors: readonly ErrorCampo[];
 
-  constructor(status: number, title: string, detail: string, errors: readonly ErrorCampo[] = []) {
+  constructor(
+    status: number,
+    title: string,
+    detail: string,
+    errors: readonly ErrorCampo[] = [],
+    type = "",
+  ) {
     super(`${title}: ${detail}`);
     this.name = "ApiError";
     this.status = status;
+    this.type = type;
     this.title = title;
     this.detail = detail;
     this.errors = errors;
@@ -118,6 +127,7 @@ async function apiErrorDesde(respuesta: Response): Promise<ApiError> {
     problema.title ?? "Error de la API",
     problema.detail ?? `El servidor ha devuelto un error (${respuesta.status}).`,
     problema.errors ?? [],
+    problema.type ?? "",
   );
 }
 

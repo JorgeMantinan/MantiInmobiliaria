@@ -14,3 +14,7 @@ export type { AuthResponse, ErrorCampo, Usuario } from '@/lib/tipos';
 export type Credenciales = Readonly<{ email: string; password: string }>;
 
 export type DatosRegistro = Readonly<{ nombre: string; email: string; password: string }>;
+
+export type SolicitudPasswordOlvidada = Readonly<{ email: string }>;
+
+export type SolicitudPasswordRestablecida = Readonly<{ token: string; password: string }>;
