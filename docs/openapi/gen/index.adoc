@@ -1514,7 +1514,7 @@ Cambia el estado de un profesional
 
 ===== Description
 
-Sólo admite `ACTIVO` (puede recibir solicitudes) o `RECHAZADO`. Un profesional `PENDIENTE` aprobado pasa a `ACTIVO`; desde `ACTIVO` ya no vuelve a `PENDIENTE`.
+Sólo admite `ACTIVO` (puede recibir solicitudes) o `RECHAZADO`. Un profesional `PENDIENTE` aprobado pasa a `ACTIVO`; desde `ACTIVO` ya no vuelve a `PENDIENTE`. Control optimista (`@Version`): si otro administrador moderó al profesional mientras el cliente tenía la lista abierta, responde 409 `conflicto-concurrencia` y hay que recargar la lista.
 
 
 // markup not found, no include::{specDir}api/v1/admin/profesionales/\{id\}/PATCH/spec.adoc[opts=optional]
@@ -1594,6 +1594,11 @@ Sólo admite `ACTIVO` (puede recibir solicitudes) o `RECHAZADO`. Un profesional 
 
 | 404
 | Profesional inexistente
+|  <<ProblemDetail>>
+
+
+| 409
+| Conflicto de concurrencia: otro administrador modificó al profesional entre la lectura y la escritura (type &#x60;conflicto-concurrencia&#x60;; recarga la lista)
 |  <<ProblemDetail>>
 
 
