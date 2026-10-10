@@ -88,6 +88,21 @@ public class RefreshTokenService {
         });
     }
 
+    /**
+     * Revoca TODA la familia de refresh tokens del usuario y devuelve el nº
+     * de filas afectadas. Lo usa el restablecimiento de contraseña
+     * (issue #57): al rotar el password, ninguna sesión emitida antes sigue
+     * viva. La revocación vive en su propia transacción (REQUIRES_NEW en el
+     * adaptador), así que persiste aunque la transacción del canje acabe en
+     * rollback.
+     *
+     * @param usuarioId identificador del usuario
+     * @return nº de refresh tokens revocados
+     */
+    public long revocarTodosDe(Long usuarioId) {
+        return repository.revokeAllFromUsuario(usuarioId);
+    }
+
     private static String generar() {
         byte[] bytes = new byte[BYTES_TOKEN];
         ALEATORIO.nextBytes(bytes);

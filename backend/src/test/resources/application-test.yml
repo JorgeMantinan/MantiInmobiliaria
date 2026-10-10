@@ -35,6 +35,8 @@ auth:
     register-per-minute: 100000
     solicitudes-per-hour: 100000
     registro-profesional-per-hour: 100000
+    forgot-password-per-hour: 100000
+    reset-password-per-hour: 100000
 
 manti:
   scheduling:

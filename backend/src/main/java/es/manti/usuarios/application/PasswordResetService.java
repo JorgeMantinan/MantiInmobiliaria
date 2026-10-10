@@ -1,0 +1,197 @@
+package es.manti.usuarios.application;
+
+import es.manti.shared.notificaciones.EmailNotificadorPort;
+import es.manti.usuarios.domain.PasswordResetInvalidoException;
+import es.manti.usuarios.domain.PasswordResetToken;
+import es.manti.usuarios.domain.PasswordResetTokenRepository;
+import es.manti.usuarios.domain.Usuario;
+import es.manti.usuarios.domain.UsuarioNoEncontradoException;
+import es.manti.usuarios.domain.UsuarioRepository;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.time.Instant;
+import java.util.Base64;
+import java.util.HexFormat;
+import java.util.Locale;
+
+/**
+ * Flujo de restablecimiento de contraseña (issue #57): emisión del enlace por
+ * email ({@code forgot}) y canje ({@code reset}).
+ *
+ * <p><b>Anti-enumeración.</b> {@link #solicitar} responde 202 SIEMPRE: si el
+ * email no existe (o la cuenta no tiene password — Google-only) no se envía
+ * nada, pero la respuesta es idéntica a la de una cuenta real. El endpoint no
+ * distingue nunca "no existe" de "existe".</p>
+ *
+ * <p><b>Token.</b> 32 bytes {@link SecureRandom} → base64url (mismo patrón que
+ * los códigos Google y los refresh tokens); en BD sólo vive su SHA-256, así
+ * que un volcado de la tabla no permite canjear enlaces. Un solo uso y TTL de
+ * {@code auth.password-reset.ttl} (15 min). Al emitir uno nuevo se borran los
+ * anteriores del usuario: sólo el último enlace emitido queda vigente.</p>
+ *
+ * <p><b>Transacciones y BCrypt (issue #24).</b> El método NO lleva
+ * {@code @Transactional}: la lectura cierra su transacción de sólo lectura,
+ * el {@code encode} BCrypt (60-150 ms de CPU) corre sin transacción abierta y
+ * la escritura (canje + password + revocación de la familia refresh) entra en
+ * una transacción propia vía {@link TransactionTemplate}. El envío de email es
+ * SÍNCRONO y FUERA de transacción, con try/catch: un fallo de Brevo se loguea
+ * y el 202 se devuelve igual.</p>
+ */
+@Slf4j
+@Service
+public class PasswordResetService {
+
+    private static final SecureRandom ALEATORIO = new SecureRandom();
+    private static final int BYTES_TOKEN = 32;
+    private static final String ASUNTO = "Restablece tu contraseña de MantiInmobiliaria";
+
+    private final UsuarioRepository usuarios;
+    private final PasswordResetTokenRepository tokens;
+    private final RefreshTokenService refreshTokens;
+    private final PasswordEncoder passwordEncoder;
+    private final EmailNotificadorPort correo;
+    private final PasswordResetProperties properties;
+    private final TransactionTemplate transaccion;
+
+    public PasswordResetService(UsuarioRepository usuarios, PasswordResetTokenRepository tokens,
+                                RefreshTokenService refreshTokens, PasswordEncoder passwordEncoder,
+                                EmailNotificadorPort correo, PasswordResetProperties properties,
+                                TransactionTemplate transaccion) {
+        this.usuarios = usuarios;
+        this.tokens = tokens;
+        this.refreshTokens = refreshTokens;
+        this.passwordEncoder = passwordEncoder;
+        this.correo = correo;
+        this.properties = properties;
+        this.transaccion = transaccion;
+    }
+
+    /**
+     * Emite un token de restablecimiento y envía el enlace por email.
+     *
+     * <p>SIN transacción ni retorno condicional: un email inexistente, una
+     * cuenta Google sin password o una cuenta desactivada simplemente no
+     * envían correo (y no emiten token), pero el flujo termina igual — el
+     * controlador responde 202 en todos los casos.</p>
+     */
+    public void solicitar(String email) {
+        String normalizado = normalizar(email);
+        Usuario usuario = usuarios.findByEmail(normalizado).orElse(null);
+        if (usuario == null || usuario.getPasswordHash() == null || !usuario.isActivo()) {
+            log.debug("Restablecimiento solicitado sin envío (cuenta inexistente, sin password "
+                    + "o inactiva): {}", normalizado);
+            return;
+        }
+        String token = generar();
+        transaccion.execute(estado -> {
+            // Relectura en transacción: si la cuenta se borra aquí, no se emite token.
+            Usuario vigente = usuarios.findById(usuario.getId())
+                    .orElseThrow(UsuarioNoEncontradoException::new);
+            // Un solo enlace vivo por cuenta: los anteriores (usados o caducados) caen.
+            tokens.eliminarTodosDeUsuario(vigente.getId());
+            PasswordResetToken fila = new PasswordResetToken();
+            fila.setUsuario(vigente);
+            fila.setTokenHash(sha256(token));
+            fila.setExpiresAt(Instant.now().plus(properties.ttl()));
+            tokens.save(fila);
+            return null;
+        });
+        enviarEnlace(usuario.getEmail(), token);
+    }
+
+    /**
+     * Canjea el token por una contraseña nueva y cierra TODA la sesión
+     * previa: se marca el token como usado (un solo uso) y se revoca la
+     * familia entera de refresh tokens.
+     *
+     * @throws PasswordResetInvalidoException 400 si el token no existe, está
+     *                                       caducado o ya fue canjeado
+     */
+    public void restablecer(String tokenEnClaro, String password) {
+        if (tokenEnClaro == null || tokenEnClaro.isBlank()) {
+            throw new PasswordResetInvalidoException();
+        }
+        PasswordResetToken token = tokens.findByTokenHash(sha256(tokenEnClaro))
+                .orElseThrow(PasswordResetInvalidoException::new);
+        if (token.estaUsado() || token.estaExpirado()) {
+            throw new PasswordResetInvalidoException();
+        }
+        // JOIN FETCH: el usuario ya viene resuelto con el token.
+        Long usuarioId = token.getUsuario().getId();
+        // BCrypt FUERA de la transacción (issue #24): 60-150 ms de CPU sin
+        // retener una conexión de Hikari.
+        String passwordHash = passwordEncoder.encode(password);
+        transaccion.execute(estado -> {
+            // Canje atómico: sólo una petición gana; la pierde recibe 400.
+            if (tokens.consumir(token.getId(), Instant.now()) == 0) {
+                throw new PasswordResetInvalidoException();
+            }
+            Usuario usuario = usuarios.findById(usuarioId)
+                    .orElseThrow(UsuarioNoEncontradoException::new);
+            usuario.setPasswordHash(passwordHash);
+            usuarios.save(usuario);
+            // Revoca TODA la familia de refresh (reutiliza revokeAllFromUsuario):
+            // la sesión del atacante (y la del legítimo) queda fuera.
+            long revocados = refreshTokens.revocarTodosDe(usuarioId);
+            log.info("Contraseña restablecida para el usuario {}; {} refresh token(s) revocado(s)",
+                    usuarioId, revocados);
+            return null;
+        });
+    }
+
+    /**
+     * Envío SÍNCRONO con los timeouts del cliente de notificaciones (3 s/5 s)
+     * y fuera de transacción. Un fallo del proveedor se loguea y NO cambia la
+     * respuesta: el 202 no depende del envío.
+     */
+    private void enviarEnlace(String email, String token) {
+        String enlace = properties.frontendUrl() + "/restablecer?token=" + token;
+        try {
+            correo.enviar(email, ASUNTO, cuerpoEmail(enlace));
+            log.debug("Enlace de restablecimiento enviado a {}", email);
+        } catch (RuntimeException fallo) {
+            log.warn("No se pudo enviar el email de restablecimiento a {}: {}", email,
+                    fallo.getMessage(), fallo);
+        }
+    }
+
+    /**
+     * Cuerpo del email. Sólo lleva datos propios (token base64url: A-Z, a-z,
+     * 0-9, {@code -}, {@code _}; y {@code FRONTEND_URL}, de configuración):
+     * no hay entrada de usuario que escapar.
+     */
+    private static String cuerpoEmail(String enlace) {
+        return """
+                <p>Has pedido restablecer tu contraseña de MantiInmobiliaria.</p>
+                <p><a href="%s">Haz clic aquí para elegir una contraseña nueva</a>.</p>
+                <p>El enlace caduca en 15 minutos y sólo puede usarse una vez.</p>
+                <p>Si no has sido tú, ignora este mensaje: tu contraseña no cambiará.</p>
+                """.formatted(enlace);
+    }
+
+    private static String generar() {
+        byte[] bytes = new byte[BYTES_TOKEN];
+        ALEATORIO.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private static String sha256(String valor) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(valor.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 no disponible", e);
+        }
+    }
+
+    private static String normalizar(String email) {
+        return email == null ? null : email.trim().toLowerCase(Locale.ROOT);
+    }
+}

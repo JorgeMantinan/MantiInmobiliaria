@@ -122,12 +122,20 @@ auth:
     google:
       frontend-url: ${FRONTEND_URL:http://localhost:3000}
       code-ttl: 2m
+  # issue #57 — restablecimiento de contraseña: el enlace que viaja por email
+  # es ${frontend-url}/restablecer?token=<opaco> y caduca en ttl.
+  password-reset:
+    ttl: ${AUTH_PASSWORD_RESET_TTL:15m}
+    frontend-url: ${FRONTEND_URL:http://localhost:3000}
   rate-limit:
     login-per-minute: ${AUTH_RATE_LOGIN_PER_MINUTE:10}
     register-per-minute: ${AUTH_RATE_REGISTER_PER_MINUTE:5}
     # FASE 5 — ventanas de 1 HORA (AuthRateLimitFilter) sobre rutas públicas.
     solicitudes-per-hour: ${AUTH_RATE_SOLICITUDES_PER_HOUR:10}
     registro-profesional-per-hour: ${AUTH_RATE_REGISTRO_PROFESIONAL_PER_HOUR:5}
+    # issue #57 — olvido (5/hora) y canje (10/hora) de contraseña por IP.
+    forgot-password-per-hour: ${AUTH_RATE_PASSWORD_FORGOT_PER_HOUR:5}
+    reset-password-per-hour: ${AUTH_RATE_PASSWORD_RESET_PER_HOUR:10}
 
 manti:
   cors:
