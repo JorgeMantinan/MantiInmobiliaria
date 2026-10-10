@@ -27,3 +27,5 @@ jobs:
           done
           echo "La API no respondio UP en 6 intentos (cold start largo o caida)"
           exit 1
+
+# re-registro del schedule (GitHub a veces no registra el cron en repos nuevos hasta nuevo push)
