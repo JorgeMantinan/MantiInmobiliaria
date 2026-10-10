@@ -462,9 +462,12 @@ paths:
       summary: Pide el enlace de restablecimiento de contraseña
       description: "Si el email corresponde a una cuenta CON contraseña, se envía\
         \ un enlace `FRONTEND_URL/restablecer?token=<opaco>` (el token, opaco y de\
-        \ un solo uso, caduca en 15 minutos). La respuesta es SIEMPRE `202 Accepted`\
-        \ aunque la cuenta no exista (sin enumeración de emails) y aunque el proveedor\
-        \ de email falle. Rate limit: 5 peticiones/hora por IP."
+        \ un solo uso, caduca en `auth.password-reset.ttl`, 15 min por defecto). Si\
+        \ la cuenta ya tiene un enlace vigente no se envía otro (el primero sigue\
+        \ siendo válido). El envío del email es asíncrono: el 202 no espera al proveedor.\
+        \ La respuesta es SIEMPRE `202 Accepted` aunque la cuenta no exista (sin enumeració\
+        n de emails ni por tiempo de respuesta) y aunque el proveedor de email falle.\
+        \ Rate limit: 5 peticiones/hora por IP."
       operationId: solicitarPasswordOlvidada
       requestBody:
         content:
