@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { ErrorSegmento } from '@/components/ui/error-segmento';
 
