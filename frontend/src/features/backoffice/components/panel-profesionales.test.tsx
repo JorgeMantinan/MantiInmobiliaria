@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PanelProfesionales } from '@/features/backoffice/components/panel-profesionales';
@@ -160,6 +160,85 @@ describe('PanelProfesionales', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
     expect(await screen.findByRole('heading', { name: 'Luis Fontanero' })).toBeInTheDocument();
     expect(apiFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('al_moderar_con_exito_la_fila_abandona_la_pestana_y_el_contador_no_la_cuenta', async () => {
+    vi.mocked(apiFetch).mockImplementation((ruta: string) =>
+      ruta.startsWith('/api/v1/admin/profesionales/7')
+        ? Promise.resolve({ id: 7, estado: 'ACTIVO' })
+        : Promise.resolve([profesional(7, 'Luis Fontanero'), profesional(8, 'Marta Reparadora')]),
+    );
+
+    render(<PanelProfesionales />);
+    expect(await screen.findByRole('heading', { name: 'Luis Fontanero' })).toBeInTheDocument();
+    expect(screen.getByText('2 profesionales con estado pendiente.')).toBeInTheDocument();
+
+    const usuario = userEvent.setup();
+    const aprobado = within(filaDe('Luis Fontanero')).getByRole('button', { name: 'Aprobar' });
+    await usuario.click(aprobado);
+    await usuario.click(screen.getByRole('button', { name: 'Sí, aprobar' }));
+    expect(
+      await screen.findByText('Luis Fontanero ahora está en estado Activo.'),
+    ).toBeInTheDocument();
+
+    // La aprobada ya NO pertenece a la pestaña: ni se pinta ni se cuenta.
+    expect(screen.queryByRole('heading', { name: 'Luis Fontanero' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Marta Reparadora' })).toBeInTheDocument();
+    expect(screen.getByText('1 profesional con estado pendiente.')).toBeInTheDocument();
+  });
+
+  it('mientras_hay_un_moderacion_en_vuelo_las_pestanas_y_el_reintento_quedan_bloqueados', async () => {
+    let confirmarPatch!: (valor: EstadoProfesionalRespuesta) => void;
+    vi.mocked(apiFetch).mockImplementation((ruta: string) => {
+      if (ruta === '/api/v1/admin/profesionales/7') {
+        return new Promise<EstadoProfesionalRespuesta>((resolver) => {
+          confirmarPatch = resolver;
+        });
+      }
+      return Promise.resolve([profesional(7, 'Luis Fontanero')]);
+    });
+
+    render(<PanelProfesionales />);
+    expect(await screen.findByRole('heading', { name: 'Luis Fontanero' })).toBeInTheDocument();
+
+    const usuario = userEvent.setup();
+    await usuario.click(screen.getByRole('button', { name: 'Aprobar' }));
+    await usuario.click(screen.getByRole('button', { name: 'Sí, aprobar' }));
+
+    // PATCH en vuelo: cambiar de pestaña dispararía una carga con fila a medias.
+    expect(screen.getByRole('button', { name: 'Pendiente' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Activo' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Rechazado' })).toBeDisabled();
+
+    await act(async () => {
+      confirmarPatch({ id: 7, estado: 'ACTIVO' });
+    });
+    expect(
+      await screen.findByText('Luis Fontanero ahora está en estado Activo.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Activo' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Rechazado' })).toBeEnabled();
+  });
+
+  it('al_abrir_la_confirmacion_lleva_el_foco_a_sus_botones_y_al_cancelar_lo_devuelve', async () => {
+    vi.mocked(apiFetch).mockResolvedValue([profesional(7, 'Luis Fontanero')]);
+
+    render(<PanelProfesionales />);
+    expect(await screen.findByRole('heading', { name: 'Luis Fontanero' })).toBeInTheDocument();
+
+    const usuario = userEvent.setup();
+    const gatillo = screen.getByRole('button', { name: 'Aprobar' });
+    await usuario.click(gatillo);
+
+    // El foco SALE del gatillo y entra en la confirmación recién abierta.
+    const confirmacion = screen.getByRole('group', { name: 'Confirmar: Aprobar' });
+    expect(document.activeElement).not.toBe(gatillo);
+    expect(confirmacion.contains(document.activeElement)).toBe(true);
+
+    await usuario.click(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(screen.queryByRole('group', { name: 'Confirmar: Aprobar' })).not.toBeInTheDocument();
+    // Cancelar devuelve el foco al botón que abrió la confirmación.
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Aprobar' }));
   });
 
   it('un_profesional_rechazado_solo_ofrece_aprobar', async () => {

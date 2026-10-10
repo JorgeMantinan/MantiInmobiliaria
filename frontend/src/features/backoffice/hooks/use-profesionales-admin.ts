@@ -21,6 +21,7 @@ type AvisoAccion = Readonly<{ estado: EstadoProfesional; texto: string }>;
 /** Estado de la lista de moderación (carga, errores y avisos de acción). */
 export type EstadoPanelProfesionales = Readonly<{
   cargando: boolean;
+  /** Filas de ESTA pestaña; las moderadas fuera del estado ya no aparecen. */
   profesionales: readonly ProfesionalAdmin[];
   /** Error de la carga de la pestaña (`role="alert"` + reintento). */
   error: string | null;
@@ -46,7 +47,8 @@ export type AccionesModeracion = Readonly<{
  *   que las respuestas obsoletas se descartan sin estado extra.
  * - `moderar` pinta el nuevo estado ANTES de esperar al servidor; si el
  *   PATCH falla, la fila vuelve a su estado anterior y el error queda
- *   visible en `errorAccion`.
+ *   visible en `errorAccion`. Si triunfa, la fila sale de la pestaña (ya no
+ *   coincide con su estado) y el contador la deja de contar.
  */
 export function useProfesionalesAdmin(
   estado: EstadoProfesional,
@@ -116,9 +118,19 @@ export function useProfesionalesAdmin(
 
   const vigente = resultado !== null && resultado.estado === estado && resultado.recarga === recarga;
 
+  /**
+   * Filas visibles de la pestaña: una fila cuya moderación ya ha terminado
+   * con destino fuera de ESTE estado se cae del listado (y del contador) sin
+   * esperar a una recarga; mientras su PATCH sigue en vuelo se conserva para
+   * que se vea el badge optimista y sus botones deshabilitados.
+   */
+  const filas = vigente
+    ? resultado.filas.filter((fila) => fila.estado === estado || enVuelo.includes(fila.id))
+    : [];
+
   return {
     cargando: !vigente,
-    profesionales: vigente ? resultado.filas : [],
+    profesionales: filas,
     error: vigente ? resultado.error : null,
     aviso: aviso?.estado === estado ? aviso.texto : null,
     errorAccion: errorAccion?.estado === estado ? errorAccion.texto : null,

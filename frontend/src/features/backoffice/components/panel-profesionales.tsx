@@ -27,6 +27,8 @@ export function PanelProfesionales() {
   const estado = estadoDesdeUrl(searchParams.get('estado'));
   const { cargando, profesionales, error, aviso, errorAccion, enVuelo, moderar, reintentar } =
     useProfesionalesAdmin(estado);
+  /** Un PATCH en vuelo: ni cambios de pestaña ni recargas que lo pisen. */
+  const moderacionEnVuelo = enVuelo.length > 0;
 
   function cambiarPestana(nuevo: EstadoProfesional): void {
     router.replace(`/admin/profesionales?estado=${nuevo}`, { scroll: false });
@@ -47,12 +49,13 @@ export function PanelProfesionales() {
             key={opcion}
             type="button"
             aria-pressed={opcion === estado}
+            disabled={moderacionEnVuelo}
             onClick={() => cambiarPestana(opcion)}
             className={`${CLASE_PESTANA} ${
               opcion === estado
                 ? 'border-acento-nogal bg-superficie-alta font-medium text-texto'
                 : 'border-borde bg-superficie text-texto-suave hover:bg-superficie-alta'
-            }`}
+            } ${moderacionEnVuelo ? 'cursor-not-allowed opacity-60' : ''}`}
           >
             {etiquetaEstado(opcion)}
           </button>
@@ -77,6 +80,7 @@ export function PanelProfesionales() {
             titulo="No se han podido cargar los profesionales"
             mensaje={error}
             onReintentar={reintentar}
+            bloqueado={moderacionEnVuelo}
           />
         ) : profesionales.length === 0 ? (
           <FilasVacias

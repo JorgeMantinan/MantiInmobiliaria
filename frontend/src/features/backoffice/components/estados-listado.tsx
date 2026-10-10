@@ -4,6 +4,8 @@ type FilasErrorProps = Readonly<{
   titulo: string;
   mensaje: string;
   onReintentar: () => void;
+  /** true ⇒ bloquea el reintento (p. ej. con una moderación en vuelo). */
+  bloqueado?: boolean;
 }>;
 
 type FilasVaciasProps = Readonly<{
@@ -29,13 +31,20 @@ export function FilasCargando() {
 }
 
 /** Error de carga del listado, con reintento (`role="alert"` ya es live). */
-export function FilasError({ titulo, mensaje, onReintentar }: FilasErrorProps) {
+export function FilasError({
+  titulo,
+  mensaje,
+  onReintentar,
+  bloqueado = false,
+}: FilasErrorProps) {
   return (
     <div role="alert" className="rounded-lg border border-borde bg-superficie p-6 text-center">
       <h2 className="font-display text-xl text-texto">{titulo}</h2>
       <p className="mt-2 text-sm text-texto-suave">{mensaje}</p>
       <div className="mt-4 flex justify-center">
-        <Boton onClick={onReintentar}>Reintentar</Boton>
+        <Boton onClick={onReintentar} disabled={bloqueado}>
+          Reintentar
+        </Boton>
       </div>
     </div>
   );
