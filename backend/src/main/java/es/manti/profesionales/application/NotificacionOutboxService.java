@@ -1,7 +1,5 @@
 package es.manti.profesionales.application;
 
-import es.manti.shared.notificaciones.NotificacionesProperties;
-
 import es.manti.profesionales.domain.Gremio;
 import es.manti.profesionales.domain.NotificacionOutbox;
 import es.manti.profesionales.domain.NotificacionOutboxRepository;

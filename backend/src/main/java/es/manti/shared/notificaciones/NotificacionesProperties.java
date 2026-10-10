@@ -28,6 +28,12 @@ public record NotificacionesProperties(boolean enabled, Telegram telegram, Brevo
         public boolean tieneChat() {
             return chatId != null && !chatId.isBlank();
         }
+
+        /** El bot token NUNCA aparece en logs (Bajo de la revisión del PR #64). */
+        @Override
+        public String toString() {
+            return "Telegram[botToken=" + enmascarar(botToken) + ", chatId=" + chatId + "]";
+        }
     }
 
     /** {@code BREVO_API_KEY} + remitente del email. */
@@ -36,5 +42,17 @@ public record NotificacionesProperties(boolean enabled, Telegram telegram, Brevo
         public boolean tieneCredencial() {
             return apiKey != null && !apiKey.isBlank();
         }
+
+        /** La API key NUNCA aparece en logs (Bajo de la revisión del PR #64). */
+        @Override
+        public String toString() {
+            return "Brevo[apiKey=" + enmascarar(apiKey)
+                    + ", fromEmail=" + fromEmail + ", fromName=" + fromName + "]";
+        }
+    }
+
+    /** Un secreto presente se sustituye por {@code ***}; el ausente se ve tal cual. */
+    private static String enmascarar(String secreto) {
+        return secreto == null || secreto.isBlank() ? String.valueOf(secreto) : "***";
     }
 }

@@ -1,8 +1,10 @@
 package es.manti.profesionales.domain;
 
+import es.manti.shared.notificaciones.NotificacionException;
+
 /**
  * Adaptador de Telegram (Bot API) tras un puerto, igual que
- * {@link EmailNotificadorPort}.
+ * {@link es.manti.shared.notificaciones.EmailNotificadorPort}.
  */
 public interface TelegramNotificadorPort {
 

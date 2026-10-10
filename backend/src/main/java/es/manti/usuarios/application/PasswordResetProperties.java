@@ -27,11 +27,18 @@ import java.time.Duration;
 @ConfigurationProperties(prefix = "auth.password-reset")
 public record PasswordResetProperties(Duration ttl, String frontendUrl, boolean sync) {
 
-    /** Falla al arrancar si falta algo (fail-fast, igual que AuthProperties). */
+    /** Tope del TTL (Bajo de la revisión del PR #64): un enlace vivo más de 2 h alarga la ventana de abuso. */
+    private static final Duration TTL_MAXIMO = Duration.ofHours(2);
+
+    /** Falla al arrancar si algo falta o el TTL supera el tope (fail-fast). */
     @PostConstruct
     void validarConfiguracion() {
         if (ttl == null || ttl.isZero() || ttl.isNegative()) {
             throw new IllegalStateException("auth.password-reset.ttl debe ser positivo (p. ej. 15m)");
+        }
+        if (ttl.compareTo(TTL_MAXIMO) > 0) {
+            throw new IllegalStateException(
+                    "auth.password-reset.ttl no puede superar " + TTL_MAXIMO + " (recibido: " + ttl + ")");
         }
         if (frontendUrl == null || frontendUrl.isBlank()) {
             throw new IllegalStateException("auth.password-reset.frontend-url es obligatorio (FRONTEND_URL)");
