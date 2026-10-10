@@ -31,6 +31,11 @@ public class PasswordResetTokenRepositoryAdapter implements PasswordResetTokenRe
     }
 
     @Override
+    public boolean existeVigentePara(Long usuarioId, Instant ahora) {
+        return jpaRepository.existsByUsuarioIdAndUsadoEnIsNullAndExpiresAtAfter(usuarioId, ahora);
+    }
+
+    @Override
     public int eliminarTodosDeUsuario(Long usuarioId) {
         return jpaRepository.eliminarTodosDeUsuario(usuarioId);
     }

@@ -30,6 +30,17 @@ public interface PasswordResetTokenRepository {
     int consumir(Long id, Instant ahora);
 
     /**
+     * ¿Existe ya un token VIGENTE (sin canjear y sin caducar) para el
+     * usuario? Lo usa el cooldown de {@code forgot} (revisión del PR #64):
+     * si el usuario pide el enlace otra vez con uno vivo, no se emite otro.
+     *
+     * @param usuarioId identificador del usuario
+     * @param ahora     instante de la comprobación
+     * @return true si hay un token vigente
+     */
+    boolean existeVigentePara(Long usuarioId, Instant ahora);
+
+    /**
      * Borra TODOS los tokens del usuario (vigentes y caducados) en una única
      * sentencia: al emitir uno nuevo queda un solo enlace vivo por cuenta.
      *

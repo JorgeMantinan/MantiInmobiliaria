@@ -31,6 +31,9 @@ public interface PasswordResetTokenJpaRepository extends JpaRepository<PasswordR
             + "WHERE t.id = :id AND t.usadoEn IS NULL AND t.expiresAt > :ahora")
     int consumir(@Param("id") Long id, @Param("ahora") Instant ahora);
 
+    /** ¿Hay un token sin canjear y sin caducar para este usuario? (cooldown) */
+    boolean existsByUsuarioIdAndUsadoEnIsNullAndExpiresAtAfter(Long usuarioId, Instant ahora);
+
     /** Borra todos los tokens del usuario en UNA sentencia (al emitir uno nuevo). */
     @Modifying
     @Query("DELETE FROM PasswordResetToken t WHERE t.usuario.id = :usuarioId")

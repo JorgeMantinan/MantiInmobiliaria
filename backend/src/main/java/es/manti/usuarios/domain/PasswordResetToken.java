@@ -24,9 +24,10 @@ import java.time.Instant;
  * un volcado de la tabla no permite canjear ningún enlace. Caduca a los 15
  * minutos y es de UN SOLO uso ({@link #usadoEn} se rellena en el canje).</p>
  *
- * <p>Al emitir un token nuevo se borran los anteriores del mismo usuario
- * ({@code eliminarTodosDeUsuario}), así que como mucho existe UN enlace vivo
- * por cuenta: el último emitido es el único válido y la tabla no crece.</p>
+ * <p>Como mucho existe UN enlace vivo por cuenta (cooldown de {@code forgot},
+ * revisión del PR #64): si ya hay un token vigente no se emite otro, y al
+ * emitirlo se borran los anteriores del usuario ({@code
+ * eliminarTodosDeUsuario}), usados o caducados. La tabla no crece.</p>
  */
 @Entity
 @Table(name = "password_reset_tokens")

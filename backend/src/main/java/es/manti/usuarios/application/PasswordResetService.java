@@ -33,9 +33,10 @@ import java.util.Locale;
  * <p><b>Token.</b> 32 bytes {@link SecureRandom} → base64url (mismo patrón que
  * los códigos Google y los refresh tokens); en BD sólo vive su SHA-256, así
  * que un volcado de la tabla no permite canjear enlaces. Un solo uso y TTL
- * configurable ({@code auth.password-reset.ttl}, 15 min por defecto). Al
- * emitir uno nuevo se borran los anteriores del usuario: sólo el último
- * enlace emitido queda vigente.</p>
+ * configurable ({@code auth.password-reset.ttl}, 15 min por defecto). Como
+ * mucho hay UN enlace vivo por cuenta: si al pedirlo ya hay uno vigente no se
+ * emite otro (cooldown), y al emitir uno nuevo se borran los anteriores.
+ * </p>
  *
  * <p><b>Envío asíncrono (revisión del PR #64).</b> El email NO se envía en la
  * petición: dentro de la transacción que crea el token se publica el evento
@@ -97,6 +98,15 @@ public class PasswordResetService {
         if (usuario == null || usuario.getPasswordHash() == null || !usuario.isActivo()) {
             log.debug("Restablecimiento solicitado sin envío (cuenta inexistente, sin password "
                     + "o inactiva): {}", normalizado);
+            return;
+        }
+        if (tokens.existeVigentePara(usuario.getId(), Instant.now())) {
+            // Cooldown (revisión del PR #64): ya hay un enlace vivo para esta
+            // cuenta; NO se borra ni se reenvía (el usuario que perdió el
+            // primer email conserva su enlace y no se spamea el proveedor).
+            // El 202 del endpoint es idéntico al de una emisión nueva.
+            log.debug("Restablecimiento solicitado con enlace vigente para el usuario {}: "
+                    + "sin reenvío", usuario.getId());
             return;
         }
         String token = generar();

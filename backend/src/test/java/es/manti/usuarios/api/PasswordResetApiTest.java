@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -117,6 +118,32 @@ class PasswordResetApiTest {
 
         // Cuenta Google-only (password_hash NULL): responde igual pero no envía.
         verifyNoInteractions(correo);
+    }
+
+    /** Cooldown (revisión del PR #64): con un enlace vigente no se emite otro. */
+    @Test
+    void forgot_conEnlaceVigente_noReenviaYElPrimeroSigueCanjeable() throws Exception {
+        String email = emailNuevo();
+        registrar(email);
+        String token = pedirEnlace(email);
+
+        // Segundo forgot con el primer enlace aún vigente: mismo 202, sin envío
+        // y sin borrar el enlace que el usuario todavía no ha usado.
+        mockMvc.perform(post(FORGOT)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s"}
+                                """.formatted(email)))
+                .andExpect(status().isAccepted());
+        verify(correo, times(1)).enviar(anyString(), anyString(), anyString());
+
+        // El primer token no se borró: sigue canjeable.
+        mockMvc.perform(post(RESET)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"token":"%s","password":"%s"}
+                                """.formatted(token, PASSWORD_NUEVA)))
+                .andExpect(status().isNoContent());
     }
 
     /** Sin enumeración: la respuesta para una cuenta real y para una inventada es la MISMA. */
