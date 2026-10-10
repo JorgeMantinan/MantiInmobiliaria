@@ -655,9 +655,11 @@ paths:
       tags:
       - Profesionales (admin)
       summary: Cambia el estado de un profesional
-      description: Sólo admite `ACTIVO` (puede recibir solicitudes) o `RECHAZADO`.
-        Un profesional `PENDIENTE` aprobado pasa a `ACTIVO`; desde `ACTIVO` ya no
-        vuelve a `PENDIENTE`.
+      description: "Sólo admite `ACTIVO` (puede recibir solicitudes) o `RECHAZADO`.\
+        \ Un profesional `PENDIENTE` aprobado pasa a `ACTIVO`; desde `ACTIVO` ya no\
+        \ vuelve a `PENDIENTE`. Control optimista (`@Version`): si otro administrador\
+        \ moderó al profesional mientras el cliente tenía la lista abierta, responde\
+        \ 409 `conflicto-concurrencia` y hay que recargar la lista."
       operationId: actualizarEstadoProfesional
       parameters:
       - name: id
@@ -702,6 +704,14 @@ paths:
                 $ref: "#/components/schemas/ProblemDetail"
         "404":
           description: Profesional inexistente
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflicto de concurrencia: otro administrador modificó al\
+            \ profesional entre la lectura y la escritura (type `conflicto-concurrencia`;\
+            \ recarga la lista)"
           content:
             '*/*':
               schema:

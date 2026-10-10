@@ -19,6 +19,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -79,7 +81,9 @@ public class AdminProfesionalController {
             summary = "Cambia el estado de un profesional",
             description = "Sólo admite `ACTIVO` (puede recibir solicitudes) o `RECHAZADO`. "
                     + "Un profesional `PENDIENTE` aprobado pasa a `ACTIVO`; desde `ACTIVO` ya no "
-                    + "vuelve a `PENDIENTE`.",
+                    + "vuelve a `PENDIENTE`. Control optimista (`@Version`): si otro administrador "
+                    + "moderó al profesional mientras el cliente tenía la lista abierta, responde "
+                    + "409 `conflicto-concurrencia` y hay que recargar la lista.",
             security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Estado actualizado: {id, estado}"),
@@ -91,12 +95,17 @@ public class AdminProfesionalController {
             @ApiResponse(responseCode = "403", description = "Token sin rol ADMIN",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "404", description = "Profesional inexistente",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "409", description = "Conflicto de concurrencia: otro "
+                    + "administrador modificó al profesional entre la lectura y la escritura "
+                    + "(type `conflicto-concurrencia`; recarga la lista)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     public ResponseEntity<ProfesionalEstadoResponse> cambiarEstado(
             @Parameter(description = "Identificador del profesional", example = "1")
             @PathVariable Long id,
-            @Valid @RequestBody ProfesionalEstadoRequest request) {
+            @Valid @RequestBody ProfesionalEstadoRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(mapper.toEstadoResponse(
-                service.cambiarEstado(id, EstadoProfesional.valueOf(request.estado()))));
+                service.cambiarEstado(id, EstadoProfesional.valueOf(request.estado()), jwt.getSubject())));
     }
 }

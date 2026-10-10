@@ -51,15 +51,23 @@ public class GestionProfesionalService {
      * Moderación de una alta: sólo acepta ACTIVO o RECHAZADO (el DTO ya lo
      * valida con {@code @Pattern}).
      *
+     * <p>Control optimista (issue #51): si entre la lectura y la escritura OTRO
+     * administrador ha moderado al mismo profesional, el flush choca con la
+     * versión leída y la tx aborta con {@code OptimisticLockingFailureException}
+     * (409 en el advice del módulo) — nunca se revierte en silencio al
+     * primero. El log de éxito sólo se emite si la escritura llegó a committed.</p>
+     *
+     * @param usuarioActual actor de la moderación, leído del {@code sub} del
+     *                       JWT en el controller ({@code Authentication.getName()})
      * @throws ProfesionalNoEncontradoException 404 si el id no existe
      */
     @Transactional
-    public Profesional cambiarEstado(Long id, EstadoProfesional estado) {
+    public Profesional cambiarEstado(Long id, EstadoProfesional estado, String usuarioActual) {
         Profesional profesional = profesionales.porId(id)
                 .orElseThrow(() -> new ProfesionalNoEncontradoException(id));
         profesional.cambiarEstado(estado);
         Profesional guardado = profesionales.guardar(profesional);
-        log.info("Profesional {} pasó a {}", id, estado);
+        log.info("Profesional {} → {} por {}", id, estado, usuarioActual);
         return guardado;
     }
 }
