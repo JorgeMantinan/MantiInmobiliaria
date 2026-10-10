@@ -1,8 +1,8 @@
 package es.manti.profesionales.infra.adapter;
 
-import es.manti.profesionales.application.NotificacionesProperties;
+import es.manti.shared.notificaciones.NotificacionesProperties;
 import es.manti.profesionales.domain.ChatVisto;
-import es.manti.profesionales.domain.NotificacionException;
+import es.manti.shared.notificaciones.NotificacionException;
 import es.manti.profesionales.domain.TelegramDiagnosticoPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

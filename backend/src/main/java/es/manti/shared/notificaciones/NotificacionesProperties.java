@@ -1,4 +1,4 @@
-package es.manti.profesionales.application;
+package es.manti.shared.notificaciones;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -6,6 +6,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * Propiedades de las notificaciones (prefijo {@code manti.notificaciones}).
  * El interruptor global {@code enabled} decide si el despachador envía o sólo
  * encola: en local y en CI está a {@code false} para no spamear proveedores.
+ *
+ * <p>Esta clase vive en {@code shared} (issue #57): es configuración de la
+ * infraestructura de envío (Brevo/Telegram) compartida por todos los módulos,
+ * no lógica de dominio de ninguno de ellos.</p>
  *
  * <p>Los secretos llegan SÓLO por variables de entorno (skill config-secrets):
  * nunca se escriben literales aquí.</p>

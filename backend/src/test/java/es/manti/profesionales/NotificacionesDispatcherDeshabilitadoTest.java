@@ -1,7 +1,7 @@
 package es.manti.profesionales;
 
 import es.manti.profesionales.application.NotificacionesDispatcher;
-import es.manti.profesionales.domain.EmailNotificadorPort;
+import es.manti.shared.notificaciones.EmailNotificadorPort;
 import es.manti.profesionales.domain.TelegramNotificadorPort;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

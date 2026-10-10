@@ -1,4 +1,4 @@
-package es.manti.profesionales.domain;
+package es.manti.shared.notificaciones;
 
 /**
  * Fallo al enviar una notificación por un canal externo (Brevo/Telegram).

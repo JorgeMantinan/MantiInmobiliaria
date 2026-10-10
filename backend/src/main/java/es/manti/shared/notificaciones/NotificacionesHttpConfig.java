@@ -1,6 +1,5 @@
-package es.manti.profesionales.infra.config;
+package es.manti.shared.notificaciones;
 
-import es.manti.profesionales.application.NotificacionesProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
