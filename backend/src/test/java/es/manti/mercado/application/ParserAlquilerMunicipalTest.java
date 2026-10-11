@@ -2,6 +2,7 @@ package es.manti.mercado.application;
 
 import es.manti.mercado.domain.AmbitoMercado;
 import es.manti.mercado.domain.FilaPrecio;
+import es.manti.mercado.domain.FormatoCsvInvalidoException;
 import es.manti.mercado.domain.FuenteMivauNoDisponibleException;
 import es.manti.mercado.domain.IndicadorPrecio;
 import es.manti.mercado.domain.TipologiaVivienda;
@@ -117,12 +118,13 @@ class ParserAlquilerMunicipalTest {
     }
 
     @Test
-    void parsear_conCabeceraDistinta_lanzaFuenteNoDisponible() {
+    void parsear_conCabeceraDistinta_lanzaFormatoInvalido() {
         String csv = "Año;Trimestre;Valor;Régimen;CPRO;Provincia;Comunidad_Autónoma;CODAUTO\n2024;4;1;Libre;28;Madrid;x;13\n";
 
         assertThatThrownBy(() -> parser.parsear(new StringReader(csv)))
-                .isInstanceOf(FuenteMivauNoDisponibleException.class)
-                .hasMessageContaining("Cabecera inesperada");
+                .isInstanceOf(FormatoCsvInvalidoException.class)
+                .hasMessageContaining("Cabecera inesperada")
+                .hasMessageContaining("Trimestre");
     }
 
     @Test

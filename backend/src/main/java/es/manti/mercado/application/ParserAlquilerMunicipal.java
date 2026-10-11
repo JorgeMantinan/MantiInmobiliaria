@@ -2,6 +2,7 @@ package es.manti.mercado.application;
 
 import es.manti.mercado.domain.AmbitoMercado;
 import es.manti.mercado.domain.FilaPrecio;
+import es.manti.mercado.domain.FormatoCsvInvalidoException;
 import es.manti.mercado.domain.FuenteMivauNoDisponibleException;
 import es.manti.mercado.domain.IndicadorPrecio;
 import es.manti.mercado.domain.PrecioMercado;
@@ -76,7 +77,8 @@ public class ParserAlquilerMunicipal {
     /**
      * @param lector CSV del MIVAU ya abierto en UTF-8
      * @return una fila por indicador y municipio, sólo del último año disponible
-     * @throws FuenteMivauNoDisponibleException si la cabecera no es la esperada o el fichero es ilegible
+     * @throws FormatoCsvInvalidoException si la cabecera no es la esperada
+     * @throws FuenteMivauNoDisponibleException si el fichero es ilegible
      */
     public List<FilaPrecio> parsear(Reader lector) {
         BufferedReader buffer = lector instanceof BufferedReader yaBufferizado
@@ -91,8 +93,7 @@ public class ParserAlquilerMunicipal {
             }
             String normalizada = cabecera.replace("\uFEFF", "");
             if (!CABECERA_ESPERADA.equals(normalizada)) {
-                throw new FuenteMivauNoDisponibleException(
-                        "Cabecera inesperada en el CSV de alquiler del MIVAU: " + normalizada);
+                throw new FormatoCsvInvalidoException("alquiler municipal (VDP001)", normalizada);
             }
 
             String linea;

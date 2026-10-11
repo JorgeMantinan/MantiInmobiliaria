@@ -2,6 +2,7 @@ package es.manti.mercado.application;
 
 import es.manti.mercado.domain.AmbitoMercado;
 import es.manti.mercado.domain.FilaPrecio;
+import es.manti.mercado.domain.FormatoCsvInvalidoException;
 import es.manti.mercado.domain.FuenteMivauNoDisponibleException;
 import es.manti.mercado.domain.IndicadorPrecio;
 import es.manti.mercado.domain.TipologiaVivienda;
@@ -78,12 +79,41 @@ class ParserVentaProvincialTest {
     }
 
     @Test
-    void parsear_conCabeceraDistinta_lanzaFuenteNoDisponible() {
+    void parsear_conCabeceraDistinta_lanzaFormatoInvalido() {
         String csv = "COD_PROVINCIA;PROVINCIA;COD_POSTAL;NOMBRE_MUNICIPIO;ELEMENTO;TIPO_VIVIENDA;TIPO_MEDIDA;AÑO;VALOR\n";
 
         assertThatThrownBy(() -> parser.parsear(new StringReader(csv)))
+                .isInstanceOf(FormatoCsvInvalidoException.class)
+                .hasMessageContaining("Cabecera inesperada")
+                .hasMessageContaining("COD_PROVINCIA");
+    }
+
+    @Test
+    void parsear_conUnaProvinciaMasLargaQueLaColumna_descartaLaFila() {
+        String provinciaLarga = "x".repeat(ParserVentaProvincial.LARGO_MAXIMO_PROVINCIA + 1);
+        String csv = CABECERA + """
+                2026;1;1000;Libre;28;%s;Comunidad Test;13
+                2026;1;2000;Libre;29;Málaga;Andalucía;1
+                """.formatted(provinciaLarga);
+
+        List<FilaPrecio> filas = parser.parsear(new StringReader(csv));
+
+        // La fila corrupta no tumba la importación entera: se descarta y sigue.
+        assertThat(filas).hasSize(1);
+        assertThat(filas.getFirst().provincia()).isEqualTo("Málaga");
+    }
+
+    @Test
+    void parsear_conMasDeCienMilFilas_lanzaFuenteNoDisponible() {
+        String lineaValida = "2026;1;1000;Libre;28;Madrid;Madrid, Comunidad de;13\n";
+        StringBuilder csv = new StringBuilder(CABECERA);
+        for (int i = 0; i <= ParserVentaProvincial.LIMITE_FILAS; i++) {
+            csv.append(lineaValida);
+        }
+
+        assertThatThrownBy(() -> parser.parsear(new StringReader(csv.toString())))
                 .isInstanceOf(FuenteMivauNoDisponibleException.class)
-                .hasMessageContaining("Cabecera inesperada");
+                .hasMessageContaining("supera las 100000 filas");
     }
 
     @Test

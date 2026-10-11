@@ -1,6 +1,7 @@
 package es.manti.mercado;
 
 import com.jayway.jsonpath.JsonPath;
+import es.manti.mercado.application.CandadoImportacion;
 import es.manti.mercado.domain.FuenteMivauNoDisponibleException;
 import es.manti.mercado.domain.FuenteMivauPort;
 import org.junit.jupiter.api.AfterEach;
@@ -72,6 +73,10 @@ class AdminMercadoApiTest {
     @MockitoBean
     private FuenteMivauPort fuente;
 
+    /** Mismo candado que usa el controller; el test lo toma a mano (sin carreras). */
+    @Autowired
+    private CandadoImportacion candado;
+
     private String tokenAdmin;
 
     @BeforeEach
@@ -82,6 +87,10 @@ class AdminMercadoApiTest {
 
     @AfterEach
     void limpiarFixtures() {
+        // Por si un test se queda a medias con el candado tomado.
+        while (candado.ocupado()) {
+            candado.salir();
+        }
         jdbc.update("DELETE FROM precios_mercado WHERE codigo_ine IN ('96001', '96000', '97000')");
         jdbc.update("DELETE FROM usuarios WHERE email LIKE 'it-admin-%@example.com'");
     }
@@ -152,6 +161,41 @@ class AdminMercadoApiTest {
                 "SELECT count(*) FROM precios_mercado WHERE codigo_ine IN ('96001', '96000', '97000')",
                 Integer.class);
         assertThat(filas).isZero();
+    }
+
+    @Test
+    void actualizar_conOtraImportacionEnCurso_devuelve409() throws Exception {
+        // Simula el "otro" ADMIN que ya está importando: toma el candado a mano.
+        assertThat(candado.intentarEntrar()).isTrue();
+
+        mockMvc.perform(post("/api/v1/admin/mercado/actualizar")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin()))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Importación en curso"))
+                .andExpect(jsonPath("$.detail").value(
+                        "Ya hay una importación de precios del MIVAU en curso; inténtelo de nuevo en unos segundos"));
+
+        // El endpoint no ha pisado el candado ajeno ni ha escrito nada.
+        assertThat(candado.ocupado()).isTrue();
+        Integer filas = jdbc.queryForObject(
+                "SELECT count(*) FROM precios_mercado WHERE codigo_ine IN ('96001', '96000', '97000')",
+                Integer.class);
+        assertThat(filas).isZero();
+    }
+
+    @Test
+    void actualizar_conUnCsvDeEstructuraNueva_devuelve500ConDetailFijo() throws Exception {
+        servir("CPRO;Provincia;Valor\n28;Madrid;1000\n", CSV_VENTA);
+
+        mockMvc.perform(post("/api/v1/admin/mercado/actualizar")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin()))
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Fuente no disponible"))
+                // El detail es FIJO: la cabecera real del MIVAU sólo va al log.
+                .andExpect(jsonPath("$.detail")
+                        .value("El CSV del MIVAU tiene una estructura inesperada"));
     }
 
     // ------------------------------------------------------------------

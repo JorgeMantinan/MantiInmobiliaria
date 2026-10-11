@@ -2,11 +2,13 @@ package es.manti.mercado.application;
 
 import es.manti.mercado.domain.AmbitoMercado;
 import es.manti.mercado.domain.FilaPrecio;
+import es.manti.mercado.domain.FormatoCsvInvalidoException;
 import es.manti.mercado.domain.FuenteMivauNoDisponibleException;
 import es.manti.mercado.domain.IndicadorPrecio;
 import es.manti.mercado.domain.TipologiaVivienda;
 import es.manti.mercado.domain.TipoPrecio;
 import es.manti.mercado.domain.UnidadPrecio;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
@@ -46,12 +48,23 @@ import java.util.regex.Pattern;
  * sólo aparecen como "Total CCAA" —, así que esos municipios quedan sin dato
  * de venta y la API devuelve {@code venta: null}.</p>
  */
+@Slf4j
 @Component
 public class ParserVentaProvincial {
 
     /** Cabecera exacta esperada (sin el BOM, que se elimina antes de comparar). */
     static final String CABECERA_ESPERADA =
             "Año;Trimestre;Valor;Régimen;CPRO;Provincia;Comunidad_Autónoma;CODAUTO";
+
+    /**
+     * Techo defensivo de filas: el fichero real tiene 13 711. Si el MIVAU
+     * publicara algo muy superior es que la estructura ha cambiado y seguir
+     * acumulando en memoria sólo consume heap.
+     */
+    static final int LIMITE_FILAS = 100_000;
+
+    /** Límite de la columna {@code provincia} de la tabla (varchar(100)). */
+    static final int LARGO_MAXIMO_PROVINCIA = 100;
 
     private static final int COL_ANIO = 0;
     private static final int COL_TRIMESTRE = 1;
@@ -69,7 +82,8 @@ public class ParserVentaProvincial {
     /**
      * @param lector CSV del MIVAU ya abierto en UTF-8
      * @return una fila por provincia, trimestre y régimen con valor publicado
-     * @throws FuenteMivauNoDisponibleException si la cabecera no es la esperada o el fichero es ilegible
+     * @throws FormatoCsvInvalidoException si la cabecera no es la esperada
+     * @throws FuenteMivauNoDisponibleException si el fichero es ilegible o supera el techo de filas
      */
     public List<FilaPrecio> parsear(Reader lector) {
         BufferedReader buffer = lector instanceof BufferedReader yaBufferizado
@@ -84,8 +98,7 @@ public class ParserVentaProvincial {
             }
             String normalizada = cabecera.replace("\uFEFF", "");
             if (!CABECERA_ESPERADA.equals(normalizada)) {
-                throw new FuenteMivauNoDisponibleException(
-                        "Cabecera inesperada en el CSV de valor tasado del MIVAU: " + normalizada);
+                throw new FormatoCsvInvalidoException("valor tasado provincial (VDP006)", normalizada);
             }
 
             String linea;
@@ -93,6 +106,11 @@ public class ParserVentaProvincial {
                 FilaPrecio fila = interpretar(linea);
                 if (fila != null) {
                     filas.add(fila);
+                }
+                if (filas.size() > LIMITE_FILAS) {
+                    throw new FuenteMivauNoDisponibleException(
+                            "El CSV de valor tasado del MIVAU supera las " + LIMITE_FILAS + " filas: "
+                                    + "estructura inesperada");
                 }
             }
         } catch (IOException e) {
@@ -122,11 +140,18 @@ public class ParserVentaProvincial {
                 || valor == null) {
             return null;                  // valor vacío o fila incompleta
         }
+        String provincia = columna[COL_PROVINCIA];
+        if (provincia.length() > LARGO_MAXIMO_PROVINCIA) {
+            // No rompe la importación entera por una fila corrupta: se descarta.
+            log.warn("Fila descartada del CSV de valor tasado: el nombre de provincia mide {} "
+                    + "caracteres (máximo {})", provincia.length(), LARGO_MAXIMO_PROVINCIA);
+            return null;
+        }
 
         String codigoIne = String.format("%02d000", Integer.parseInt(cpro));
         return new FilaPrecio(codigoIne, AmbitoMercado.PROVINCIA, TipoPrecio.VENTA,
                 IndicadorPrecio.VALOR_TASADO, regimen, anio, trimestre, valor,
-                UnidadPrecio.EUR_M2, null, columna[COL_PROVINCIA]);
+                UnidadPrecio.EUR_M2, null, provincia);
     }
 
     private static TipologiaVivienda regimen(String texto) {
