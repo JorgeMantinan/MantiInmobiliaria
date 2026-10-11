@@ -99,6 +99,21 @@ describe('PrecioZona', () => {
     expect(screen.queryByText(/Valor tasado de venta/)).not.toBeInTheDocument();
   });
 
+  it('con_la_renta_mediana_a_null_muestra_la_cuantia_mensual', async () => {
+    vi.mocked(apiFetch).mockResolvedValue({
+      ...AMBOS,
+      alquiler: { rentaMedianaEurM2Mes: null, cuantiaMedianaEurMes: 868.8 },
+    });
+
+    render(<PrecioZona codigoIne="28079" municipio="Madrid" />);
+
+    const linea = await screen.findByText(/Alquiler medio:/);
+    expect(linea).toHaveTextContent('868,8 €/mes');
+    expect(linea).toHaveTextContent('(dato municipal)');
+    // Sin renta no hay frase "en {municipio}" ni €/m²/mes.
+    expect(screen.queryByText(/€\/m²\/mes/)).not.toBeInTheDocument();
+  });
+
   it('con_solo_venta_no_pinta_la_linea_de_alquiler', async () => {
     vi.mocked(apiFetch).mockResolvedValue({ ...AMBOS, alquiler: null });
 

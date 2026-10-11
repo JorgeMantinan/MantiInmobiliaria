@@ -81,6 +81,7 @@ export function PrecioZona({ codigoIne, municipio }: PrecioZonaProps) {
 function construirLineas(precios: PreciosZona, municipio: string): ReactNode[] {
   const lineas: ReactNode[] = [];
   const renta = precios.alquiler?.rentaMedianaEurM2Mes;
+  const cuantia = precios.alquiler?.cuantiaMedianaEurMes;
   const valor = precios.venta?.valorEurM2;
 
   if (renta !== null && renta !== undefined) {
@@ -89,6 +90,18 @@ function construirLineas(precios: PreciosZona, municipio: string): ReactNode[] {
         Alquiler medio en <span className="font-medium">{municipio}</span>:{' '}
         <span className="font-semibold text-acento-nogal">
           {FORMATEADOR.format(renta)} €/m²/mes
+        </span>{' '}
+        <span className="text-texto-suave">(dato municipal)</span>
+      </li>,
+    );
+  } else if (cuantia !== null && cuantia !== undefined) {
+    // Sin renta derivada (p. ej. el municipio no publica superficie) se muestra
+    // la cuantía mensual del contrato, que sí viene publicada.
+    lineas.push(
+      <li key="alquiler-cuantia" className="text-texto">
+        Alquiler medio:{' '}
+        <span className="font-semibold text-acento-nogal">
+          {FORMATEADOR.format(cuantia)} €/mes
         </span>{' '}
         <span className="text-texto-suave">(dato municipal)</span>
       </li>,
