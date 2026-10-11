@@ -10,10 +10,15 @@ tags:
 - name: Telegram (admin)
   description: "Diagnóstico del bot de Telegram: chats que han escrito al bot (requiere\
     \ rol ADMIN)"
+- name: Mercado
+  description: "Precios oficiales del mercado por zona (fuente: Ministerio de Vivienda\
+    \ y Agenda Urbana)"
 - name: Inmuebles (admin)
   description: "Alta, actualización y borrado de inmuebles (requiere rol ADMIN)"
 - name: Solicitudes (admin)
   description: Listado de solicitudes recibidas (requiere rol ADMIN)
+- name: Mercado (admin)
+  description: Reimportación de los CSV oficiales del MIVAU (requiere rol ADMIN)
 - name: Profesionales (admin)
   description: Moderación de altas de profesionales (requiere rol ADMIN)
 - name: Swipes
@@ -605,6 +610,44 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
       security: []
+  /api/v1/admin/mercado/actualizar:
+    post:
+      tags:
+      - Mercado (admin)
+      summary: Reimporta los CSV del MIVAU y actualiza los precios
+      description: "Descarga VDP001 (alquiler municipal, 37,8 MB) y VDP006 (valor\
+        \ tasado provincial) desde el CDN del Ministerio, los interpreta y hace upsert\
+        \ por clave natural. Puede tardar varios segundos; timeout de 30 s/60 s en\
+        \ la descarga."
+      operationId: actualizar_1
+      responses:
+        "200":
+          description: Importación completada; nº de filas escritas
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MercadoImportacionResponse"
+        "401":
+          description: Sin token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: Token sin rol ADMIN
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "500":
+          description: "El CDN del MIVAU no responde o publica un CSV con estructura\
+            \ distinta (ProblemDetail)"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+      - bearerAuth: []
   /api/v1/admin/inmuebles:
     post:
       tags:
@@ -818,6 +861,45 @@ paths:
                 $ref: "#/components/schemas/ProblemDetail"
       security:
       - bearerAuth: []
+  /api/v1/mercado:
+    get:
+      tags:
+      - Mercado
+      summary: Obtiene el alquiler medio y el valor tasado de la zona de un municipio
+      description: "Alquiler municipal (SERPAVI) del último año disponible + valor\
+        \ tasado de la provincia. Si el municipio no tiene NINGÚN dato publicado responde\
+        \ 404. La respuesta incluye siempre la atribución legal de la fuente."
+      operationId: consultar
+      parameters:
+      - name: codigoINE
+        in: query
+        description: Código INE de 5 dígitos del municipio
+        required: true
+        schema:
+          type: string
+          pattern: ^[0-9]{5}$
+      responses:
+        "200":
+          description: "Precios de la zona (los bloques alquiler y venta pueden ser\
+            \ null de forma independiente)"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MercadoResponse"
+        "400":
+          description: "codigoINE no es un código de 5 dígitos (ProblemDetail con\
+            \ errors[])"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Sin datos publicados para ese municipio (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security: []
   /api/v1/inmuebles:
     get:
       tags:
@@ -1380,6 +1462,11 @@ components:
           type: string
           description: Provincia
           example: Madrid
+        codigoIne:
+          type: string
+          description: "Código INE de 5 dígitos del municipio; null si no está catalogado\
+            \ (se usa para los precios oficiales del MIVAU)"
+          example: "28079"
         lat:
           type: number
           format: double
@@ -1870,6 +1957,89 @@ components:
         creadoEn:
           type: string
           format: date-time
+    MercadoImportacionResponse:
+      type: object
+      description: Resultado de la reimportación de los CSV del MIVAU
+      properties:
+        filasAlquiler:
+          type: integer
+          format: int32
+          description: Filas de alquiler municipal escritas (nuevas + actualizadas)
+          example: 7665
+        filasVenta:
+          type: integer
+          format: int32
+          description: Filas de valor tasado provincial escritas (nuevas + actualizadas)
+          example: 8412
+        fechaDescarga:
+          type: string
+          format: date-time
+          description: Instante de descarga de los dos ficheros (ISO-8601)
+          example: "2026-10-11T15:20:07Z"
+    AlquilerMercadoResponse:
+      type: object
+      description: Alquiler municipal de referencia (SERPAVI), tipología colectiva
+      properties:
+        rentaMedianaEurM2Mes:
+          type: number
+          description: "Renta mediana en € por m² y mes (cuantía mediana dividida\
+            \ entre la superficie mediana, según la metodología SERPAVI)"
+          example: 13.16
+        cuantiaMedianaEurMes:
+          type: number
+          description: Cuantía mediana del contrato en € al mes
+          example: 868.8
+    MercadoResponse:
+      type: object
+      description: Precios oficiales del mercado de la zona de un municipio
+      properties:
+        codigoINE:
+          type: string
+          description: Código INE de 5 dígitos consultado
+          example: "28079"
+        anio:
+          type: integer
+          format: int32
+          description: "Año del dato de alquiler municipal; si no hay alquiler, el\
+            \ año del dato de venta"
+          example: 2024
+        alquiler:
+          $ref: "#/components/schemas/AlquilerMercadoResponse"
+          description: "Alquiler municipal; null si el municipio no tiene dato publicado"
+        venta:
+          $ref: "#/components/schemas/VentaMercadoResponse"
+          description: "Valor tasado provincial; null si la fuente no publica esa\
+            \ provincia"
+        fuente:
+          type: string
+          description: Fuente obligatoria (aviso legal MIVAU)
+          example: Ministerio de Vivienda y Agenda Urbana
+    VentaMercadoResponse:
+      type: object
+      description: Valor tasado de venta de la provincia
+      properties:
+        valorEurM2:
+          type: number
+          description: Valor tasado en € por m²
+          example: 1588.7
+        ambito:
+          type: string
+          description: Ámbito del dato
+          example: PROVINCIA
+        provincia:
+          type: string
+          description: Nombre de la provincia
+          example: Zaragoza
+        anio:
+          type: integer
+          format: int32
+          description: Año del dato
+          example: 2026
+        trimestre:
+          type: integer
+          format: int32
+          description: Trimestre del dato (1..4)
+          example: 3
   securitySchemes:
     bearerAuth:
       type: http

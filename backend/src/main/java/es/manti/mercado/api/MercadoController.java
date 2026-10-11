@@ -64,7 +64,7 @@ public class MercadoController {
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     @SecurityRequirements   // endpoint público: security: [] en la spec
     public ResponseEntity<MercadoResponse> consultar(
-            @Parameter(description = "Código INE de 5 dígitos del municipio", example = "28079")
+            @Parameter(description = "Código INE de 5 dígitos del municipio")
             @RequestParam(name = "codigoINE")
             @Pattern(regexp = "^[0-9]{5}$", message = "debe ser un código INE de 5 dígitos")
             String codigoIne) {
