@@ -28,18 +28,22 @@ class PreciosMercadoImportadorTest {
     private static final String CABECERA_ALQUILER =
             "COD_PROVINCIA;PROVINCIA;COD_POSTAL;NOMBRE_MUNICIPIO;ELEMENTO;TIPO_VIVIENDA;TIPO_MEDIDA;AÑO;VALOR\n";
 
+    /**
+     * Códigos 96/97 a propósito: no existen en los CSV del MIVAU, de modo que
+     * la importación real del perfil dev no contamina ni es borrada por el test.
+     */
     private static final String CSV_ALQUILER = CABECERA_ALQUILER + """
-            28;Madrid;28079;Madrid;PRECIO;COLECTIVA;MEDIANA;2024;868.8
-            28;Madrid;28079;Madrid;SUPERFICIE;COLECTIVA;MEDIANA;2024;66
-            28;Madrid;28079;Madrid;VIVIENDA;COLECTIVA;RECUENTO;2024;300447
+            96;Provincia Test;96001;Municipio Test;PRECIO;COLECTIVA;MEDIANA;2024;868.8
+            96;Provincia Test;96001;Municipio Test;SUPERFICIE;COLECTIVA;MEDIANA;2024;66
+            96;Provincia Test;96001;Municipio Test;VIVIENDA;COLECTIVA;RECUENTO;2024;300447
             """;
 
     private static final String CABECERA_VENTA =
             "Año;Trimestre;Valor;Régimen;CPRO;Provincia;Comunidad_Autónoma;CODAUTO\n";
 
     private static final String CSV_VENTA = CABECERA_VENTA + """
-            2024;4;1588.7;Libre;50;Zaragoza;Aragón;2
-            2026;1;1700.2;Libre;08;Barcelona;Cataluña;9
+            2024;4;1588.7;Libre;96;Provincia Test;Comunidad Test;0
+            2026;1;1700.2;Libre;97;Otra Provincia Test;Comunidad Test;0
             """;
 
     @Autowired
@@ -50,7 +54,7 @@ class PreciosMercadoImportadorTest {
 
     @AfterEach
     void limpiarFixtures() {
-        jdbc.update("DELETE FROM precios_mercado WHERE codigo_ine IN ('28079', '50000', '08000')");
+        jdbc.update("DELETE FROM precios_mercado WHERE codigo_ine IN ('96001', '96000', '97000')");
     }
 
     @Test
@@ -62,14 +66,14 @@ class PreciosMercadoImportadorTest {
         assertThat(resultado.fechaDescarga()).isNotNull();
         assertThat(filasDeLosCodigosDePrueba()).isEqualTo(5);
 
-        assertThat(valor("28079", "RENTA_MEDIANA")).isEqualByComparingTo(new BigDecimal("13.16"));
-        assertThat(valor("28079", "CUANTIA_MEDIANA")).isEqualByComparingTo(new BigDecimal("868.8"));
-        assertThat(valor("50000", "VALOR_TASADO")).isEqualByComparingTo(new BigDecimal("1588.7"));
+        assertThat(valor("96001", "RENTA_MEDIANA")).isEqualByComparingTo(new BigDecimal("13.16"));
+        assertThat(valor("96001", "CUANTIA_MEDIANA")).isEqualByComparingTo(new BigDecimal("868.8"));
+        assertThat(valor("96000", "VALOR_TASADO")).isEqualByComparingTo(new BigDecimal("1588.7"));
         assertThat(jdbc.queryForObject(
-                "SELECT n_testigos FROM precios_mercado WHERE codigo_ine = '28079' AND indicador = 'RENTA_MEDIANA'",
+                "SELECT n_testigos FROM precios_mercado WHERE codigo_ine = '96001' AND indicador = 'RENTA_MEDIANA'",
                 Integer.class)).isEqualTo(300_447);
         assertThat(jdbc.queryForObject(
-                "SELECT fuente FROM precios_mercado WHERE codigo_ine = '50000' AND indicador = 'VALOR_TASADO'",
+                "SELECT fuente FROM precios_mercado WHERE codigo_ine = '96000' AND indicador = 'VALOR_TASADO'",
                 String.class)).isEqualTo("MIVAU");
     }
 
@@ -83,8 +87,8 @@ class PreciosMercadoImportadorTest {
 
         assertThat(filasDeLosCodigosDePrueba()).isEqualTo(5);
         // 900 €/mes ÷ 66 m² = 13,6363… ⇒ 13,64
-        assertThat(valor("28079", "RENTA_MEDIANA")).isEqualByComparingTo(new BigDecimal("13.64"));
-        assertThat(valor("28079", "CUANTIA_MEDIANA")).isEqualByComparingTo(new BigDecimal("900"));
+        assertThat(valor("96001", "RENTA_MEDIANA")).isEqualByComparingTo(new BigDecimal("13.64"));
+        assertThat(valor("96001", "CUANTIA_MEDIANA")).isEqualByComparingTo(new BigDecimal("900"));
     }
 
     @Test
@@ -142,7 +146,7 @@ class PreciosMercadoImportadorTest {
 
     private int filasDeLosCodigosDePrueba() {
         Integer filas = jdbc.queryForObject(
-                "SELECT count(*) FROM precios_mercado WHERE codigo_ine IN ('28079', '50000', '08000')",
+                "SELECT count(*) FROM precios_mercado WHERE codigo_ine IN ('96001', '96000', '97000')",
                 Integer.class);
         return filas == null ? 0 : filas;
     }

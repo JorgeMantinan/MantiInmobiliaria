@@ -48,15 +48,15 @@ class AdminMercadoApiTest {
 
     private static final String CSV_ALQUILER = """
             COD_PROVINCIA;PROVINCIA;COD_POSTAL;NOMBRE_MUNICIPIO;ELEMENTO;TIPO_VIVIENDA;TIPO_MEDIDA;AÑO;VALOR
-            28;Madrid;28079;Madrid;PRECIO;COLECTIVA;MEDIANA;2024;868.8
-            28;Madrid;28079;Madrid;SUPERFICIE;COLECTIVA;MEDIANA;2024;66
-            28;Madrid;28079;Madrid;VIVIENDA;COLECTIVA;RECUENTO;2024;300447
+            96;Provincia Test;96001;Municipio Test;PRECIO;COLECTIVA;MEDIANA;2024;868.8
+            96;Provincia Test;96001;Municipio Test;SUPERFICIE;COLECTIVA;MEDIANA;2024;66
+            96;Provincia Test;96001;Municipio Test;VIVIENDA;COLECTIVA;RECUENTO;2024;300447
             """;
 
     private static final String CSV_VENTA = """
             Año;Trimestre;Valor;Régimen;CPRO;Provincia;Comunidad_Autónoma;CODAUTO
-            2024;4;1588.7;Libre;50;Zaragoza;Aragón;2
-            2026;1;1700.2;Libre;08;Barcelona;Cataluña;9
+            2024;4;1588.7;Libre;96;Provincia Test;Comunidad Test;0
+            2026;1;1700.2;Libre;97;Otra Provincia Test;Comunidad Test;0
             """;
 
     @Autowired
@@ -82,7 +82,7 @@ class AdminMercadoApiTest {
 
     @AfterEach
     void limpiarFixtures() {
-        jdbc.update("DELETE FROM precios_mercado WHERE codigo_ine IN ('28079', '50000', '08000')");
+        jdbc.update("DELETE FROM precios_mercado WHERE codigo_ine IN ('96001', '96000', '97000')");
         jdbc.update("DELETE FROM usuarios WHERE email LIKE 'it-admin-%@example.com'");
     }
 
@@ -114,7 +114,7 @@ class AdminMercadoApiTest {
         assertThat((String) JsonPath.read(cuerpo, "$.fechaDescarga")).isNotBlank();
         // La reimportación escribe de verdad: 3 + 2 filas de los códigos de prueba.
         Integer filas = jdbc.queryForObject(
-                "SELECT count(*) FROM precios_mercado WHERE codigo_ine IN ('28079', '50000', '08000')",
+                "SELECT count(*) FROM precios_mercado WHERE codigo_ine IN ('96001', '96000', '97000')",
                 Integer.class);
         assertThat(filas).isEqualTo(5);
     }
@@ -131,7 +131,7 @@ class AdminMercadoApiTest {
                 .andExpect(jsonPath("$.filasVenta").value(2));
 
         Integer filas = jdbc.queryForObject(
-                "SELECT count(*) FROM precios_mercado WHERE codigo_ine IN ('28079', '50000', '08000')",
+                "SELECT count(*) FROM precios_mercado WHERE codigo_ine IN ('96001', '96000', '97000')",
                 Integer.class);
         assertThat(filas).isEqualTo(5);
     }
@@ -149,7 +149,7 @@ class AdminMercadoApiTest {
                 .andExpect(jsonPath("$.detail").value("El MIVAU ha respondido 503"));
 
         Integer filas = jdbc.queryForObject(
-                "SELECT count(*) FROM precios_mercado WHERE codigo_ine IN ('28079', '50000', '08000')",
+                "SELECT count(*) FROM precios_mercado WHERE codigo_ine IN ('96001', '96000', '97000')",
                 Integer.class);
         assertThat(filas).isZero();
     }

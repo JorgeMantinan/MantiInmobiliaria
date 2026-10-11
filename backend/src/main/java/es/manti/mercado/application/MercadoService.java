@@ -75,18 +75,24 @@ public class MercadoService {
     }
 
     /**
-     * Último trimestre con valor tasado en la provincia del código INE,
+     * Último trimestre con valor tasado en la <b>provincia</b> del municipio,
      * prefiere el régimen LIBRE (mercado) y si no existe se queda con lo que
      * haya en ese periodo.
+     *
+     * <p>La venta sólo existe a escala provincial (no hay fichero público de
+     * venta municipal): el código INE de la provincia son los dos primeros
+     * dígitos del municipio + {@code 000}, la misma notación de "total de
+     * provincia" que usa el importador.</p>
      */
     private DatosMercado.VentaZona venta(String codigoIne) {
-        Optional<PrecioMercado> ultima = repository.ultimaDe(codigoIne, TipoPrecio.VENTA);
+        String codigoProvincia = codigoProvinciaDe(codigoIne);
+        Optional<PrecioMercado> ultima = repository.ultimaDe(codigoProvincia, TipoPrecio.VENTA);
         if (ultima.isEmpty()) {
             return null;
         }
         PrecioMercado periodo = ultima.get();
         PrecioMercado elegida = repository
-                .porPeriodoYTipologia(codigoIne, TipoPrecio.VENTA,
+                .porPeriodoYTipologia(codigoProvincia, TipoPrecio.VENTA,
                         periodo.getAnio(), periodo.getTrimestre(), TipologiaVivienda.LIBRE)
                 .orElse(periodo);
 
@@ -96,5 +102,10 @@ public class MercadoService {
                 elegida.getProvincia(),
                 elegida.getAnio(),
                 elegida.getTrimestre());
+    }
+
+    /** {@code 08019} (Barcelona) → {@code 08000} (provincia de Barcelona). */
+    static String codigoProvinciaDe(String codigoIne) {
+        return codigoIne.length() < 2 ? codigoIne : codigoIne.substring(0, 2) + "000";
     }
 }

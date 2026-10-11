@@ -43,8 +43,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class MercadoApiTest {
 
-    /** Municipio con alquiler y valor tasado sembrados por el propio test. */
-    private static final String CON_DATOS = "08019";
+    /**
+     * Códigos de PRUEBA sintéticos a propósito: los 5 dígitos "96"/"97" no
+     * existen en los CSV del MIVAU, así que los tests no pueden chocar (ni
+     * borrar por accidente) con los precios reales que el perfil dev importa.
+     */
+    private static final String CON_DATOS = "96001";
+
+    /** El valor tasado se publica por PROVINCIA: "96" + "000" (notación INE). */
+    private static final String PROVINCIA_DE_CON_DATOS = "96000";
+
+    /** Otro municipio de una provincia sin dato tasado publicado. */
+    private static final String ALQUILER_SIN_VENTA = "97001";
 
     /** Código INE inexistente: ni alquiler ni venta. */
     private static final String SIN_DATOS = "99999";
@@ -60,7 +70,7 @@ class MercadoApiTest {
 
     @AfterEach
     void limpiarFixtures() {
-        jdbc.update("DELETE FROM precios_mercado WHERE codigo_ine IN ('08019', '99999')");
+        jdbc.update("DELETE FROM precios_mercado WHERE codigo_ine IN ('96001', '96000', '97001', '99999')");
     }
 
     @Test
@@ -72,7 +82,7 @@ class MercadoApiTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(header().string(HttpHeaders.CACHE_CONTROL,
                         allOf(containsString("public"), containsString("max-age=3600"))))
-                .andExpect(jsonPath("$.codigoINE").value("08019"))
+                .andExpect(jsonPath("$.codigoINE").value("96001"))
                 // El año raíz es el del ALQUILER aunque la venta sea de 2026.
                 .andExpect(jsonPath("$.anio").value(2024))
                 .andExpect(jsonPath("$.fuente").value("Ministerio de Vivienda y Agenda Urbana"))
@@ -82,7 +92,7 @@ class MercadoApiTest {
                 .andExpect(jsonPath("$.alquiler.anio").doesNotExist())
                 .andExpect(jsonPath("$.venta.valorEurM2").value(2766.9))
                 .andExpect(jsonPath("$.venta.ambito").value("PROVINCIA"))
-                .andExpect(jsonPath("$.venta.provincia").value("Barcelona"))
+                .andExpect(jsonPath("$.venta.provincia").value("Provincia Test"))
                 .andExpect(jsonPath("$.venta.anio").value(2026))
                 .andExpect(jsonPath("$.venta.trimestre").value(1));
     }
@@ -111,7 +121,8 @@ class MercadoApiTest {
     @Test
     void consultar_soloConVenta_devuelveElAlquilerNuloYElAnioDeLaVenta() throws Exception {
         repository.guardarOActualizar(List.of(
-                venta(CON_DATOS, TipologiaVivienda.LIBRE, "1588.7", (short) 2025, (short) 3, "Barcelona")),
+                venta(PROVINCIA_DE_CON_DATOS, TipologiaVivienda.LIBRE, "1588.7",
+                        (short) 2025, (short) 3, "Provincia Test")),
                 Instant.now());
 
         mockMvc.perform(get("/api/v1/mercado").param("codigoINE", CON_DATOS))
@@ -119,6 +130,25 @@ class MercadoApiTest {
                 .andExpect(jsonPath("$.anio").value(2025))
                 .andExpect(jsonPath("$.alquiler").value(nullValue()))
                 .andExpect(jsonPath("$.venta.valorEurM2").value(1588.7));
+    }
+
+    /**
+     * La venta se resuelve por PREFIJO de provincia ("97" + "000"): si esa
+     * provincia no tiene filas en VDP006, el bloque entero queda a null aunque
+     * el municipio sí tenga alquiler. Es lo que le pasa a Madrid (28),
+     * Murcia (30), Navarra (31) y Asturias (33) en el fichero real.
+     */
+    @Test
+    void consultar_municipioDeUnaProvinciaSinDatoTasado_devuelveLaVentaNula() throws Exception {
+        repository.guardarOActualizar(List.of(
+                alquiler(ALQUILER_SIN_VENTA, IndicadorPrecio.RENTA_MEDIANA, "15.00",
+                        UnidadPrecio.EUR_M2_MES, (short) 2024)),
+                Instant.now());
+
+        mockMvc.perform(get("/api/v1/mercado").param("codigoINE", ALQUILER_SIN_VENTA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alquiler.rentaMedianaEurM2Mes").value(15.00))
+                .andExpect(jsonPath("$.venta").value(nullValue()));
     }
 
     @Test
@@ -162,10 +192,11 @@ class MercadoApiTest {
                 alquiler(CON_DATOS, IndicadorPrecio.RENTA_MEDIANA, "13.24", UnidadPrecio.EUR_M2_MES, (short) 2024),
                 alquiler(CON_DATOS, IndicadorPrecio.CUANTIA_MEDIANA, "900.00", UnidadPrecio.EUR_MES, (short) 2024),
                 alquiler(CON_DATOS, IndicadorPrecio.SUPERFICIE_MEDIANA, "68.00", UnidadPrecio.M2, (short) 2024),
-                // Trimestres anteriores: sólo el más reciente debe salir en la API.
-                venta(CON_DATOS, TipologiaVivienda.LIBRE, "2500.00", (short) 2024, (short) 4, "Barcelona"),
-                venta(CON_DATOS, TipologiaVivienda.LIBRE, "2766.90", (short) 2026, (short) 1, "Barcelona"),
-                venta(CON_DATOS, TipologiaVivienda.PROTEGIDA, "1200.90", (short) 2026, (short) 1, "Barcelona")),
+                // La venta vive bajo el código de PROVINCIA. Trimestres anteriores:
+                // sólo el más reciente debe salir en la API.
+                venta(PROVINCIA_DE_CON_DATOS, TipologiaVivienda.LIBRE, "2500.00", (short) 2024, (short) 4, "Provincia Test"),
+                venta(PROVINCIA_DE_CON_DATOS, TipologiaVivienda.LIBRE, "2766.90", (short) 2026, (short) 1, "Provincia Test"),
+                venta(PROVINCIA_DE_CON_DATOS, TipologiaVivienda.PROTEGIDA, "1200.90", (short) 2026, (short) 1, "Provincia Test")),
                 Instant.now());
     }
 
