@@ -125,6 +125,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/inmuebles",
                                 "/api/v1/inmuebles/{id:[0-9]+}").permitAll()
+                        // issue #12 — PRECIOS DE LA ZONA (MIVAU): datos abiertos
+                        // del Ministerio, consulta PÚBLICA de sólo lectura.
+                        // Sólo este matcher y sólo GET: la reimportación de los
+                        // CSV vive en /api/v1/admin/mercado con @PreAuthorize
+                        // ADMIN y no se abre aquí (cualquiera de sus métodos
+                        // cae en .anyRequest().authenticated() → 401).
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/mercado").permitAll()
                         // FASE 5 — PORTAL PÚBLICO de profesionales y solicitudes.
                         // SÓLO estos tres matchers y SIEMPRE con método explícito,
                         // para no abrir por error nada más:
