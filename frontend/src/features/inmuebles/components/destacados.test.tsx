@@ -50,7 +50,7 @@ describe('Destacados', () => {
     render(<Destacados />);
 
     expect(await screen.findByText('Casa con jardín')).toBeInTheDocument();
-    expect(apiFetch).toHaveBeenCalledWith('/inmuebles?destacado=true&limit=6');
+    expect(apiFetch).toHaveBeenCalledWith('/api/v1/inmuebles?destacado=true&limit=6');
     expect(screen.getByRole('link', { name: 'Ver todas las viviendas' })).toHaveAttribute(
       'href',
       '/inmuebles',
