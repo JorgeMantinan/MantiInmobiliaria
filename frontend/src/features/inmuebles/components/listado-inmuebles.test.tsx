@@ -66,7 +66,7 @@ describe('ListadoInmuebles', () => {
 
     await waitFor(() => {
       expect(apiFetch).toHaveBeenCalledWith(
-        '/inmuebles?estado=VENTA&precioMax=200000&sort=precio_asc&limit=20',
+        '/api/v1/inmuebles?estado=VENTA&precioMax=200000&sort=precio_asc&limit=20',
       );
     });
     expect(await screen.findByText('Sin resultados')).toBeInTheDocument();
@@ -99,7 +99,7 @@ describe('ListadoInmuebles', () => {
     await usuario.click(screen.getByRole('button', { name: 'Cargar más' }));
 
     expect(await screen.findByText('Mostrando 3 de 3 inmuebles')).toBeInTheDocument();
-    expect(apiFetch).toHaveBeenLastCalledWith('/inmuebles?cursor=c1&limit=20');
+    expect(apiFetch).toHaveBeenLastCalledWith('/api/v1/inmuebles?cursor=c1&limit=20');
     expect(screen.getAllByText('Piso Dos')).toHaveLength(1);
     expect(screen.getAllByText('Piso Tres')).toHaveLength(1);
   });

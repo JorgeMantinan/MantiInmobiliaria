@@ -25,10 +25,10 @@ export async function listarInmuebles(
     cursor: opciones.cursor,
     limit: opciones.limit ?? LIMITE_PAGINA,
   });
-  return apiFetch<PaginaInmuebles>(`/inmuebles${query}`);
+  return apiFetch<PaginaInmuebles>(`/api/v1/inmuebles${query}`);
 }
 
 /** `GET /api/v1/inmuebles/{id}` — detalle completo; 404 ⇒ `ApiError`. */
 export async function obtenerInmueble(id: number): Promise<InmuebleDetalle> {
-  return apiFetch<InmuebleDetalle>(`/inmuebles/${id}`);
+  return apiFetch<InmuebleDetalle>(`/api/v1/inmuebles/${id}`);
 }

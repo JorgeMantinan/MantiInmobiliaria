@@ -55,7 +55,7 @@ describe('DetalleInmueble', () => {
     render(<DetalleInmueble id={7} />);
 
     expect(screen.getByRole('status')).toHaveTextContent('Cargando el inmueble…');
-    expect(apiFetch).toHaveBeenCalledWith('/inmuebles/7');
+    expect(apiFetch).toHaveBeenCalledWith('/api/v1/inmuebles/7');
   });
 
   it('con_los_datos_muestra_precio_caracteristicas_direccion_y_mapa', async () => {
