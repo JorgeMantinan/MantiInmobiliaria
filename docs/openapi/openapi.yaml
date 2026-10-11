@@ -618,8 +618,9 @@ paths:
       description: "Descarga VDP001 (alquiler municipal, 37,8 MB) y VDP006 (valor\
         \ tasado provincial) desde el CDN del Ministerio, los interpreta y hace upsert\
         \ por clave natural. Puede tardar varios segundos; timeout de 30 s/60 s en\
-        \ la descarga."
-      operationId: actualizar_1
+        \ la descarga. Sólo se admite UNA importación a la vez: si ya hay una en curso\
+        \ responde 409."
+      operationId: actualizarPreciosMercado
       responses:
         "200":
           description: Importación completada; nº de filas escritas
@@ -635,6 +636,12 @@ paths:
                 $ref: "#/components/schemas/ProblemDetail"
         "403":
           description: Token sin rol ADMIN
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Ya hay una importación en curso (ProblemDetail)
           content:
             '*/*':
               schema:
@@ -877,7 +884,7 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^[0-9]{5}$
+          pattern: '[0-9]{5}'
       responses:
         "200":
           description: "Precios de la zona (los bloques alquiler y venta pueden ser\
