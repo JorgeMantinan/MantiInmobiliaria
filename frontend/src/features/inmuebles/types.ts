@@ -55,6 +55,8 @@ export type InmuebleDetalle = Readonly<{
   codigoPostal: string | null;
   municipio: string;
   provincia: string;
+  /** Código INE de 5 dígitos; null si no está catalogado (precios MIVAU). */
+  codigoIne: string | null;
   lat: number;
   lng: number;
   imagenUrl: string | null;
