@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  construirEnvio,
   erroresDeCampoInmueble,
   hayErroresInmueble,
   validarInmueble,
@@ -79,7 +80,39 @@ describe('validarInmueble — espejo del backend', () => {
     });
     expect(validarInmueble(con({ habitaciones: '201' })).habitaciones).toMatch(/200/);
     expect(validarInmueble(con({ banios: '51' })).banios).toMatch(/50/);
-    expect(validarInmueble(con({ superficieM2: '0' })).superficieM2).toMatch(/mínimo 1/);
+    expect(validarInmueble(con({ superficieM2: '0' })).superficieM2).toMatch(
+      /igual o superior a 1/,
+    );
+    expect(validarInmueble(con({ superficieM2: '999999999999' })).superficieM2).toMatch(
+      /igual o inferior a 2147483647/,
+    );
+  });
+
+  it('los_mensajes_de_cantidades_usan_redaccion_neutral_sin_concordancia_plural', () => {
+    // Antes: "La superficie deben ser un número entero." (plural forzado).
+    expect(validarInmueble(con({ superficieM2: 'abc' })).superficieM2).toBe(
+      'Introduce un número entero para la superficie.',
+    );
+    expect(validarInmueble(con({ habitaciones: 'x' })).habitaciones).toBe(
+      'Introduce un número entero para las habitaciones.',
+    );
+    expect(validarInmueble(con({ banios: 'x' })).banios).toBe(
+      'Introduce un número entero para los baños.',
+    );
+  });
+
+  it('acepta_la_coma_decimal_en_precio_y_coordenadas_y_normaliza_en_el_payload', () => {
+    // `type="text"` en el form: la coma española llega entera a la validación.
+    const conComa = con({ precio: '320000,50', lat: '40,4168', lng: '-3,7038' });
+    const errores = validarInmueble(conComa);
+    expect(errores.precio).toBeUndefined();
+    expect(errores.lat).toBeUndefined();
+    expect(errores.lng).toBeUndefined();
+
+    const envio = construirEnvio(conComa);
+    expect(envio.precio).toBe(320000.5);
+    expect(envio.lat).toBe(40.4168);
+    expect(envio.lng).toBe(-3.7038);
   });
 
   it('los_requeridos_de_texto_y_los_enums_no_pueden_ir_vacios', () => {

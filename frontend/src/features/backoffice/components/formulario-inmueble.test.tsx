@@ -91,6 +91,28 @@ describe('FormularioInmueble — alta (POST)', () => {
     expect(navegacion.push).toHaveBeenCalledWith('/admin/inmuebles');
   });
 
+  it('un_precio_escrito_con_coma_decimal_se_acepta_y_llega_normalizado_al_payload', async () => {
+    vi.mocked(apiFetch).mockResolvedValue({ id: 43 });
+    const usuario = userEvent.setup();
+    render(<FormularioInmueble inicial={null} />);
+
+    await rellenarValido(usuario);
+    // Sobreescrito con coma española: el input es de texto, NO se vacía.
+    await usuario.clear(screen.getByLabelText('Precio en euros'));
+    await usuario.type(screen.getByLabelText('Precio en euros'), '320000,50');
+    expect(screen.getByLabelText('Precio en euros')).toHaveValue('320000,50');
+
+    await usuario.click(screen.getByRole('button', { name: 'Crear inmueble' }));
+
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledTimes(1));
+    expect(apiFetch).toHaveBeenCalledWith(
+      '/api/v1/admin/inmuebles',
+      expect.objectContaining({ body: expect.objectContaining({ precio: 320000.5 }) }),
+    );
+    expect(screen.queryByText(/Escribe el precio/)).not.toBeInTheDocument();
+    expect(navegacion.push).toHaveBeenCalledWith('/admin/inmuebles');
+  });
+
   it('la_validacion_client_bloquea_el_envio_y_pinta_los_errores_de_campo', async () => {
     const usuario = userEvent.setup();
     render(<FormularioInmueble inicial={null} />);
@@ -157,9 +179,11 @@ describe('FormularioInmueble — edición (PUT)', () => {
     const usuario = userEvent.setup();
     render(<FormularioInmueble inicial={DETALLE} />);
 
-    // Precarga desde el detalle.
+    // Precarga desde el detalle (precio/coordenadas ahora son inputs de texto:
+    // el valor precargado llega como string).
     expect(screen.getByLabelText('Título del anuncio')).toHaveValue(DETALLE.titulo);
-    expect(screen.getByLabelText('Precio en euros')).toHaveValue(245000);
+    expect(screen.getByLabelText('Precio en euros')).toHaveValue('245000');
+    expect(screen.getByLabelText('Latitud (WGS84, España: 27..44)')).toHaveValue('40.4168');
     expect(screen.getByLabelText('Tipo de inmueble')).toHaveValue('PISO');
     expect(screen.getByLabelText('Estado comercial')).toHaveValue('VENTA');
     // El codigoIne NO se edita (el request del backend no lo admite).

@@ -94,10 +94,12 @@ export function CamposAnuncio({ errores, valores = VACIOS }: CamposProps) {
         id="inm-precio"
         name="precio"
         etiqueta="Precio en euros"
-        type="number"
-        min={0.01}
-        step={0.01}
+        // text + inputMode decimal: admite la coma española (`320000,50`) que
+        // `type=number` vaciaría en silencio; la normalización coma→punto la
+        // hace la validación (`validarPrecio`/`construirEnvio`).
+        type="text"
         inputMode="decimal"
+        placeholder="245000,50"
         defaultValue={valores.precio}
         error={errores.precio}
         required
@@ -277,8 +279,8 @@ export function CamposUbicacion({ errores, valores = VACIOS }: CamposProps) {
           id="inm-lat"
           name="lat"
           etiqueta="Latitud (WGS84, España: 27..44)"
-          type="number"
-          step="any"
+          // Igual que el precio: coma decimal admitida y normalizada en cliente.
+          type="text"
           inputMode="decimal"
           defaultValue={valores.lat}
           error={errores.lat}
@@ -288,8 +290,7 @@ export function CamposUbicacion({ errores, valores = VACIOS }: CamposProps) {
           id="inm-lng"
           name="lng"
           etiqueta="Longitud (WGS84, España: -19..5)"
-          type="number"
-          step="any"
+          type="text"
           inputMode="decimal"
           defaultValue={valores.lng}
           error={errores.lng}

@@ -27,6 +27,8 @@ export const PRECIO_MAXIMO = 9_999_999_999.99;
 export const HABITACIONES_MAXIMO = 200;
 /** `@Max(50)` de `banios`. */
 export const BANIOS_MAXIMO = 50;
+/** `Integer.MAX_VALUE`: techo del `superficie_m2` (integer) en BD. */
+export const SUPERFICIE_MAXIMA = 2_147_483_647;
 /** Coordenadas de España (`@DecimalMin/Max` de lat y lng). */
 export const LAT_MINIMA = 27.0;
 export const LAT_MAXIMA = 44.0;
@@ -113,14 +115,19 @@ export function validarInmueble(datos: DatosInmuebleForm): ErroresInmueble {
     titulo: validarTitulo(datos.titulo),
     descripcion: validarDescripcion(datos.descripcion),
     precio: validarPrecio(datos.precio),
-    superficieM2: validarEnteroOpcional(datos.superficieM2, 'La superficie', 1, undefined),
+    superficieM2: validarEnteroOpcional(
+      datos.superficieM2,
+      'la superficie',
+      1,
+      SUPERFICIE_MAXIMA,
+    ),
     habitaciones: validarEnteroOpcional(
       datos.habitaciones,
-      'Las habitaciones',
+      'las habitaciones',
       0,
       HABITACIONES_MAXIMO,
     ),
-    banios: validarEnteroOpcional(datos.banios, 'Los baños', 0, BANIOS_MAXIMO),
+    banios: validarEnteroOpcional(datos.banios, 'los baños', 0, BANIOS_MAXIMO),
     tipo: validarEnum(datos.tipo, TIPOS_INMUEBLE, 'Selecciona el tipo de inmueble.'),
     estado: validarEnum(datos.estado, ESTADOS_INMUEBLE, 'Selecciona el estado (venta o alquiler).'),
     direccion: validarRequerido(datos.direccion, DIRECCION_MAXIMA, 'Escribe la dirección.'),
@@ -159,19 +166,23 @@ function validarPrecio(precio: string): string | undefined {
     : 'El precio debe estar entre 0,01 € y 9.999.999.999,99 €.';
 }
 
+/**
+ * Entero opcional con redacción neutral (sin concordancia plural/singular
+ * forzada): `nombre` lleva el artículo, p. ej. `'la superficie'`.
+ */
 function validarEnteroOpcional(
   valor: string,
-  etiqueta: string,
+  nombre: string,
   minimo: number,
   maximo: number | undefined,
 ): string | undefined {
   const limpio = valor.trim();
   if (limpio.length === 0) return undefined;
-  if (!/^\d+$/.test(limpio)) return `${etiqueta} deben ser un número entero.`;
+  if (!/^\d+$/.test(limpio)) return `Introduce un número entero para ${nombre}.`;
   const numero = Number(limpio);
-  if (numero < minimo) return `${etiqueta} deben ser como mínimo ${minimo}.`;
+  if (numero < minimo) return `Introduce un valor igual o superior a ${minimo} para ${nombre}.`;
   if (maximo !== undefined && numero > maximo) {
-    return `${etiqueta} no pueden superar los ${maximo}.`;
+    return `Introduce un valor igual o inferior a ${maximo} para ${nombre}.`;
   }
   return undefined;
 }
