@@ -222,6 +222,14 @@ jobs:
           tail -n 100 ../frontend-e2e.log
           exit 1
 
+      # Solo cachea (no restaura obligatoriamente): si el cache falla, el paso
+      # siguiente de install descarga de nuevo y el job no se rompe.
+      - name: Cache Playwright
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
+
       - name: Playwright (chromium)
         working-directory: frontend
         run: npx playwright install --with-deps chromium
@@ -241,6 +249,8 @@ jobs:
           path: |
             frontend/playwright-report/
             frontend/test-results/
+            backend-e2e.log
+            frontend-e2e.log
           if-no-files-found: ignore
 
   # Los dos Dockerfiles del backend deben mantener el mismo cuerpo de build
