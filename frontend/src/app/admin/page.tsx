@@ -3,10 +3,16 @@ import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Backoffice | MantiInmobiliaria',
-  description: 'Panel de administración de profesionales y solicitudes.',
+  description: 'Panel de administración de inmuebles, profesionales y solicitudes.',
 };
 
 const TARJETAS = [
+  {
+    href: '/admin/inmuebles',
+    titulo: 'Inmuebles',
+    descripcion:
+      'Alta, edición y borrado de anuncios: filtra por estado y municipio, marca destacados y gestiona precios y coordenadas.',
+  },
   {
     href: '/admin/profesionales',
     titulo: 'Profesionales',
