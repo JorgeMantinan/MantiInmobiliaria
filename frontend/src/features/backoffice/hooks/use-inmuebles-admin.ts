@@ -9,7 +9,7 @@ import { eliminarInmueble } from '../api';
 import { MENSAJES, mensajeDeError } from '../mensajes';
 
 /** Filtros del backoffice: subconjunto enlazable del endpoint público. */
-export type FiltrosAdminInmuebles = Readonly<{
+export type FiltrosAdmin = Readonly<{
   estado?: 'VENTA' | 'ALQUILER';
   municipio?: string;
   destacado?: boolean;
@@ -47,7 +47,7 @@ export type EstadoPanelInmuebles = Readonly<{
 }>;
 
 export type AccionesAdminInmuebles = Readonly<{
-  aplicar: (filtros: FiltrosAdminInmuebles) => void;
+  aplicar: (filtros: FiltrosAdmin) => void;
   limpiar: () => void;
   reintentar: () => void;
   cargarMas: () => void;
@@ -111,6 +111,12 @@ export function useInmueblesAdmin(): EstadoPanelInmuebles & AccionesAdminInmuebl
 
   useEffect(() => {
     let vigente = true;
+    // Invalida cualquier "cargar más" en vuelo con la generación ANTERIOR:
+    // su respuesta se descartará al llegar (mismo patrón que
+    // `use-listado-inmuebles`, líneas 96-106). Sin esto, una página siguiente
+    // vieja pisaría esta página y dejaría `pagina.filtros` ≠ filtros actuales
+    // (esqueleto permanente).
+    ++generacion.current;
     idsCargados.current = new Set();
     traerPrimeraPagina(filtros, recarga).then((nueva) => {
       if (!vigente) return;
@@ -126,7 +132,7 @@ export function useInmueblesAdmin(): EstadoPanelInmuebles & AccionesAdminInmuebl
   const vigente = pagina !== null && pagina.filtros === filtros && pagina.recarga === recarga;
 
   const aplicar = useCallback(
-    (nuevos: FiltrosAdminInmuebles) => {
+    (nuevos: FiltrosAdmin) => {
       const filtrosNuevos: FiltrosInmuebles = {
         ...(nuevos.estado !== undefined ? { estado: nuevos.estado } : {}),
         ...(nuevos.municipio !== undefined ? { municipio: nuevos.municipio } : {}),

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PanelInmuebles } from '@/features/backoffice/components/panel-inmuebles';
@@ -184,5 +184,64 @@ describe('PanelInmuebles — borrado optimista', () => {
     // Rollback: la fila vuelve (al final: no se conoce el índice exacto tras el filtro).
     expect(screen.getByRole('heading', { name: 'Piso A' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Ático B' })).toBeInTheDocument();
+  });
+});
+
+describe('PanelInmuebles — carrera entre "cargar más" y filtros', () => {
+  it('la_respuesta_vieja_del_cargar_mas_no_pisa_la_pagina_de_los_filtros_nuevos', async () => {
+    /**
+     * Orden de llamadas: (1) primera página sin filtros con cursor,
+     * (2) "cargar más" con el cursor viejo, (3) primera página de los
+     * filtros nuevos (`?estado=ALQUILER`). Se resuelve PRIMERO la nueva y
+     * DESPUÉS la vieja: sin invalidar la generación en el effect, la vieja
+     * pisaría la página y dejaría el esqueleto (pagina.filtros ≠ filtros).
+     */
+    let resolverVieja!: (valor: unknown) => void;
+    let resolverNueva!: (valor: unknown) => void;
+    vi.mocked(apiFetch)
+      .mockResolvedValueOnce(pagina([inmueble(1, 'Piso A')], { nextCursor: 'CURSOR_VIEJO' }))
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolver) => {
+            resolverVieja = resolver;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolver) => {
+            resolverNueva = resolver;
+          }),
+      );
+
+    const vista = render(<PanelInmuebles />);
+    expect(await screen.findByRole('heading', { name: 'Piso A' })).toBeInTheDocument();
+
+    // "Cargar más" en vuelo…
+    await userEvent.click(screen.getByRole('button', { name: 'Cargar más' }));
+    expect(apiFetch).toHaveBeenCalledTimes(2);
+
+    // …y cambio de filtros mientras sigue en vuelo: fetch pendiente ⇒ esqueleto.
+    url.actual = 'estado=ALQUILER';
+    vista.rerender(<PanelInmuebles />);
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledTimes(3));
+    expect(screen.getByText('Cargando listado…')).toBeInTheDocument();
+
+    // Llega primero la página NUEVA (filtros ALQUILER).
+    await act(async () => {
+      resolverNueva(pagina([inmueble(2, 'Piso Alquiler')]));
+    });
+    expect(await screen.findByRole('heading', { name: 'Piso Alquiler' })).toBeInTheDocument();
+
+    // …y DESPUÉS la respuesta VIEJA del "cargar más": debe descartarse.
+    await act(async () => {
+      resolverVieja(pagina([inmueble(9, 'Viejo cursor')], { totalElements: 5 }));
+    });
+
+    // Sigue la página de los filtros nuevos: sin filas viejas ni esqueleto
+    // infinito (pagina.filtros sigue siendo el de ALQUILER).
+    expect(screen.getByRole('heading', { name: 'Piso Alquiler' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Viejo cursor' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Cargando listado…')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Piso A' })).not.toBeInTheDocument();
   });
 });
