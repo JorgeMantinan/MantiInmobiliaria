@@ -1,0 +1,22 @@
+# Actualizaciones automaticas de dependencias (issue #7).
+# Para github-actions tambien mantiene frescos los SHAs a los que se fijan los
+# workflows (.github/workflows/ci.yml); revisar el changelog antes de mergear.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "maven"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
