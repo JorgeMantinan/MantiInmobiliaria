@@ -1,8 +1,5 @@
-package es.manti.profesionales.infra.adapter;
+package es.manti.shared.notificaciones;
 
-import es.manti.profesionales.application.NotificacionesProperties;
-import es.manti.profesionales.domain.EmailNotificadorPort;
-import es.manti.profesionales.domain.NotificacionException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -19,9 +16,10 @@ import java.util.Map;
 /**
  * Adaptador de email vía <b>Brevo</b> (API SMTP v3).
  *
- * <p>Anti-corruption layer: el dominio sólo conoce {@link EmailNotificadorPort};
- * el payload, la cabecera {@code api-key} y las casuísticas de error viven
- * aquí. La clave NUNCA se escribe en un log ni en {@code ultimo_error}.</p>
+ * <p>Anti-corruption layer: los consumidores sólo conocen
+ * {@link EmailNotificadorPort}; el payload, la cabecera {@code api-key} y las
+ * casuísticas de error viven aquí. La clave NUNCA se escribe en un log ni en
+ * {@code ultimo_error}.</p>
  *
  * <p>Códigos de error: faltan credencial o el proveedor rechaza la petición
  * (4xx) → fallo <b>definitivo</b> (reintentar no lo arregla); 5xx o red →

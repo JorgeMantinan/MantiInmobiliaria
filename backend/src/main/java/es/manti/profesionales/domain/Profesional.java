@@ -12,6 +12,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
@@ -56,6 +57,17 @@ public class Profesional {
     @Enumerated(EnumType.STRING)
     @Column(name = "estado", nullable = false, length = 10)
     private EstadoProfesional estado;
+
+    /**
+     * Control optimista (issue #51): Hibernate añade {@code version = ?} al
+     * WHERE del UPDATE y si OTRA transacción modificó la fila entre la
+     * lectura y la escritura no afecta a ninguna fila y lanza
+     * {@code OptimisticLockingFailureException} (409 en el backoffice).
+     * Columna {@code version bigint NOT NULL DEFAULT 0} (migración V7).
+     */
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

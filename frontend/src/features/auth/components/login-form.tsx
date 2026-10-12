@@ -62,6 +62,15 @@ export function LoginForm() {
         required
       />
 
+      <p className="-mt-2 text-right text-sm">
+        <Link
+          href="/recuperar"
+          className="rounded-md text-acento-nogal underline underline-offset-4 outline-none focus:ring-2 focus:ring-acento-nogal"
+        >
+          ¿Olvidaste tu contraseña?
+        </Link>
+      </p>
+
       {error !== null ? (
         <p role="alert" aria-live="assertive" className={AVISO_ERROR}>
           {error}

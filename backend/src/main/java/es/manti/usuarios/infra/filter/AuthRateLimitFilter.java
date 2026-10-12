@@ -20,8 +20,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * Rate limiting básico en memoria por IP (sin dependencias externas) para los
  * POST sensibles: login/registro de usuarios (ventana de 60 s) y, desde la
  * FASE 5, solicitudes de servicio (10/hora) y registro de profesionales
- * (5/hora). Cada ruta lleva SU ventana, configurable con
- * {@code auth.rate-limit.*}.
+ * (5/hora); desde el issue #57, forgot de contraseña (5/hora) y reset (10/hora).
+ * Cada ruta lleva SU ventana, configurable con {@code auth.rate-limit.*}.
  *
  * <p>La respuesta 429 lleva la cabecera {@code Retry-After} con los segundos
  * que faltan para liberar la primera plaza de la ventana (redondeo al alza).</p>
@@ -99,6 +99,14 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
                     new Limite(rateLimit.solicitudesPerHour(), VENTANA_HORA_MS);
             case "/api/v1/profesionales/registro" ->
                     new Limite(rateLimit.registroProfesionalPerHour(), VENTANA_HORA_MS);
+            // issue #57 — reset de contraseña: además de la ventana de 15 min
+            // del token, la IP sólo puede pedir 5 enlaces/hora y canjear 10
+            // tokens/hora (evita agujerear el envío de emails y la fuerza
+            // bruta sobre los enlaces).
+            case "/api/v1/auth/password/forgot" ->
+                    new Limite(rateLimit.forgotPasswordPerHour(), VENTANA_HORA_MS);
+            case "/api/v1/auth/password/reset" ->
+                    new Limite(rateLimit.resetPasswordPerHour(), VENTANA_HORA_MS);
             default -> null;
         };
     }

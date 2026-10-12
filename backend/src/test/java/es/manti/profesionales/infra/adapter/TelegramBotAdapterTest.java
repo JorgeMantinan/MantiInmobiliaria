@@ -1,7 +1,7 @@
 package es.manti.profesionales.infra.adapter;
 
-import es.manti.profesionales.application.NotificacionesProperties;
-import es.manti.profesionales.domain.NotificacionException;
+import es.manti.shared.notificaciones.NotificacionesProperties;
+import es.manti.shared.notificaciones.NotificacionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;

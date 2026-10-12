@@ -7,6 +7,7 @@ import es.manti.usuarios.domain.CredencialesInvalidasException;
 import es.manti.usuarios.domain.CuentaGoogleConflictivaException;
 import es.manti.usuarios.domain.CuentaGoogleSinVerificarException;
 import es.manti.usuarios.domain.EmailYaRegistradoException;
+import es.manti.usuarios.domain.PasswordResetInvalidoException;
 import es.manti.usuarios.domain.TokenInvalidoException;
 import es.manti.usuarios.domain.UsuarioInactivoException;
 import es.manti.usuarios.domain.UsuarioNoEncontradoException;
@@ -67,5 +68,19 @@ public class UsuarioErrorAdvice {
     public ProblemDetail noEncontrado(UsuarioNoEncontradoException e, HttpServletRequest request) {
         return Problems.crear(HttpStatus.NOT_FOUND, "no-encontrado",
                 "No encontrado", e.getMessage(), request);
+    }
+
+    /**
+     * 400 (issue #57): token de restablecimiento inválido, caducado o ya
+     * canjeado. Handler propio aunque la excepción herede de
+     * {@link AuthException}: Spring elige el más específico, así que no cae
+     * en el 401 genérico de arriba. Un único código {@code token-invalido}
+     * para los tres casos — sin oráculo de tokens.
+     */
+    @ExceptionHandler(PasswordResetInvalidoException.class)
+    public ProblemDetail tokenResetInvalido(PasswordResetInvalidoException e,
+                                            HttpServletRequest request) {
+        return Problems.crear(HttpStatus.BAD_REQUEST, "token-invalido",
+                "Token inválido", e.getMessage(), request);
     }
 }

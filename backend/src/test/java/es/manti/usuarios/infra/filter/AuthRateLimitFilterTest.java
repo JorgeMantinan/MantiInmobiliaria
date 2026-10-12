@@ -21,7 +21,7 @@ class AuthRateLimitFilterTest {
     @Test
     void limiteCero_devuelve429ConRetryAfterSinNpe() throws Exception {
         AuthProperties properties = new AuthProperties(null, null, null,
-                new AuthProperties.RateLimit(0, 0, 0, 0));
+                new AuthProperties.RateLimit(0, 0, 0, 0, 0, 0));
         AuthRateLimitFilter filter = new AuthRateLimitFilter(properties);
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/auth/login");
         request.setRemoteAddr("10.0.0.1");

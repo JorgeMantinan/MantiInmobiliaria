@@ -2,7 +2,7 @@ package es.manti.profesionales;
 
 import com.jayway.jsonpath.JsonPath;
 import es.manti.profesionales.domain.ChatVisto;
-import es.manti.profesionales.domain.NotificacionException;
+import es.manti.shared.notificaciones.NotificacionException;
 import es.manti.profesionales.domain.TelegramDiagnosticoPort;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;

@@ -72,6 +72,68 @@ beforeEach(() => {
 });
 
 describe('useDeckSwipe', () => {
+  it('descarta_la_respuesta_obsoleta_de_una_recarga_lanzada_con_la_primera_carga_en_vuelo', async () => {
+    // Primera página que queda EN VUELO; la recarga posterior responde ya.
+    let resolverObsoleta!: (pagina: PaginaSwipes) => void;
+    let pedidas = 0;
+    vi.mocked(apiFetch).mockImplementation((ruta: string) => {
+      if (!ruta.startsWith('/api/v1/swipes/deck')) return Promise.reject(new Error('post inesperado'));
+      pedidas += 1;
+      if (pedidas === 1) {
+        return new Promise<PaginaSwipes>((resolver) => {
+          resolverObsoleta = resolver;
+        });
+      }
+      return Promise.resolve(pagina([vivienda(2, 'Piso Nuevo')], null));
+    });
+
+    const { result } = renderHook(() => useDeckSwipe(), ENVOLVENTE);
+    await waitFor(() => expect(pedidas).toBe(1));
+    expect(result.current.cargando).toBe(true);
+
+    // Reintento con la primera carga todavía en vuelo: nueva GENERACIÓN.
+    act(() => result.current.reintentar());
+    await waitFor(() => expect(idsDe(result.current.cartas)).toEqual([2]));
+    expect(result.current.cargando).toBe(false);
+
+    // La respuesta de la primera llega DESPUÉS: sin la guarda de generación
+    // pisaría el mazo nuevo y dejaría 'Obsoleto' como carta superior.
+    await act(async () => {
+      resolverObsoleta(pagina([vivienda(99, 'Obsoleto')], null));
+    });
+    expect(idsDe(result.current.cartas)).toEqual([2]);
+    expect(result.current.cargando).toBe(false);
+  });
+
+  it('tras_rollback_el_id_se_libera_en_finally_y_el_reintento_vuelve_a_postear', async () => {
+    let intentosDePost = 0;
+    vi.mocked(apiFetch).mockImplementation((ruta: string) => {
+      if (ruta.startsWith('/api/v1/swipes/deck')) {
+        return Promise.resolve(pagina([vivienda(1, 'Piso Uno')], null));
+      }
+      intentosDePost += 1;
+      // El primer POST falla (rollback); el segundo, del reintento, triunfa.
+      return intentosDePost === 1
+        ? Promise.reject(new Error('sin conexión'))
+        : Promise.resolve(undefined);
+    });
+
+    const { result } = renderHook(() => useDeckSwipe(), ENVOLVENTE);
+    await waitFor(() => expect(idsDe(result.current.cartas)).toEqual([1]));
+
+    act(() => result.current.decidir(1, 'LIKE'));
+    await waitFor(() => expect(result.current.errorDecision).toBe('sin conexión'));
+    expect(contarPosts()).toBe(1);
+    expect(idsDe(result.current.cartas)).toEqual([1]);
+
+    // El `finally` ha liberado el id de `enVuelo`: el reintento POSTEA otra
+    // vez; sin esa liberación la decisión quedaría bloqueada en silencio.
+    act(() => result.current.decidir(1, 'LIKE'));
+    await waitFor(() => expect(contarPosts()).toBe(2));
+    await waitFor(() => expect(idsDe(result.current.cartas)).toEqual([]));
+    expect(result.current.errorDecision).toBeNull();
+  });
+
   it('la_carta_reinsertada_por_un_post_fallido_no_se_pierde_con_la_pagina_siguiente', async () => {
     const viviendaA = vivienda(1, 'Piso A');
     // GET deck → [A] con cursor; GET deck?cursor → diferido (queda EN VUELO
@@ -131,7 +193,13 @@ describe('useDeckSwipe', () => {
     expect(contarPosts()).toBe(1);
 
     // Más adelante, con la carta 1 fuera del mazo, un llamado obsoleto con
-    // su id tampoco toca el estado ni repite el POST.
+    // su id tampoco toca el estado ni repite el POST. Se espera a que el POST
+    // termine (`finally` libera `enVuelo`) para que lo que frene esta llamada
+    // sea SÓLO la guarda de id: con el ref ya actualizado, decidir(1) apuntaría
+    // a la carta 2 y sin esa guarda la eliminaría sin su propio POST.
+    await act(async () => {
+      await new Promise((resolver) => setTimeout(resolver, 0));
+    });
     act(() => result.current.decidir(1, 'NOPE'));
     expect(idsDe(result.current.cartas)).toEqual([2]);
     expect(contarPosts()).toBe(1);

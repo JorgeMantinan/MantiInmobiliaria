@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { esApiError } from '@/lib/api';
+import { PrecioZona } from '@/features/mercado/components/precio-zona';
 import { obtenerInmueble } from '../api';
 import { direccionCompleta, ETIQUETAS_ESTADO, ETIQUETAS_TIPO, formatoPrecio } from '../formato';
 import { mensajeDeError, MENSAJES } from '../mensajes';
@@ -135,6 +136,8 @@ export function DetalleInmueble({ id }: Readonly<{ id: number }>) {
           <MapaDetalleWrapper lat={inmueble.lat} lng={inmueble.lng} titulo={inmueble.titulo} />
         </div>
       </section>
+
+      <PrecioZona codigoIne={inmueble.codigoIne} municipio={inmueble.municipio} />
 
       <div className="mt-8">
         <Link

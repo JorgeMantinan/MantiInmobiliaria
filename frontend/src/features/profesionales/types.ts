@@ -38,7 +38,8 @@ export type AltaCreada = Readonly<{ id: number; estado: 'PENDIENTE' }>;
  * `V4__profesionales.sql` (PR `feature/08-profesionales`), en el MISMO orden.
  * Sólo se usa si `GET /api/v1/gremios` falla o devuelve vacío, para que el
  * formulario siga siendo utilizable; `types.test.ts` fija este array con un
- * literal para que cualquier divergencia con el backend rompa el build.
+ * literal para que un cambio accidental aquí rompa el test. Ese test no lee
+ * la migración: la sincronía con el backend se revisa en el PR que la toca.
  */
 export const GREMIOS_DE_RESERVA: readonly Gremio[] = [
   { slug: 'fontanero', nombre: 'Fontanero' },
