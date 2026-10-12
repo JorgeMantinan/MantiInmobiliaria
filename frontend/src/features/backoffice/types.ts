@@ -1,8 +1,35 @@
 /**
- * Tipos del backoffice, derivados EXACTOS de los DTO Java del módulo
- * `profesionales`: `ProfesionalAdminResponse`, `ProfesionalEstadoResponse`
- * y `SolicitudAdminResponse`.
+ * Tipos del backoffice, derivados EXACTOS de los DTO Java de los módulos
+ * `profesionales` (`ProfesionalAdminResponse`, `ProfesionalEstadoResponse` y
+ * `SolicitudAdminResponse`) e `inmuebles` (`InmuebleRequest`).
  */
+import type { EstadoInmueble, TipoInmueble } from '@/features/inmuebles/types';
+
+/**
+ * `InmuebleRequest` del backend (POST/PUT de `/api/v1/admin/inmuebles`).
+ * Los opcionales vacíos se envían `null` (el DTO los admite); `destacado`
+ * siempre lleva valor porque el formulario expone el checkbox.
+ * NOTA: `codigoIne` NO viaja en el request (el backend lo rellena por
+ * backfill/importación del MIVAU, nunca lo acepta en la API de escritura).
+ */
+export type InmuebleEnvio = Readonly<{
+  titulo: string;
+  descripcion: string | null;
+  precio: number;
+  superficieM2: number | null;
+  habitaciones: number | null;
+  banios: number | null;
+  tipo: TipoInmueble;
+  estado: EstadoInmueble;
+  direccion: string;
+  codigoPostal: string | null;
+  municipio: string;
+  provincia: string;
+  lat: number;
+  lng: number;
+  imagenUrl: string | null;
+  destacado: boolean;
+}>;
 
 /** Estados del alta de un profesional (`EstadoProfesional` del backend). */
 export type EstadoProfesional = 'PENDIENTE' | 'ACTIVO' | 'RECHAZADO';
