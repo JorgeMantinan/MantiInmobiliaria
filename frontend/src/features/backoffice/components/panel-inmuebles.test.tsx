@@ -141,6 +141,21 @@ describe('PanelInmuebles — filtros', () => {
       { scroll: false },
     );
   });
+
+  it('al_cambiar_de_pestana_se_preservan_el_municipio_y_el_destacado_vigentes', async () => {
+    url.actual = 'municipio=Gij%C3%B3n&destacado=true';
+    vi.mocked(apiFetch).mockResolvedValue(pagina([]));
+    render(<PanelInmuebles />);
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledTimes(1));
+
+    await userEvent.click(screen.getByRole('button', { name: 'En alquiler' }));
+
+    // El cambio de pestaña sólo toca `estado`: municipio y destacado siguen.
+    expect(navegacion.replace).toHaveBeenCalledWith(
+      '/admin/inmuebles?estado=ALQUILER&municipio=Gij%C3%B3n&destacado=true',
+      { scroll: false },
+    );
+  });
 });
 
 describe('PanelInmuebles — borrado optimista', () => {
