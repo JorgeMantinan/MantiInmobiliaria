@@ -11,6 +11,7 @@ type SeccionAdmin = Readonly<{ href: string; etiqueta: string; exacto?: boolean 
 
 const SECCIONES: readonly SeccionAdmin[] = [
   { href: '/admin', etiqueta: 'Resumen', exacto: true },
+  { href: '/admin/inmuebles', etiqueta: 'Inmuebles' },
   { href: '/admin/profesionales', etiqueta: 'Profesionales' },
   { href: '/admin/solicitudes', etiqueta: 'Solicitudes' },
 ];

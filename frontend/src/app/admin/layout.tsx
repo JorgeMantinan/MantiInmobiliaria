@@ -3,7 +3,7 @@ import { GuardiaAdmin } from '@/features/backoffice/components/guardia-admin';
 
 export const metadata: Metadata = {
   title: 'Backoffice | MantiInmobiliaria',
-  description: 'Gestión de profesionales y solicitudes del portal.',
+  description: 'Gestión de inmuebles, profesionales y solicitudes del portal.',
   robots: { index: false, follow: false },
 };
 
