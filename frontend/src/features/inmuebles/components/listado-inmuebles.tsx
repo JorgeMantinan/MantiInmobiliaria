@@ -3,17 +3,21 @@
 import { Boton } from '@/components/ui/boton';
 import { useListadoInmuebles } from '../hooks/use-listado-inmuebles';
 import { BarraFiltros } from './barra-filtros';
+import { ConmutadorVista } from './conmutador-vista';
 import { ListadoCargando, ListadoError, ListadoVacio } from './estados-listado';
 import { TarjetaInmueble } from './tarjeta-inmueble';
+import { VistaMapa } from './vista-mapa';
 
 /**
- * Listado público: pinta los estados (carga / error / vacío / resultados) y
- * delega los datos y la sincronización con la URL en `useListadoInmuebles`.
+ * Listado público: pinta los estados (carga / error / vacío / resultados),
+ * alterna entre vista Lista y vista Mapa (misma carga del hook) y delega los
+ * datos y la sincronización con la URL en `useListadoInmuebles`.
  */
 export function ListadoInmuebles() {
   const {
     filtros,
     consulta,
+    vista,
     cargando,
     inmuebles,
     total,
@@ -25,6 +29,7 @@ export function ListadoInmuebles() {
     limpiar,
     reintentar,
     cargarMas,
+    cambiarVista,
   } = useListadoInmuebles();
 
   return (
@@ -41,24 +46,38 @@ export function ListadoInmuebles() {
       <BarraFiltros key={consulta} filtros={filtros} onAplicar={aplicar} onLimpiar={limpiar} />
 
       <div className="mt-6">
+        <ConmutadorVista vista={vista} onCambiar={cambiarVista} />
+
         {cargando ? (
-          <ListadoCargando />
+          <div className="mt-4">
+            <ListadoCargando />
+          </div>
         ) : error !== null ? (
-          <ListadoError mensaje={error} onReintentar={reintentar} />
+          <div className="mt-4">
+            <ListadoError mensaje={error} onReintentar={reintentar} />
+          </div>
         ) : inmuebles.length === 0 ? (
-          <ListadoVacio onLimpiar={limpiar} />
+          <div className="mt-4">
+            <ListadoVacio onLimpiar={limpiar} />
+          </div>
         ) : (
-          <>
-            <p role="status" className="text-sm text-texto-suave">
-              Mostrando {inmuebles.length} de {total} inmuebles
-            </p>
-            <ul className="mt-4 grid list-none gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {inmuebles.map((inmueble) => (
-                <li key={inmueble.id} className="h-full">
-                  <TarjetaInmueble inmueble={inmueble} />
-                </li>
-              ))}
-            </ul>
+          <div className="mt-4">
+            {vista === 'mapa' ? (
+              <VistaMapa inmuebles={inmuebles} />
+            ) : (
+              <>
+                <p role="status" className="text-sm text-texto-suave">
+                  Mostrando {inmuebles.length} de {total} inmuebles
+                </p>
+                <ul className="mt-4 grid list-none gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {inmuebles.map((inmueble) => (
+                    <li key={inmueble.id} className="h-full">
+                      <TarjetaInmueble inmueble={inmueble} />
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
             {errorMas !== null ? (
               <p role="alert" className="mt-4 text-center text-sm text-acento-hover">
                 {errorMas}
@@ -71,7 +90,7 @@ export function ListadoInmuebles() {
                 </Boton>
               </div>
             ) : null}
-          </>
+          </div>
         )}
       </div>
     </section>
