@@ -83,3 +83,22 @@ Skills en `.opencode/skills/<nombre>/SKILL.md`: `dto`, `docker`, `microservicios
 - No commitear: `.env`, `backend/target/`, `node_modules/`, `.next/`, credenciales.
 - No usar WebFlux, JWT en localStorage, CORS `*`, `ddl-auto: update/create` en ningún perfil.
 - No romper compatibilidad de la API sin subir a `/api/v2`.
+## E2E (Playwright)
+
+Smoke del portal con navegador real (chromium) contra backend + seed dev. NO hay `webServer` en `frontend/playwright.config.ts`: los servidores se levantan fuera.
+
+```bash
+# 1. Backend dev con seed (el CORS debe incluir el origen del frontend en :3010;
+#    el .env de la raiz solo trae :3000, hay que ampliarlo)
+set ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3010
+cd backend && ./mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"
+
+# 2. Frontend de produccion
+cd frontend && npm ci && NEXT_PUBLIC_API_URL=http://localhost:8080 npm run build
+npx next start -p 3010
+
+# 3. Smoke (en otra terminal)
+cd frontend && E2E_BASE_URL=http://localhost:3010 npm run test:e2e
+```
+
+En CI el job `e2e` de `.github/workflows/ci.yml` hace todo esto solo (postgres service + jar dev + `next start` + chromium). Tests en `frontend/e2e/`; van contra datos del seed dev (35 inmuebles), sin datos frágiles.
