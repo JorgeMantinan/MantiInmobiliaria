@@ -62,17 +62,24 @@ test('swipe anonimo pide sesion sin llamar al deck', async ({ page }) => {
 
   await page.goto('/swipe');
 
-  // El CTA vive en su propia region; el header tambien enlaza a /login, por
-  // eso se acota al bloque del CTA y no al link del header.
-  const cta = page.getByRole('region').filter({
-    has: page.getByRole('heading', { name: 'Inicia sesión para guardar tus favoritos' }),
-  });
+  // El CTA se localiza por su heading (no por region/aria-label, que un cambio
+  // de nombre futuro podria "robar"): el parent directo del h2 es la section.
+  const cta = page
+    .getByRole('heading', { name: 'Inicia sesión para guardar tus favoritos' })
+    .locator('..');
   await expect(cta).toBeVisible();
   const ctaLogin = cta.getByRole('link', { name: 'Iniciar sesión' });
   await expect(ctaLogin).toBeVisible();
   await expect(ctaLogin).toHaveAttribute('href', '/login');
   // Sin cartas en pantalla y sin red al deck.
   await expect(page.locator(TARJETAS)).toHaveCount(0);
+  // Margen para que cualquier llamada tardia al deck se registre en la lista.
+  // Equivalente robusto a waitForLoadState('networkidle'): en esta pagina el
+  // POST /auth/refresh del restore de sesion anonima deja la conexion
+  // keep-alive abierta y Playwright no declara networkidle (medido: timeout
+  // incluso con la respuesta 401 ya recibida a los 75 ms). Con catch, si
+  // networkidle estuviera disponible se espera; si no, no bloquea el test.
+  await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => undefined);
   expect(llamadasAlDeck).toHaveLength(0);
 });
 
@@ -89,23 +96,23 @@ test('login muestra el formulario y el enlace de recuperacion', async ({ page })
   await expect(olvide).toHaveAttribute('href', '/recuperar');
 });
 
-test('home carga sin errores de consola', async ({ page }) => {
+test('home carga sin respuestas fallidas de la API local', async ({ page }) => {
   const erroresDeConsola: string[] = [];
-  page.on('console', (mensaje) => {
-    if (mensaje.type() !== 'error') return;
-    const url = mensaje.location().url;
-    // Favicon ausente: ruido conocido e inocuo.
-    if (/favicon/i.test(url) || /favicon/i.test(mensaje.text())) return;
-    // El restore de sesion anonima al montar (session.tsx) llama a
-    // /auth/refresh sin cookie y el backend responde 401: la app lo maneja
-    // (sigue anonima) y el navegador lo loguea como fallo de recurso.
-    if (/\/api\/v1\/auth\/refresh/.test(url)) return;
-    // Recursos de terceros (tiles OSM, fotos picsum): si caen es problema del
-    // proveedor, no del portal. Los fallos de la API local (localhost) sí se
-    // registran: un 404/CORS en /api/v1 es exactamente lo que este smoke caza.
-    if (url.startsWith('http') && !/localhost/.test(url)) return;
-    erroresDeConsola.push(url !== '' ? `${mensaje.text()} (${url})` : mensaje.text());
+
+  // Listener STATUS-AWARE sobre respuestas (revisión PR #77): no se scrapea
+  // la consola del navegador, se auditan las respuestas reales de la API
+  // local. Cualquier 4xx/5xx en localhost ROMPE el test salvo el UNICO caso
+  // tolerado: el 401 del refresh de una sesion anonima al montar (session.tsx
+  // llama a /auth/refresh sin cookie; la app lo maneja y sigue anonima).
+  // Un 500/403/404 en ese mismo endpoint sí falla: el status manda, no la URL.
+  page.on('response', (respuesta) => {
+    const url = respuesta.url();
+    if (!url.startsWith('http://localhost')) return;
+    if (respuesta.status() < 400) return;
+    if (respuesta.status() === 401 && url.includes('/api/v1/auth/refresh')) return;
+    erroresDeConsola.push(`${respuesta.status()} ${url}`);
   });
+  // Errores JS no capturados de la app siguen vigilados aparte.
   page.on('pageerror', (causa) => erroresDeConsola.push(String(causa)));
 
   await page.goto('/');

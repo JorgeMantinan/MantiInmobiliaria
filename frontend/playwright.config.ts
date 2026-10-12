@@ -4,7 +4,7 @@ import { defineConfig, devices } from '@playwright/test';
  * Config E2E del portal (issue #74). NO hay `webServer`: los servidores se
  * levantan fuera de Playwright (local o job `e2e` de CI) porque el smoke
  * necesita el backend Java real (:8080, perfil dev con seed) además del
- * frontend. Ver cómo ejecutarlo en el README del PR.
+ * frontend. Cómo ejecutarlo: ver AGENTS.md -> E2E.
  *
  * - `E2E_BASE_URL` apunta al `next start` bajo prueba (default :3010).
  * - Sólo chromium: el smoke es de regresión del portal, no matriz de browsers.
