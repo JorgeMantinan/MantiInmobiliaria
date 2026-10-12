@@ -5,7 +5,13 @@
  * y para la query que se manda a `GET /api/v1/inmuebles`, así el navegador y
  * la API ven exactamente lo mismo.
  */
-import type { EstadoInmueble, FiltrosInmuebles, OrdenPrecio, TipoInmueble } from "./types";
+import type {
+  EstadoInmueble,
+  FiltrosInmuebles,
+  OrdenPrecio,
+  TipoInmueble,
+  VistaListado,
+} from "./types";
 
 /** Tamaño de página por defecto que usa el cliente (el backend admite 1..50). */
 export const LIMITE_PAGINA = 20;
@@ -155,4 +161,24 @@ export function leerFiltros(params: Parametros): FiltrosInmuebles {
   }
 
   return filtros;
+}
+
+/**
+ * Vista del listado leída de la URL (`?vista=mapa`). Cualquier valor distinto
+ * de `mapa` cae a `lista`: el enlace siempre es válido y compartible.
+ */
+export function leerVista(params: Parametros): VistaListado {
+  return params.get("vista") === "mapa" ? "mapa" : "lista";
+}
+
+/**
+ * Query de navegación del listado: los filtros serializados MÁS la vista, que
+ * así se conserva al aplicar o limpiar filtros. La vista NO viaja a la query
+ * del backend (`construirQueryInmuebles` la ignora), sólo vive en la URL.
+ */
+export function queryListado(filtros: FiltrosInmuebles, vista: VistaListado): string {
+  const params = new URLSearchParams(construirQueryInmuebles(filtros).replace(/^\?/, ""));
+  if (vista === "mapa") params.set("vista", "mapa");
+  const query = params.toString();
+  return query.length === 0 ? "" : `?${query}`;
 }

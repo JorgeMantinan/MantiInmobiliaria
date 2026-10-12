@@ -73,6 +73,13 @@ export type PaginaInmuebles = Readonly<{
 }>;
 
 /**
+ * Vista del listado público: tarjetas (`lista`) o mapa con un marcador por
+ * inmueble cargado. Viaja en la URL (`?vista=mapa`) para que el enlace sea
+ * compartible; NO es un filtro, no se envía al backend.
+ */
+export type VistaListado = "lista" | "mapa";
+
+/**
  * Filtros del listado público. Los numéricos viajan como texto porque
  * llegan de la URL y sólo se serializan a la query.
  */

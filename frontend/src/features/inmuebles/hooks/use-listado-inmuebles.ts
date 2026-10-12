@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { listarInmuebles } from '../api';
-import { construirQueryInmuebles, leerFiltros } from '../filtros';
+import { leerFiltros, leerVista, queryListado } from '../filtros';
 import { mensajeDeError, MENSAJES } from '../mensajes';
-import type { FiltrosInmuebles, InmuebleResumen } from '../types';
+import type { FiltrosInmuebles, InmuebleResumen, VistaListado } from '../types';
 
 /** Resultado de una primera-carga: se descarta si ya no son esos filtros. */
 type ResultadoBusqueda = Readonly<{
@@ -22,8 +22,13 @@ type ResultadoBusqueda = Readonly<{
 /** Estado de la lista: mientras `cargando` no haya resultado de ESTOS filtros. */
 export type ListadoEstado = Readonly<{
   filtros: FiltrosInmuebles;
-  /** Query exacta de la URL; sirve de `key` para reiniciar el formulario. */
+  /**
+   * Query de la URL SIN `vista`: sirve de `key` para reiniciar el formulario
+   * y de dependencia de la búsqueda (alternar Lista/Mapa no debe refetchear).
+   */
   consulta: string;
+  /** Vista activa (`?vista=mapa`); sólo cambia la presentación, no los datos. */
+  vista: VistaListado;
   cargando: boolean;
   inmuebles: readonly InmuebleResumen[];
   total: number;
@@ -39,6 +44,8 @@ export type ListadoAcciones = Readonly<{
   limpiar: () => void;
   reintentar: () => void;
   cargarMas: () => void;
+  /** Alterna Lista/Mapa escribiendo `?vista=mapa` (compartible) en la URL. */
+  cambiarVista: (vista: VistaListado) => void;
 }>;
 
 function resultadoConPagina(
@@ -80,15 +87,24 @@ function idsDe(resultado: ResultadoBusqueda): ReadonlySet<number> {
 
 /**
  * Listado público: filtros sincronizados con la URL (`router.replace` +
- * `searchParams`), paginación por cursor que va acumulando y estados de
- * carga / error / vacío. Toda la lógica de datos vive aquí; la vista sólo
- * pinta y llama a las acciones.
+ * `searchParams`), paginación por cursor que va acumulando, vista Lista/Mapa
+ * (`?vista=mapa`) y estados de carga / error / vacío. Toda la lógica de datos
+ * vive aquí; la vista sólo pinta y llama a las acciones.
  */
 export function useListadoInmuebles(): ListadoEstado & ListadoAcciones {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const consulta = searchParams.toString();
+  /**
+   * La búsqueda depende SOLO de los filtros: `vista` cambia la presentación,
+   * no los datos, y no debe disparar un nuevo fetch al alternar Lista/Mapa.
+   */
+  const consulta = useMemo(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('vista');
+    return params.toString();
+  }, [searchParams]);
   const filtros = useMemo(() => leerFiltros(new URLSearchParams(consulta)), [consulta]);
+  const vista = useMemo(() => leerVista(searchParams), [searchParams]);
 
   const [resultado, setResultado] = useState<ResultadoBusqueda | null>(null);
   const [cargandoMas, setCargandoMas] = useState(false);
@@ -128,14 +144,26 @@ export function useListadoInmuebles(): ListadoEstado & ListadoAcciones {
 
   const aplicar = useCallback(
     (nuevos: FiltrosInmuebles) => {
-      router.replace(`/inmuebles${construirQueryInmuebles(nuevos)}`, { scroll: false });
+      // La vista se conserva: aplicar un filtro desde el mapa no debe expulsar
+      // al usuario de la vista que ha elegido.
+      router.replace(`/inmuebles${queryListado(nuevos, vista)}`, { scroll: false });
     },
-    [router],
+    [router, vista],
   );
 
   const limpiar = useCallback(() => {
-    router.replace('/inmuebles', { scroll: false });
-  }, [router]);
+    router.replace(`/inmuebles${queryListado({}, vista)}`, { scroll: false });
+  }, [router, vista]);
+
+  const cambiarVista = useCallback(
+    (nueva: VistaListado) => {
+      if (nueva === vista) return;
+      // Mismos filtros, otra presentación: al ser la query de filtros idéntica
+      // el hook no re-busca (el mapa deriva de `inmuebles` ya cargados).
+      router.replace(`/inmuebles${queryListado(filtros, nueva)}`, { scroll: false });
+    },
+    [router, filtros, vista],
+  );
 
   const reintentar = useCallback(() => {
     // Invalida cualquier carga en vuelo (un reintento anterior o la primera
@@ -187,6 +215,7 @@ export function useListadoInmuebles(): ListadoEstado & ListadoAcciones {
   return {
     filtros,
     consulta,
+    vista,
     cargando: paginaActual === null,
     inmuebles: paginaActual?.inmuebles ?? [],
     total: paginaActual?.total ?? 0,
@@ -198,5 +227,6 @@ export function useListadoInmuebles(): ListadoEstado & ListadoAcciones {
     limpiar,
     reintentar,
     cargarMas,
+    cambiarVista,
   };
 }
