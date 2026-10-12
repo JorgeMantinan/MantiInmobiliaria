@@ -36,12 +36,24 @@ const DETALLE: InmuebleDetalle = {
   codigoPostal: '28013',
   municipio: 'Madrid',
   provincia: 'Madrid',
+  // Sin código INE: la sección de precios de zona no consulta el API de mercado.
+  codigoIne: null,
   lat: 40.4168,
   lng: -3.7038,
   imagenUrl: 'https://picsum.photos/seed/inm7/800/600',
   destacado: true,
   createdAt: '2026-01-01T10:00:00Z',
   updatedAt: '2026-01-02T10:00:00Z',
+};
+
+const DETALLE_CON_CODIGO_INE: InmuebleDetalle = { ...DETALLE, codigoIne: '28079' };
+
+const PRECIOS_ZONA = {
+  codigoINE: '28079',
+  anio: 2024,
+  alquiler: { rentaMedianaEurM2Mes: 13.16, cuantiaMedianaEurMes: 868.8 },
+  venta: null,
+  fuente: 'Ministerio de Vivienda y Agenda Urbana',
 };
 
 beforeEach(() => {
@@ -108,5 +120,24 @@ describe('DetalleInmueble', () => {
       'Inmueble no encontrado',
     );
     expect(screen.queryByTestId('mapa-detalle')).not.toBeInTheDocument();
+  });
+
+  it('con_codigoIne_consulta_los_precios_de_zona_y_los_pinta', async () => {
+    vi.mocked(apiFetch).mockImplementation(async (ruta: string) => {
+      if (ruta.startsWith('/api/v1/mercado')) {
+        return PRECIOS_ZONA as never;
+      }
+      return DETALLE_CON_CODIGO_INE as never;
+    });
+
+    render(<DetalleInmueble id={7} />);
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Precio medio en la zona' }),
+    ).toBeInTheDocument();
+    // El texto está troceado: el municipio va en su propio <span>.
+    expect(screen.getByText(/Alquiler medio en/)).toHaveTextContent('Madrid');
+    expect(screen.getByText(/Fuente: Ministerio de Vivienda y Agenda Urbana/)).toBeInTheDocument();
+    expect(apiFetch).toHaveBeenCalledWith('/api/v1/mercado?codigoINE=28079');
   });
 });

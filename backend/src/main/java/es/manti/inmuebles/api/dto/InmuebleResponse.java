@@ -49,6 +49,10 @@ public record InmuebleResponse(
         @Schema(description = "Provincia", example = "Madrid")
         String provincia,
 
+        @Schema(description = "Código INE de 5 dígitos del municipio; null si no está catalogado "
+                + "(se usa para los precios oficiales del MIVAU)", example = "28079")
+        String codigoIne,
+
         @Schema(description = "Latitud WGS84", example = "40.4168")
         double lat,
 

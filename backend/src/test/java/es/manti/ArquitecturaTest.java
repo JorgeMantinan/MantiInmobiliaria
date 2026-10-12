@@ -237,4 +237,47 @@ class ArquitecturaTest {
                         "es.manti.swipes.infra..")
                 .check(CLASES);
     }
+
+    // ------------------------------------------------------------------
+    // issue #12 — módulo mercado (precios oficiales del MIVAU)
+    // ------------------------------------------------------------------
+
+    /**
+     * El módulo mercado es AUTÓNOMO: sólo su interior y {@code shared}. En
+     * particular NO lee la entidad {@code Inmueble} — el enlace con el municipio
+     * es el código INE que la ficha ya trae en su response.
+     */
+    @Test
+    void mercadoNoDependeDelInteriorDeNingunOtroModulo() {
+        noClasses().that().resideInAnyPackage(
+                        "es.manti.mercado.api..",
+                        "es.manti.mercado.domain..",
+                        "es.manti.mercado.application..",
+                        "es.manti.mercado.infra..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "es.manti.inmuebles.domain..", "es.manti.inmuebles.application..",
+                        "es.manti.inmuebles.infra..",
+                        "es.manti.usuarios.domain..", "es.manti.usuarios.application..",
+                        "es.manti.usuarios.infra..",
+                        "es.manti.swipes.domain..", "es.manti.swipes.application..",
+                        "es.manti.swipes.infra..",
+                        "es.manti.profesionales.domain..", "es.manti.profesionales.application..",
+                        "es.manti.profesionales.infra..")
+                .check(CLASES);
+    }
+
+    @Test
+    void laApiDeMercadoNoDependeDeSuInfraestructura() {
+        noClasses().that().resideInAPackage("es.manti.mercado.api..")
+                .should().dependOnClassesThat().resideInAPackage("es.manti.mercado.infra..")
+                .check(CLASES);
+    }
+
+    @Test
+    void laAplicacionDeMercadoNoDependeDeApiNiInfra() {
+        noClasses().that().resideInAPackage("es.manti.mercado.application..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "es.manti.mercado.api..", "es.manti.mercado.infra..")
+                .check(CLASES);
+    }
 }

@@ -11,7 +11,9 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -73,6 +75,20 @@ public class Inmueble {
 
     @Column(name = "provincia", nullable = false, columnDefinition = "text")
     private String provincia;
+
+    /**
+     * Código INE de 5 dígitos del municipio (migración V11): enlace con los
+     * precios oficiales del MIVAU. {@code null} cuando no está catalogado —
+     * la ficha omite entonces la sección de precios de zona. Sólo se rellena
+     * por backfill/consulta externa: los requests de la API no lo traen.
+     *
+     * <p>{@code @JdbcTypeCode(SqlTypes.CHAR)} alinea el tipo esperado por
+     * Hibernate con el {@code char(5)} de la migración: sin él el validador
+     * del esquema esperaría {@code varchar(5)} y fallaría en cada arranque.</p>
+     */
+    @Column(name = "codigo_ine", length = 5)
+    @JdbcTypeCode(SqlTypes.CHAR)
+    private String codigoIne;
 
     @Column(name = "lat", nullable = false, columnDefinition = "double precision")
     private double lat;
