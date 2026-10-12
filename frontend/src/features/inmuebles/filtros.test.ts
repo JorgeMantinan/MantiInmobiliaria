@@ -3,7 +3,9 @@ import {
   construirQueryInmuebles,
   HABITACIONES_MAX,
   leerFiltros,
+  leerVista,
   PRECIO_MAXIMO_CONSULTA,
+  queryListado,
   rangoPrecioInconsistente,
 } from '@/features/inmuebles/filtros';
 
@@ -77,5 +79,29 @@ describe('rangoPrecioInconsistente', () => {
     expect(rangoPrecioInconsistente(params('precioMin=100&precioMax=100'))).toBe(false);
     expect(rangoPrecioInconsistente(params('precioMin=100'))).toBe(false);
     expect(rangoPrecioInconsistente(params('precioMin=abc&precioMax=100'))).toBe(false);
+  });
+});
+
+describe('leerVista', () => {
+  it('lee_mapa_como_vista_y_cualquier_otro_valor_cae_a_lista', () => {
+    expect(leerVista(params('vista=mapa'))).toBe('mapa');
+    expect(leerVista(params('vista=MAPA'))).toBe('lista');
+    expect(leerVista(params('vista='))).toBe('lista');
+    expect(leerVista(params('tipo=CASA'))).toBe('lista');
+  });
+});
+
+describe('queryListado', () => {
+  it('conserva_vista_mapa_detras_de_los_filtros', () => {
+    expect(queryListado({ estado: 'VENTA', municipio: 'Madrid' }, 'mapa')).toBe(
+      '?estado=VENTA&municipio=Madrid&vista=mapa',
+    );
+  });
+
+  it('omite_vista_en_lista_y_no_envia_vista_al_backend', () => {
+    expect(queryListado({ tipo: 'CASA' }, 'lista')).toBe('?tipo=CASA');
+    expect(queryListado({}, 'lista')).toBe('');
+    // La query del backend jamás lleva `vista`: es sólo un estado de UI.
+    expect(construirQueryInmuebles({ tipo: 'CASA' })).not.toContain('vista');
   });
 });
