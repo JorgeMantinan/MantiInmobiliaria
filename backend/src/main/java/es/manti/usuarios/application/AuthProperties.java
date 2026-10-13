@@ -34,7 +34,8 @@ public record AuthProperties(
 
     public record RateLimit(int loginPerMinute, int registerPerMinute,
                             int solicitudesPerHour, int registroProfesionalPerHour,
-                            int forgotPasswordPerHour, int resetPasswordPerHour) {
+                            int forgotPasswordPerHour, int resetPasswordPerHour,
+                            int alertasPerMinute) {
     }
 
     /** Falla al arrancar si el SameSite es inválido o incoherente con Secure. */

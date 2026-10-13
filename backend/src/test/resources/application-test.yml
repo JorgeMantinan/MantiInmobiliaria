@@ -49,6 +49,7 @@ auth:
     registro-profesional-per-hour: 100000
     forgot-password-per-hour: 100000
     reset-password-per-hour: 100000
+    alertas-per-minute: 100000
   password-reset:
     # Revisión del PR #64: en test el envío del enlace va EN LÍNEA para que
     # los tests puedan verificar el puerto con un mock sin carreras de hilos.
