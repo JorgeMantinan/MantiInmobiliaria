@@ -30,6 +30,7 @@ public class BusquedaInmuebleService {
     static final int LIMITE_MAXIMO = 50;
 
     private final InmuebleRepository repository;
+    private final ConteoInmueblesCache conteoCache;
 
     /**
      * Página del listado público. Orden por defecto {@code created_at DESC, id DESC};
@@ -62,7 +63,10 @@ public class BusquedaInmuebleService {
         String cursorSiguiente = hayMasPaginas
                 ? codificarCursor(orden, contenido.get(contenido.size() - 1))
                 : null;
-        Long totalElements = cursor == null ? repository.contar(filtros) : null;
+        // El total sólo se pide en la primera página y pasa por la caché
+        // Caffeine (issue #27): misma clave de filtros = COUNT una sola vez
+        // hasta TTL o escritura de inmueble; el contrato no cambia.
+        Long totalElements = cursor == null ? conteoCache.contar(filtros) : null;
         log.debug("Listado de inmuebles: {} filas, orden {}, hayMas={}",
                 contenido.size(), orden, hayMasPaginas);
         return new ListadoInmuebles(contenido, cursorSiguiente, totalElements);

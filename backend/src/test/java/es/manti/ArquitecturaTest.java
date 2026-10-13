@@ -280,4 +280,35 @@ class ArquitecturaTest {
                         "es.manti.mercado.api..", "es.manti.mercado.infra..")
                 .check(CLASES);
     }
+
+    // ------------------------------------------------------------------
+    // issue #96 — alertas de búsqueda (dentro del módulo inmuebles)
+    // ------------------------------------------------------------------
+
+    /**
+     * El módulo inmuebles (TODAS sus capas) sólo depende de lo suyo y de
+     * {@code shared}: ni una clase del interior de los demás módulos.
+     *
+     * <p>Nació con las alertas (issue #96): sus avisos se encolan escribiendo
+     * la tabla {@code notificaciones_outbox} con SQL NATIVO (esquema
+     * compartido, como swipes con {@code inmuebles}) y el email del usuario se
+     * lee igual — pero jamás se importa una clase de {@code profesionales} ni
+     * de {@code usuarios}. La regla impide que esa tentación vuelva.</p>
+     */
+    @Test
+    void inmueblesNoDependeDelInteriorDeNingunOtroModulo() {
+        noClasses().that().resideInAnyPackage(
+                        "es.manti.inmuebles.api..", "es.manti.inmuebles.domain..",
+                        "es.manti.inmuebles.application..", "es.manti.inmuebles.infra..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "es.manti.usuarios.domain..", "es.manti.usuarios.application..",
+                        "es.manti.usuarios.infra..",
+                        "es.manti.swipes.domain..", "es.manti.swipes.application..",
+                        "es.manti.swipes.infra..",
+                        "es.manti.profesionales.domain..", "es.manti.profesionales.application..",
+                        "es.manti.profesionales.infra..",
+                        "es.manti.mercado.domain..", "es.manti.mercado.application..",
+                        "es.manti.mercado.infra..")
+                .check(CLASES);
+    }
 }

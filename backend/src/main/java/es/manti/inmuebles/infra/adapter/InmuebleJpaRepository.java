@@ -187,6 +187,40 @@ public interface InmuebleJpaRepository extends JpaRepository<Inmueble, Long> {
             @Param("habitacionesMin") Short habitacionesMin,
             @Param("destacado") Boolean destacado);
 
+    // ------------------------------------------------------------------
+    // issue #96 — alertas de búsqueda
+    // ------------------------------------------------------------------
+
+    /**
+     * Sólo lo nuevo desde la marca de agua de una alerta: predicado de
+     * igualdad/rango sobre la PK ({@code i.id > :desdeId}) + {@code LIMIT},
+     * recorrido ASCENDENTE por el índice primario — el plan corta en la primera
+     * fila que cumple el límite, sin Sort y sin OFFSET (skill
+     * consultas-eficientes).
+     */
+    @Query(RESUMEN + FILTROS + """
+            AND i.id > :desdeId
+            ORDER BY i.id ASC
+            """)
+    List<InmuebleResumen> listarNuevosDesde(
+            @Param("estado") EstadoInmueble estado,
+            @Param("tipo") TipoInmueble tipo,
+            @Param("municipioPatron") String municipioPatron,
+            @Param("precioMin") BigDecimal precioMin,
+            @Param("precioMax") BigDecimal precioMax,
+            @Param("habitacionesMin") Short habitacionesMin,
+            @Param("destacado") Boolean destacado,
+            @Param("desdeId") Long desdeId,
+            Pageable pageable);
+
+    /**
+     * Mayor id del catálogo para inicializar la marca de agua de una alerta
+     * nueva. Incluye los soft-delete: los ids son monotinos, así que basta con
+     * conocer el mayor haya estado vigente o no.
+     */
+    @Query("SELECT COALESCE(MAX(i.id), 0) FROM Inmueble i")
+    long maximoId();
+
     /** Detalle público: sólo anuncios vigentes. */
     Optional<Inmueble> findByIdAndEliminadoEnIsNull(Long id);
 }

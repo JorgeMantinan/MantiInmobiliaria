@@ -74,6 +74,21 @@ public class InmuebleRepositoryAdapter implements InmuebleRepository {
     }
 
     @Override
+    public List<InmuebleResumen> listarNuevosDesde(InmuebleFiltros filtros, Long desdeId, int limite) {
+        // Mismo patrón que listar(): page 0 + límite, el rango va DENTRO de la
+        // query y la Pageable sólo aporta el LIMIT (jamás un OFFSET).
+        return jpaRepository.listarNuevosDesde(
+                filtros.estado(), filtros.tipo(), filtros.municipioPatron(),
+                filtros.precioMin(), filtros.precioMax(), filtros.habitacionesMin(),
+                filtros.destacado(), desdeId, PageRequest.of(0, limite));
+    }
+
+    @Override
+    public long maximoId() {
+        return jpaRepository.maximoId();
+    }
+
+    @Override
     public Optional<Inmueble> porId(Long id) {
         return jpaRepository.findByIdAndEliminadoEnIsNull(id);
     }
