@@ -14,7 +14,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(apiFetch).mockResolvedValue([]);
+  vi.mocked(apiFetch).mockResolvedValue({ content: [], totalElements: 0 });
 });
 
 describe('api de alertas', () => {
@@ -22,6 +22,26 @@ describe('api de alertas', () => {
     await listarAlertas();
 
     expect(apiFetch).toHaveBeenCalledWith('/api/v1/alertas');
+  });
+
+  it('listar_devuelveElEnvelopeDeLaApi', async () => {
+    const pagina = {
+      content: [
+        {
+          id: 1,
+          nombre: 'Pisos Madrid',
+          filtros: { estado: 'VENTA' as const },
+          activa: true,
+          ultimoAvisoEn: null,
+          creadoEn: '2026-10-01T10:00:00Z',
+          actualizadoEn: '2026-10-01T10:00:00Z',
+        },
+      ],
+      totalElements: 1,
+    };
+    vi.mocked(apiFetch).mockResolvedValue(pagina);
+
+    await expect(listarAlertas()).resolves.toEqual(pagina);
   });
 
   it('crear_posteaElNombreYLosFiltrosTalCual', async () => {

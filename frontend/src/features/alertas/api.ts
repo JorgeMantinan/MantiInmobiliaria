@@ -6,7 +6,7 @@
  * usuario es anónimo y traduce un 401 a la CTA de login.
  */
 import { apiFetch } from '@/lib/api';
-import type { AlertaBusqueda, AlertaCambios, FiltrosAlerta } from './types';
+import type { AlertaBusqueda, AlertaCambios, AlertaPage, FiltrosAlerta } from './types';
 
 /**
  * Valida el id antes de interpolarlo en una ruta (defensa en profundidad:
@@ -18,9 +18,12 @@ function validarId(id: number): void {
   }
 }
 
-/** `GET /api/v1/alertas` — alertas del usuario (array, vacío si no tiene). */
-export async function listarAlertas(): Promise<readonly AlertaBusqueda[]> {
-  return apiFetch<readonly AlertaBusqueda[]>('/api/v1/alertas');
+/**
+ * `GET /api/v1/alertas` — envelope del listado (content + totalElements);
+ * vacío si el usuario no tiene ninguna.
+ */
+export async function listarAlertas(): Promise<AlertaPage> {
+  return apiFetch<AlertaPage>('/api/v1/alertas');
 }
 
 /** `POST /api/v1/alertas` — crea una alerta con los filtros del listado. */

@@ -50,7 +50,9 @@ export function useAlertas(): EstadoAlertas & AccionesAlertas {
     setError(null);
     setErrorAccion(null);
     try {
-      setAlertas(await listarAlertas());
+      // Envelope AlertaPage (follow-up #98): el listado vive en `content`.
+      const pagina = await listarAlertas();
+      setAlertas(pagina.content);
     } catch (fallo: unknown) {
       if (esSinSesion(fallo)) {
         setSesionPerdida(true);
