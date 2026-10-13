@@ -116,6 +116,14 @@
 			<artifactId>lombok-mapstruct-binding</artifactId>
 			<version>0.2.0</version>
 		</dependency>
+		<!-- Caché Caffeine del COUNT totalElements del listado público de
+		     inmuebles (issue #27): TTL corto + maximumSize acotado, con evicción
+		     explícita tras el commit de cada escritura de inmuebles
+		     (ConteoInmueblesCache). Versión gestionada por el BOM de Spring Boot. -->
+		<dependency>
+			<groupId>com.github.ben-manes.caffeine</groupId>
+			<artifactId>caffeine</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator-test</artifactId>
@@ -273,6 +281,18 @@
 						</configuration>
 					</execution>
 				</executions>
+			</plugin>
+			<!-- Red de seguridad del issue #28: toda la suite arranca con el
+			     perfil test activo aunque una clase futura olvide
+			     @ActiveProfiles("test") — sin esto caería al datasource dev. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<systemPropertyVariables>
+						<spring.profiles.active>test</spring.profiles.active>
+					</systemPropertyVariables>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
