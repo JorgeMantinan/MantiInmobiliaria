@@ -1,6 +1,7 @@
 'use client';
 
 import { Boton } from '@/components/ui/boton';
+import { GuardarComoAlerta } from '@/features/alertas/components/guardar-como-alerta';
 import { useListadoInmuebles } from '../hooks/use-listado-inmuebles';
 import { BarraFiltros } from './barra-filtros';
 import { ConmutadorVista } from './conmutador-vista';
@@ -44,6 +45,9 @@ export function ListadoInmuebles() {
       </header>
 
       <BarraFiltros key={consulta} filtros={filtros} onAplicar={aplicar} onLimpiar={limpiar} />
+
+      {/* issue #96 — guardar la búsqueda actual como alerta (sólo con sesión). */}
+      <GuardarComoAlerta filtros={filtros} />
 
       <div className="mt-6">
         <ConmutadorVista vista={vista} onCambiar={cambiarVista} />

@@ -28,6 +28,15 @@ export function useSesion(): ValorSesion {
   return valor;
 }
 
+/**
+ * Variante OPCIONAL para UI que sólo aparece con sesión (p. ej. el botón
+ * "Guardar como alerta" del listado público): sin proveedor devuelve `null`
+ * en vez de lanzar, de modo que el componente simplemente no se pinta.
+ */
+export function useSesionOpcional(): ValorSesion | null {
+  return useContext(SesionContext);
+}
+
 type ProveedorSesionProps = Readonly<{ children: ReactNode }>;
 
 /**
