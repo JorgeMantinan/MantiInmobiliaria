@@ -31,6 +31,9 @@ public final class TestDatabaseBootstrap {
     private static final Set<String> BASES_PROTEGIDAS =
             Set.of("postgres", "template0", "template1", "manti");
 
+    /** Roles que el bootstrap de tests JAMÁS crea ni altera (evita pisar el password del rol dev). */
+    private static final Set<String> ROLES_PROTEGIDOS = Set.of("postgres", "manti");
+
     /** Claves ya aseguradas en esta JVM (una sola ronda de DDL por suite). */
     private static final Set<String> ASEGURADAS = ConcurrentHashMap.newKeySet();
 
@@ -82,6 +85,11 @@ public final class TestDatabaseBootstrap {
     }
 
     private static void asegurarRol(Connection conn, String rol, String passwordRol) throws SQLException {
+        if (ROLES_PROTEGIDOS.contains(rol)) {
+            throw new IllegalStateException(
+                    "El rol '" + rol + "' está protegido: el bootstrap de tests no puede crearlo ni alterarlo. "
+                            + "Usa el rol dedicado por defecto (manti_test).");
+        }
         boolean existe;
         try (Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(
@@ -92,7 +100,14 @@ public final class TestDatabaseBootstrap {
         // tests es siempre el del perfil test (no un secreto real).
         String sql = (existe ? "ALTER ROLE " : "CREATE ROLE ") + rol
                 + " LOGIN PASSWORD '" + literalSql(passwordRol) + "'";
-        ejecutar(conn, sql);
+        try {
+            ejecutar(conn, sql);
+        } catch (SQLException e) {
+            // 42710 duplicate_object: otra JVM creó el rol a la vez (idempotente).
+            if (!"42710".equals(e.getSQLState())) {
+                throw e;
+            }
+        }
     }
 
     private static void asegurarBaseDeDatos(Connection conn, String base, String rol) throws SQLException {

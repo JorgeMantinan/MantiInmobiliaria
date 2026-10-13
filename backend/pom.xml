@@ -274,6 +274,18 @@
 					</execution>
 				</executions>
 			</plugin>
+			<!-- Red de seguridad del issue #28: toda la suite arranca con el
+			     perfil test activo aunque una clase futura olvide
+			     @ActiveProfiles("test") — sin esto caería al datasource dev. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<systemPropertyVariables>
+						<spring.profiles.active>test</spring.profiles.active>
+					</systemPropertyVariables>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 

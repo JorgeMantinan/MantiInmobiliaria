@@ -24,6 +24,10 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
+if ($Database -notmatch '^[a-z_][a-z0-9_]*$' -or $Database -in @('manti', 'postgres', 'template0', 'template1')) {
+    throw "Base protegida o nombre inválido: '$Database' (sólo se admite la BD de tests, p.ej. manti_test)."
+}
+
 docker exec $Container psql -U $User -d postgres -v ON_ERROR_STOP=1 `
     -c "DROP DATABASE IF EXISTS $Database;"
 if ($LASTEXITCODE -ne 0) {
