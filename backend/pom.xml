@@ -116,6 +116,14 @@
 			<artifactId>lombok-mapstruct-binding</artifactId>
 			<version>0.2.0</version>
 		</dependency>
+		<!-- Caché Caffeine del COUNT totalElements del listado público de
+		     inmuebles (issue #27): TTL corto + maximumSize acotado, con evicción
+		     explícita tras el commit de cada escritura de inmuebles
+		     (ConteoInmueblesCache). Versión gestionada por el BOM de Spring Boot. -->
+		<dependency>
+			<groupId>com.github.ben-manes.caffeine</groupId>
+			<artifactId>caffeine</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator-test</artifactId>

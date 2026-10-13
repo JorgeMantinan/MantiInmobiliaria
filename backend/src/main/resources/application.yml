@@ -157,6 +157,18 @@ manti:
     # Allowlist explícita (nunca '*'): separada por comas.
     allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000}
   # ---------------------------------------------------------------------------
+  # FASE 7 (issue #27) — caché Caffeine del COUNT totalElements del listado
+  # público de inmuebles (ConteoInmueblesCache). TTL corto como red de
+  # seguridad (la invalidación real es explícita tras el commit de cada
+  # escritura backoffice) y tamaño acotado: la clave es la combinación de
+  # filtros normalizada, no el usuario. El contrato de GET /api/v1/inmuebles
+  # no cambia. Desactivable con MANTI_INMUEBLES_CONTEO_CACHE_TTL=0s.
+  # ---------------------------------------------------------------------------
+  inmuebles:
+    conteo-cache:
+      ttl: ${MANTI_INMUEBLES_CONTEO_CACHE_TTL:2m}
+      max-entradas: ${MANTI_INMUEBLES_CONTEO_CACHE_MAX_ENTRADAS:2000}
+  # ---------------------------------------------------------------------------
   # FASE 7 — planificador global de Spring (@Scheduled): despachador de
   # notificaciones y purga de refresh_tokens. Guard PROPIO e independiente del
   # envío (manti.notificaciones.enabled) y de la purga (manti.purgas.enabled):
