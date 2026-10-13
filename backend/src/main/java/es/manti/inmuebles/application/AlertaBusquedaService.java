@@ -6,6 +6,7 @@ import es.manti.inmuebles.domain.AlertaDatos;
 import es.manti.inmuebles.domain.AlertaLimiteExcedidoException;
 import es.manti.inmuebles.domain.AlertaNoEncontradaException;
 import es.manti.inmuebles.domain.InmuebleRepository;
+import es.manti.inmuebles.domain.ParametroInvalidoException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -71,6 +72,11 @@ public class AlertaBusquedaService {
     public AlertaBusqueda actualizar(Long usuarioId, Long id, String nombre, Boolean activa) {
         AlertaBusqueda alerta = porIdYUsuario(id, usuarioId);
         if (nombre != null) {
+            // @NotBlank no sirve en un PATCH nullable: el blanco se rechaza
+            // aquí, con el mismo 400 "Parámetro inválido" que validarRangos.
+            if (nombre.isBlank()) {
+                throw new ParametroInvalidoException("nombre", "no puede quedar en blanco");
+            }
             alerta.renombrar(nombre);
         }
         if (activa != null) {

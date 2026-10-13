@@ -157,6 +157,21 @@ class AlertaApiTest {
     }
 
     @Test
+    void crear_precioDemasiadoGrande_responde400ConElCampo() throws Exception {
+        String token = registrarUsuario();
+
+        // numeric(12,2) de V13: sin la cota, un precio gigante cascaría con
+        // DataIntegrityViolation (409) en vez de un 400 con el campo.
+        mockMvc.perform(post("/api/v1/alertas")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nombre\":\"Gigante\",\"filtros\":{\"precioMax\":1000000000000000}}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validación fallida"))
+                .andExpect(jsonPath("$.errors[0].field").value("filtros.precioMax"));
+    }
+
+    @Test
     void crear_nombreEnBlanco_responde400DeValidacion() throws Exception {
         String token = registrarUsuario();
 
@@ -256,6 +271,20 @@ class AlertaApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nombre").value("Renombrada"))
                 .andExpect(jsonPath("$.activa").value(true));
+    }
+
+    @Test
+    void actualizar_nombreEnBlanco_responde400DeValidacion() throws Exception {
+        String token = registrarUsuario();
+        long id = crearAlerta(token, "Nombre válido");
+
+        mockMvc.perform(patch("/api/v1/alertas/{id}", id)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nombre\":\"   \"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Parámetro inválido"))
+                .andExpect(jsonPath("$.errors[0].field").value("nombre"));
     }
 
     @Test

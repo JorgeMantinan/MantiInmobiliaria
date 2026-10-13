@@ -94,6 +94,9 @@ export function GuardarComoAlerta({ filtros }: GuardarComoAlertaProps) {
       <form
         aria-label="Guardar búsqueda como alerta"
         onSubmit={(evento) => void guardar(evento)}
+        onKeyDown={(evento) => {
+          if (evento.key === 'Escape' && !guardando) cancelar();
+        }}
         className="flex w-full flex-col gap-3 rounded-lg border border-borde bg-superficie p-4 sm:max-w-md"
       >
         <div>
@@ -106,6 +109,7 @@ export function GuardarComoAlerta({ filtros }: GuardarComoAlertaProps) {
             required
             maxLength={80}
             autoComplete="off"
+            autoFocus
             value={nombre}
             onChange={(evento) => setNombre(evento.target.value)}
             placeholder="Pisos en Madrid…"

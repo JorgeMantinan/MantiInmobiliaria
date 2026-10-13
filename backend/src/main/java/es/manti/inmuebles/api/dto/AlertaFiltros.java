@@ -3,6 +3,7 @@ package es.manti.inmuebles.api.dto;
 import es.manti.inmuebles.domain.EstadoInmueble;
 import es.manti.inmuebles.domain.TipoInmueble;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
@@ -32,10 +33,12 @@ public record AlertaFiltros(
                 example = "Madrid", maxLength = 120)
         String municipio,
 
+        @DecimalMax(value = "9999999999.99", message = "no puede superar 9999999999.99")
         @Schema(description = "Precio mínimo en euros (>= 0; no puede superar precioMax)",
                 example = "100000")
         BigDecimal precioMin,
 
+        @DecimalMax(value = "9999999999.99", message = "no puede superar 9999999999.99")
         @Schema(description = "Precio máximo en euros (>= 0; no puede ser menor que precioMin)",
                 example = "250000")
         BigDecimal precioMax,

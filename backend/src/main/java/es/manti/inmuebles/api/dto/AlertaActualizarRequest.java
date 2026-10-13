@@ -11,7 +11,7 @@ import jakarta.validation.constraints.Size;
 @Schema(description = "Actualización parcial de una alerta (nombre y/o actividad)")
 public record AlertaActualizarRequest(
         @Size(min = 1, max = 80)
-        @Schema(description = "Nuevo nombre (1..80); ausente = sin cambios",
+        @Schema(description = "Nuevo nombre (1..80, sin blanco si se envía); ausente = sin cambios",
                 example = "Pisos en Madrid", maxLength = 80)
         String nombre,
 
