@@ -5,6 +5,7 @@ import es.manti.profesionales.domain.NotificacionOutbox;
 import es.manti.profesionales.domain.NotificacionOutboxRepository;
 import es.manti.profesionales.domain.ProfesionalRepository;
 import es.manti.profesionales.domain.Solicitud;
+import es.manti.shared.notificaciones.HtmlEscaping;
 import es.manti.shared.notificaciones.NotificacionesProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -124,11 +125,11 @@ public class NotificacionOutboxService {
                 <p><strong>Descripción:</strong> %s</p>\
                 <p><strong>Contacto:</strong> %s · %s</p>\
                 """.formatted(
-                escaparHtml(solicitud.getMunicipio()),
-                escaparHtml(gremiosEnTexto(solicitud.getGremios())),
-                escaparHtml(solicitud.getDescripcion()),
-                escaparHtml(solicitud.getNombreContacto()),
-                escaparHtml(contacto));
+                HtmlEscaping.escapar(solicitud.getMunicipio()),
+                HtmlEscaping.escapar(gremiosEnTexto(solicitud.getGremios())),
+                HtmlEscaping.escapar(solicitud.getDescripcion()),
+                HtmlEscaping.escapar(solicitud.getNombreContacto()),
+                HtmlEscaping.escapar(contacto));
     }
 
     private static String cuerpoTelegram(Solicitud solicitud) {
@@ -144,24 +145,5 @@ public class NotificacionOutboxService {
         return gremios.stream()
                 .map(Gremio::getSlug)
                 .collect(Collectors.joining(", "));
-    }
-
-    /** El HTML del email se construye con datos del usuario: SIEMPRE escapado. */
-    private static String escaparHtml(String valor) {
-        if (valor == null) {
-            return "";
-        }
-        StringBuilder sb = new StringBuilder(valor.length() + 16);
-        for (char c : valor.toCharArray()) {
-            switch (c) {
-                case '<' -> sb.append("&lt;");
-                case '>' -> sb.append("&gt;");
-                case '&' -> sb.append("&amp;");
-                case '"' -> sb.append("&quot;");
-                case '\'' -> sb.append("&#39;");
-                default -> sb.append(c);
-            }
-        }
-        return sb.toString();
     }
 }

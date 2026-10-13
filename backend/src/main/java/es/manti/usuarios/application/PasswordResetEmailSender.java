@@ -1,6 +1,7 @@
 package es.manti.usuarios.application;
 
 import es.manti.shared.notificaciones.EmailNotificadorPort;
+import es.manti.shared.notificaciones.Emails;
 import es.manti.shared.notificaciones.NotificacionesProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -68,16 +69,16 @@ public class PasswordResetEmailSender {
     public void enviar(String email, String token) {
         if (!notificaciones.enabled()) {
             log.warn("Notificaciones apagadas (manti.notificaciones.enabled=false): token de "
-                    + "restablecimiento creado para {} pero sin enviar", mascararEmail(email));
+                    + "restablecimiento creado para {} pero sin enviar", Emails.mascarar(email));
             return;
         }
         String enlace = properties.frontendUrl() + "/restablecer?token=" + token;
         try {
             correo.enviar(email, ASUNTO, cuerpoEmail(enlace));
-            log.debug("Enlace de restablecimiento enviado a {}", email);
+            log.debug("Enlace de restablecimiento enviado a {}", Emails.mascarar(email));
         } catch (RuntimeException fallo) {
-            log.warn("No se pudo enviar el email de restablecimiento a {}: {}", mascararEmail(email),
-                    fallo.getMessage(), fallo);
+            log.warn("No se pudo enviar el email de restablecimiento a {}: {}",
+                    Emails.mascarar(email), fallo.getMessage(), fallo);
         }
     }
 
@@ -110,21 +111,5 @@ public class PasswordResetEmailSender {
             return horas + (horas == 1 ? " hora" : " horas");
         }
         return minutos + (minutos == 1 ? " minuto" : " minutos");
-    }
-
-    /**
-     * Log con el dominio del email y la inicial enmascarados
-     * ({@code a***@ejemplo.com}): los avisos de este flujo no deben dejar
-     * direcciones completas en los logs (PII).
-     */
-    static String mascararEmail(String email) {
-        if (email == null || email.isBlank()) {
-            return "***";
-        }
-        int arroba = email.indexOf('@');
-        if (arroba <= 0) {
-            return "***";
-        }
-        return email.charAt(0) + "***@" + email.substring(arroba + 1);
     }
 }
