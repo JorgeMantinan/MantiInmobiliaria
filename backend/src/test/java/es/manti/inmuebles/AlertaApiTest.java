@@ -346,6 +346,33 @@ class AlertaApiTest {
         assertThat(nombreDe(id)).isEqualTo("Sigue aquí");
     }
 
+    /**
+     * Cascada V13 ({@code fk_notificaciones_outbox_alerta ON DELETE CASCADE}):
+     * borrar la alerta purga TAMBIÉN sus avisos del outbox compartido, así un
+     * aviso pendiente nunca apunta a una alerta inexistente.
+     */
+    @Test
+    void eliminar_purgaEnCascadaSusAvisosDelOutbox() throws Exception {
+        String token = registrarUsuario();
+        long id = crearAlerta(token, "Con avisos");
+        jdbc.update("""
+                INSERT INTO notificaciones_outbox
+                    (alerta_id, canal, destinatario_tipo, destino, asunto, cuerpo,
+                     estado, intentos)
+                VALUES (?, 'EMAIL', 'USUARIO', 'ana@example.com', 'Aviso', '<p>x</p>',
+                        'PENDIENTE', 0)
+                """, id);
+
+        mockMvc.perform(delete("/api/v1/alertas/{id}", id)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
+
+        Integer avisos = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM notificaciones_outbox WHERE alerta_id = ?",
+                Integer.class, id);
+        assertThat(avisos).isZero();
+    }
+
     // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
