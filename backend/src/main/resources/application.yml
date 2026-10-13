@@ -19,6 +19,17 @@ spring:
     # timeouts dejan los defaults de Hikari (connection-timeout 30 s).
     hikari:
       maximum-pool-size: ${HIKARI_MAXIMUM_POOL_SIZE:10}
+      # FASE 7 (issue #29) — fuerza plan PERSONALIZADO en cada sentencia de
+      # PostgreSQL 18. Las queries del listado de inmuebles usan guardas
+      # (:param IS NULL OR col = :param); con un plan GENÉRICO cacheado
+      # (plan_cache_mode=auto puede fijarlo tras 5 ejecuciones y queda así de
+      # por vida en la conexión del pool) PG no convierte las guardas en
+      # Index Cond y cae en un Filter con Seq Scan. Medido con EXPLAIN
+      # (ANALYZE, BUFFERS) sobre 200k filas: 3882 buffers / 13.3 ms (genérico)
+      # vs 1194 buffers / 3.8 ms (personalizado, Index Cond en
+      # idx_inmuebles_estado_tipo_precio). Coste: ~0.2 ms extra de planning.
+      # Se ejecuta al abrir cada conexión física del pool.
+      connection-init-sql: SET plan_cache_mode=force_custom_plan
   jpa:
     hibernate:
       ddl-auto: validate
@@ -145,6 +156,18 @@ manti:
   cors:
     # Allowlist explícita (nunca '*'): separada por comas.
     allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000}
+  # ---------------------------------------------------------------------------
+  # FASE 7 (issue #27) — caché Caffeine del COUNT totalElements del listado
+  # público de inmuebles (ConteoInmueblesCache). TTL corto como red de
+  # seguridad (la invalidación real es explícita tras el commit de cada
+  # escritura backoffice) y tamaño acotado: la clave es la combinación de
+  # filtros normalizada, no el usuario. El contrato de GET /api/v1/inmuebles
+  # no cambia. Desactivable con MANTI_INMUEBLES_CONTEO_CACHE_TTL=0s.
+  # ---------------------------------------------------------------------------
+  inmuebles:
+    conteo-cache:
+      ttl: ${MANTI_INMUEBLES_CONTEO_CACHE_TTL:2m}
+      max-entradas: ${MANTI_INMUEBLES_CONTEO_CACHE_MAX_ENTRADAS:2000}
   # ---------------------------------------------------------------------------
   # FASE 7 — planificador global de Spring (@Scheduled): despachador de
   # notificaciones y purga de refresh_tokens. Guard PROPIO e independiente del
