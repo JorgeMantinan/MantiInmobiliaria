@@ -56,6 +56,13 @@ spring:
   threads:
     virtual:
       enabled: true
+  # Pool del planificador @Scheduled: con 1 (default) la evaluación de
+  # alertas (#96) serializa el despachador de notificaciones y la purga de
+  # refresh tokens. Con 2, el job de alertas nunca retarda los envíos.
+  task:
+    scheduling:
+      pool:
+        size: ${SCHEDULING_POOL_SIZE:2}
   security:
     oauth2:
       client:
@@ -185,6 +192,20 @@ manti:
   # ---------------------------------------------------------------------------
   purgas:
     enabled: ${PURGAS_ENABLED:true}
+  # ---------------------------------------------------------------------------
+  # issue #96 — ALERTAS DE BÚSQUEDA: evaluación programada de las alertas
+  # activas (AlertaEvaluacionJob) y enlace del aviso al listado del frontend.
+  # Tres interruptores INDEPENDIENTES, como el resto de tareas:
+  #   * enabled: crea o no el job (true salvo en el perfil de test);
+  #   * cadencia-ms: fixedDelay entre pasadas (15 min por defecto);
+  #   * frontend-url: base del enlace "Ver la búsqueda" del email — misma
+  #     variable FRONTEND_URL que usan Google OAuth2 y el reset de contraseña.
+  # El ENVÍO sigue siendo de manti.notificaciones.enabled (outbox compartido).
+  # ---------------------------------------------------------------------------
+  alertas:
+    enabled: ${ALERTAS_ENABLED:true}
+    cadencia-ms: ${ALERTAS_CADENCIA_MS:900000}
+    frontend-url: ${FRONTEND_URL:http://localhost:3000}
   # ---------------------------------------------------------------------------
   # FASE 5 — notificaciones (outbox transaccional + despachador @Scheduled).
   # Los secretos llegan SOLO por variables de entorno (.env en local, hosting

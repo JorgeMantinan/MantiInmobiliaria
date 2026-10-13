@@ -24,6 +24,14 @@ import java.time.Instant;
  * <p>La fila es AUTÓNOMA: sólo guarda {@code solicitud_id}/{@code destinatario_id}
  * como claves foráneas, sin asociaciones JPA, para poder leerla y marcarla en
  * transacciones propias sin arrastrar entidades perezosas.</p>
+ *
+ * <p><b>Origen dual (issue #96)</b>: desde V13 la fila también puede venir de
+ * una ALERTA DE BÚSQUEDA — entonces {@code solicitud_id} es NULL y la columna
+ * {@code alerta_id} (NO mapeada aquí: el despachador no la necesita) lleva la
+ * referencia, con el CHECK {@code ck_notificaciones_outbox_origen} garantizando
+ * exactamente UN origen por fila. Por eso {@code solicitud_id} ya no es
+ * {@code nullable = false}: el despachador carga las filas de alertas al mismo
+ * lote que las de solicitudes y su destino/canal/cuerpo son autosuficientes.</p>
  */
 @Entity
 @Table(name = "notificaciones_outbox")
@@ -35,7 +43,8 @@ public class NotificacionOutbox {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "solicitud_id", nullable = false)
+    /** NULL sólo en las filas de alertas de búsqueda (ver javadoc de la clase). */
+    @Column(name = "solicitud_id")
     private Long solicitudId;
 
     @Enumerated(EnumType.STRING)
