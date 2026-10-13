@@ -33,4 +33,26 @@ public record InmuebleFiltros(
         BigDecimal precioMax,
         Short habitacionesMin,
         Boolean destacado) {
+
+    /**
+     * Normaliza los precios para que el record sea una CLAVE DE CACHÉ estable
+     * (issue #27): {@code 100000}, {@code 100000.0} y {@code 100000.00} son el
+     * mismo filtro, pero {@code BigDecimal.equals} distingue la escala y
+     * duplicaría las entradas de {@code ConteoInmueblesCache}. Se aplica
+     * {@code stripTrailingZeros} y se fija {@code scale >= 0} para no mandar
+     * notación científica ({@code 1E+5}) al bindeo JDBC. El valor numérico que
+     * llega a la query no cambia.
+     */
+    public InmuebleFiltros {
+        precioMin = normalizarPrecio(precioMin);
+        precioMax = normalizarPrecio(precioMax);
+    }
+
+    private static BigDecimal normalizarPrecio(BigDecimal precio) {
+        if (precio == null) {
+            return null;
+        }
+        BigDecimal sinCeros = precio.stripTrailingZeros();
+        return sinCeros.scale() < 0 ? sinCeros.setScale(0) : sinCeros;
+    }
 }

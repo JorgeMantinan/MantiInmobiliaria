@@ -1,6 +1,7 @@
 package es.manti.inmuebles;
 
 import com.jayway.jsonpath.JsonPath;
+import es.manti.inmuebles.application.ConteoInmueblesCache;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,12 +52,18 @@ class AdminInmuebleApiTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private ConteoInmueblesCache conteoCache;
+
     private String tokenAdmin;
 
     @AfterEach
     void limpiarFixtures() {
         jdbc.update("DELETE FROM inmuebles WHERE municipio LIKE 'It-%'");
         jdbc.update("DELETE FROM usuarios WHERE email LIKE 'it-%@example.com'");
+        // Los fixtures se borran por JDBC (fuera del servicio): se evicta la
+        // caché de conteos a mano para que ningún test herede totales viejos.
+        conteoCache.invalidarTrasCommit();
     }
 
     // ------------------------------------------------------------------
@@ -89,6 +96,36 @@ class AdminInmuebleApiTest {
     void eliminar_sinToken_devuelve401() throws Exception {
         mockMvc.perform(delete("/api/v1/admin/inmuebles/{id}", ID_INEXISTENTE))
                 .andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * Issue #27 — el totalElements del listado público se cachea, pero cada
+     * escritura del backoffice evicta la entrada tras el commit: no hay
+     * ventana de staleness para el usuario que acaba de borrar su anuncio.
+     */
+    @Test
+    void escriturasBackoffice_evictanElTotalCacheadoDelListadoPublico() throws Exception {
+        String municipio = municipioPrueba();
+        long id = crearComoAdmin(municipio);
+
+        // Primera página: el total (1) queda cacheado bajo la clave del filtro.
+        mockMvc.perform(get("/api/v1/inmuebles").param("municipio", municipio))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1));
+        // Segunda lectura idéntica: sirve la caché con el mismo valor.
+        mockMvc.perform(get("/api/v1/inmuebles").param("municipio", municipio))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1));
+
+        // Borrado en backoffice → invalida la entrada; sin la evicción el
+        // total seguiría en 1 durante todo el TTL de la caché.
+        mockMvc.perform(delete("/api/v1/admin/inmuebles/{id}", id)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin()))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/inmuebles").param("municipio", municipio))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0));
     }
 
     // ------------------------------------------------------------------
