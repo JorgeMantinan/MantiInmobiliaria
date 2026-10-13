@@ -29,6 +29,18 @@ export function BadgeEstado({ estado }: BadgeEstadoProps) {
   );
 }
 
+/**
+ * Chip "Destacado" de los inmuebles de portada. Nogal sobre crema para que
+ * destaque sin salirse de la paleta madera (contraste AA).
+ */
+export function BadgeDestacado() {
+  return (
+    <span className="inline-flex shrink-0 items-center rounded-md border border-acento-nogal bg-superficie px-2 py-0.5 text-xs font-medium text-acento-hover">
+      Destacado
+    </span>
+  );
+}
+
 /** Chips de gremios de una fila (slugs del DTO, ya legibles). */
 export function ChipsGremios({ gremios }: Readonly<{ gremios: readonly string[] }>) {
   if (gremios.length === 0) {

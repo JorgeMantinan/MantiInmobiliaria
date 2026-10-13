@@ -26,10 +26,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class GestionInmuebleService {
 
     private final InmuebleRepository repository;
+    private final ConteoInmueblesCache conteoCache;
 
     @Transactional
     public Inmueble crear(InmuebleDatos datos) {
         Inmueble inmueble = repository.guardar(Inmueble.nuevo(datos));
+        conteoCache.invalidarTrasCommit();
         log.info("Inmueble {} creado ({}, {})", inmueble.getId(), inmueble.getTitulo(), inmueble.getEstado());
         return inmueble;
     }
@@ -39,6 +41,7 @@ public class GestionInmuebleService {
         Inmueble inmueble = buscarParaEscritura(id);
         inmueble.actualizar(datos);
         Inmueble guardado = repository.guardar(inmueble);
+        conteoCache.invalidarTrasCommit();
         log.info("Inmueble {} actualizado", id);
         return guardado;
     }
@@ -49,6 +52,7 @@ public class GestionInmuebleService {
         Inmueble inmueble = buscarParaEscritura(id);
         inmueble.eliminar();
         repository.guardar(inmueble);
+        conteoCache.invalidarTrasCommit();
         log.info("Inmueble {} eliminado (soft-delete)", id);
     }
 

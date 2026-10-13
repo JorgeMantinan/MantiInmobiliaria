@@ -28,6 +28,9 @@ const ETIQUETAS_ESTADO: Readonly<Record<string, string>> = {
   RECHAZADO: 'Rechazado',
   NUEVA: 'Nueva',
   CERRADA: 'Cerrada',
+  // Inmuebles (estado comercial): mismas etiquetas del portal.
+  VENTA: 'En venta',
+  ALQUILER: 'En alquiler',
 };
 
 /** Etiqueta legible de cualquier estado; el valor crudo si llega uno nuevo. */
