@@ -10,9 +10,9 @@ tags:
 - name: Telegram (admin)
   description: "Diagnóstico del bot de Telegram: chats que han escrito al bot (requiere\
     \ rol ADMIN)"
-- name: Mercado
-  description: "Precios oficiales del mercado por zona (fuente: Ministerio de Vivienda\
-    \ y Agenda Urbana)"
+- name: Alertas
+  description: "Alertas de búsqueda del usuario: guardar los filtros del listado y\
+    \ recibir aviso de los inmuebles nuevos que encajan"
 - name: Inmuebles (admin)
   description: "Alta, actualización y borrado de inmuebles (requiere rol ADMIN)"
 - name: Solicitudes (admin)
@@ -21,12 +21,15 @@ tags:
   description: Reimportación de los CSV oficiales del MIVAU (requiere rol ADMIN)
 - name: Profesionales (admin)
   description: Moderación de altas de profesionales (requiere rol ADMIN)
-- name: Swipes
-  description: Deck de swipes (like/nope) y favoritos del usuario autenticado
 - name: Gremios
   description: Catálogo público de oficios (sin autenticación)
 - name: Inmuebles
   description: Listado y detalle público de inmuebles (sin autenticación)
+- name: Mercado
+  description: "Precios oficiales del mercado por zona (fuente: Ministerio de Vivienda\
+    \ y Agenda Urbana)"
+- name: Swipes
+  description: Deck de swipes (like/nope) y favoritos del usuario autenticado
 - name: Profesionales
   description: Registro público de profesionales (sin autenticación)
 - name: Solicitudes
@@ -610,6 +613,81 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
       security: []
+  /api/v1/alertas:
+    get:
+      tags:
+      - Alertas
+      summary: Lista tus alertas de búsqueda
+      description: "Alertas del usuario autenticado, de más reciente a más antigua\
+        \ (array vacío si no tiene ninguna)."
+      operationId: listarAlertas
+      responses:
+        "200":
+          description: Array de alertas del usuario
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AlertaResponse"
+        "401":
+          description: Sin token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+      - bearerAuth: []
+    post:
+      tags:
+      - Alertas
+      summary: Crea una alerta con los filtros del listado
+      description: "Alta con los MISMOS filtros que `GET /api/v1/inmuebles`: un rango\
+        \ inválido (precioMin > precioMax, precios negativos, habitaciones < 0) responde\
+        \ 400 igual que el listado. La alerta nace ACTIVA y con su marca de agua en\
+        \ el mayor id de inmueble existente, así que sólo se avisará de los inmuebles\
+        \ que entren DESPUÉS de guardarla (máximo 50 alertas por usuario)."
+      operationId: crearAlerta
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlertaCreateRequest"
+        required: true
+      responses:
+        "201":
+          description: Alerta creada (cabecera Location)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AlertaResponse"
+        "400":
+          description: "Validación fallida o rango de filtros inválido (ProblemDetail\
+            \ con errors[])"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Sin token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: Máximo de alertas por usuario alcanzado (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "413":
+          description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+      - bearerAuth: []
   /api/v1/admin/mercado/actualizar:
     post:
       tags:
@@ -647,8 +725,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
         "500":
-          description: "El CDN del MIVAU no responde o publica un CSV con estructura\
-            \ distinta (ProblemDetail)"
+          description: El CDN del MIVAU no responde o publica un CSV con estructura
+            distinta (ProblemDetail)
           content:
             '*/*':
               schema:
@@ -688,6 +766,96 @@ paths:
                 $ref: "#/components/schemas/ProblemDetail"
         "403":
           description: Token sin rol ADMIN
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "413":
+          description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+      - bearerAuth: []
+  /api/v1/alertas/{id}:
+    delete:
+      tags:
+      - Alertas
+      summary: Elimina una alerta
+      description: Borra la alerta y sus avisos pendientes en cascada. 404 si la alerta
+        no existe o NO es del usuario actual.
+      operationId: eliminarAlerta
+      parameters:
+      - name: id
+        in: path
+        description: Identificador de la alerta
+        required: true
+        schema:
+          type: integer
+          format: int64
+        example: 1
+      responses:
+        "204":
+          description: Alerta eliminada (sin cuerpo)
+        "401":
+          description: Sin token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Alerta inexistente o de otro usuario (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+      security:
+      - bearerAuth: []
+    patch:
+      tags:
+      - Alertas
+      summary: Actualiza el nombre y/o la actividad de una alerta
+      description: "Edición PARCIAL: los campos ausentes no cambian. Los filtros no\
+        \ se editan (para cambiarlos, crea otra alerta). 404 si la alerta no existe\
+        \ o NO es del usuario actual."
+      operationId: actualizarAlerta
+      parameters:
+      - name: id
+        in: path
+        description: Identificador de la alerta
+        required: true
+        schema:
+          type: integer
+          format: int64
+        example: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlertaActualizarRequest"
+        required: true
+      responses:
+        "200":
+          description: Alerta actualizada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AlertaResponse"
+        "400":
+          description: "Validación fallida (ProblemDetail con errors[])"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Sin token
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Alerta inexistente o de otro usuario (ProblemDetail)
           content:
             '*/*':
               schema:
@@ -873,9 +1041,9 @@ paths:
       tags:
       - Mercado
       summary: Obtiene el alquiler medio y el valor tasado de la zona de un municipio
-      description: "Alquiler municipal (SERPAVI) del último año disponible + valor\
-        \ tasado de la provincia. Si el municipio no tiene NINGÚN dato publicado responde\
-        \ 404. La respuesta incluye siempre la atribución legal de la fuente."
+      description: Alquiler municipal (SERPAVI) del último año disponible + valor
+        tasado de la provincia. Si el municipio no tiene NINGÚN dato publicado responde
+        404. La respuesta incluye siempre la atribución legal de la fuente.
       operationId: consultar
       parameters:
       - name: codigoINE
@@ -884,11 +1052,11 @@ paths:
         required: true
         schema:
           type: string
-          pattern: '[0-9]{5}'
+          pattern: "[0-9]{5}"
       responses:
         "200":
-          description: "Precios de la zona (los bloques alquiler y venta pueden ser\
-            \ null de forma independiente)"
+          description: Precios de la zona (los bloques alquiler y venta pueden ser
+            null de forma independiente)
           content:
             '*/*':
               schema:
@@ -1471,8 +1639,8 @@ components:
           example: Madrid
         codigoIne:
           type: string
-          description: "Código INE de 5 dígitos del municipio; null si no está catalogado\
-            \ (se usa para los precios oficiales del MIVAU)"
+          description: Código INE de 5 dígitos del municipio; null si no está catalogado
+            (se usa para los precios oficiales del MIVAU)
           example: "28079"
         lat:
           type: number
@@ -1766,6 +1934,134 @@ components:
       required:
       - email
       - password
+    AlertaCreateRequest:
+      type: object
+      description: Alta de una alerta de búsqueda con los filtros del listado
+      properties:
+        nombre:
+          type: string
+          description: Nombre propio de la alerta (1..80 caracteres)
+          example: Pisos en Madrid
+          maxLength: 80
+          minLength: 0
+        filtros:
+          $ref: "#/components/schemas/AlertaFiltros"
+          description: Filtros a guardar (los mismos del listado público)
+      required:
+      - filtros
+      - nombre
+    AlertaFiltros:
+      type: object
+      description: Filtros de la alerta (los mismos que acepta el listado público
+        de inmuebles)
+      properties:
+        estado:
+          type: string
+          description: Estado comercial (VENTA o ALQUILER); ausente = sin filtrar
+          enum:
+          - VENTA
+          - ALQUILER
+        tipo:
+          type: string
+          description: Tipo de inmueble; ausente = sin filtrar
+          enum:
+          - PISO
+          - CASA
+          - ATICO
+          - DUPLEX
+          - ESTUDIO
+          - LOCAL
+          - TERRENO
+        municipio:
+          type: string
+          description: "Municipio, coincidencia parcial e insensible a mayúsculas\
+            \ (máx. 120)"
+          example: Madrid
+          maxLength: 120
+          minLength: 0
+        precioMin:
+          type: number
+          description: Precio mínimo en euros (>= 0; no puede superar precioMax)
+          example: 100000
+        precioMax:
+          type: number
+          description: Precio máximo en euros (>= 0; no puede ser menor que precioMin)
+          example: 250000
+        habitacionesMin:
+          type: integer
+          format: int32
+          description: Número mínimo de habitaciones (>= 0)
+          example: 3
+        destacado:
+          type: boolean
+          description: Sólo destacados (true) o sólo no destacados (false); ausente
+            = sin filtrar
+    AlertaResponse:
+      type: object
+      description: Alerta de búsqueda del usuario autenticado
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identificador de la alerta
+          example: 1
+        nombre:
+          type: string
+          description: Nombre propio de la alerta
+          example: Pisos en Madrid
+        filtros:
+          $ref: "#/components/schemas/AlertaFiltros"
+          description: Filtros guardados (los mismos del listado público)
+        activa:
+          type: boolean
+          description: "Si está activa, el job la evalúa en cada pasada"
+        ultimoAvisoEn:
+          type: string
+          format: date-time
+          description: Instante ISO-8601 del último aviso enviado; null si aún no
+            avisó
+        creadoEn:
+          type: string
+          format: date-time
+          description: Instante ISO-8601 de creación
+        actualizadoEn:
+          type: string
+          format: date-time
+          description: Instante ISO-8601 de la última modificación
+    MercadoImportacionResponse:
+      type: object
+      description: Resultado de la reimportación de los CSV del MIVAU
+      properties:
+        filasAlquiler:
+          type: integer
+          format: int32
+          description: Filas de alquiler municipal escritas (nuevas + actualizadas)
+          example: 7665
+        filasVenta:
+          type: integer
+          format: int32
+          description: Filas de valor tasado provincial escritas (nuevas + actualizadas)
+          example: 8412
+        fechaDescarga:
+          type: string
+          format: date-time
+          description: Instante de descarga de los dos ficheros (ISO-8601)
+          example: 2026-10-11T15:20:07Z
+    AlertaActualizarRequest:
+      type: object
+      description: Actualización parcial de una alerta (nombre y/o actividad)
+      properties:
+        nombre:
+          type: string
+          description: Nuevo nombre (1..80); ausente = sin cambios
+          example: Pisos en Madrid
+          maxLength: 80
+          minLength: 1
+        activa:
+          type: boolean
+          description: "Activa o pausa la alerta; ausente = sin cambios. Pausada,\
+            \ el job deja de evaluarla (los avisos no se pierden: al reactivar se\
+            \ continúa desde la última marca de agua)"
     ProfesionalEstadoRequest:
       type: object
       properties:
@@ -1875,6 +2171,69 @@ components:
           format: int64
           description: Total de filas del listado (sólo primera página)
           example: 35
+    AlquilerMercadoResponse:
+      type: object
+      description: "Alquiler municipal de referencia (SERPAVI), tipología colectiva"
+      properties:
+        rentaMedianaEurM2Mes:
+          type: number
+          description: "Renta mediana en € por m² y mes (cuantía mediana dividida\
+            \ entre la superficie mediana, según la metodología SERPAVI)"
+          example: 13.16
+        cuantiaMedianaEurMes:
+          type: number
+          description: Cuantía mediana del contrato en € al mes
+          example: 868.8
+    MercadoResponse:
+      type: object
+      description: Precios oficiales del mercado de la zona de un municipio
+      properties:
+        codigoINE:
+          type: string
+          description: Código INE de 5 dígitos consultado
+          example: "28079"
+        anio:
+          type: integer
+          format: int32
+          description: "Año del dato de alquiler municipal; si no hay alquiler, el\
+            \ año del dato de venta"
+          example: 2024
+        alquiler:
+          $ref: "#/components/schemas/AlquilerMercadoResponse"
+          description: Alquiler municipal; null si el municipio no tiene dato publicado
+        venta:
+          $ref: "#/components/schemas/VentaMercadoResponse"
+          description: Valor tasado provincial; null si la fuente no publica esa provincia
+        fuente:
+          type: string
+          description: Fuente obligatoria (aviso legal MIVAU)
+          example: Ministerio de Vivienda y Agenda Urbana
+    VentaMercadoResponse:
+      type: object
+      description: Valor tasado de venta de la provincia
+      properties:
+        valorEurM2:
+          type: number
+          description: Valor tasado en € por m²
+          example: 1588.7
+        ambito:
+          type: string
+          description: Ámbito del dato
+          example: PROVINCIA
+        provincia:
+          type: string
+          description: Nombre de la provincia
+          example: Zaragoza
+        anio:
+          type: integer
+          format: int32
+          description: Año del dato
+          example: 2026
+        trimestre:
+          type: integer
+          format: int32
+          description: Trimestre del dato (1..4)
+          example: 3
     InmueblePage:
       type: object
       description: Página del listado de inmuebles paginada por cursor
@@ -1964,89 +2323,6 @@ components:
         creadoEn:
           type: string
           format: date-time
-    MercadoImportacionResponse:
-      type: object
-      description: Resultado de la reimportación de los CSV del MIVAU
-      properties:
-        filasAlquiler:
-          type: integer
-          format: int32
-          description: Filas de alquiler municipal escritas (nuevas + actualizadas)
-          example: 7665
-        filasVenta:
-          type: integer
-          format: int32
-          description: Filas de valor tasado provincial escritas (nuevas + actualizadas)
-          example: 8412
-        fechaDescarga:
-          type: string
-          format: date-time
-          description: Instante de descarga de los dos ficheros (ISO-8601)
-          example: "2026-10-11T15:20:07Z"
-    AlquilerMercadoResponse:
-      type: object
-      description: Alquiler municipal de referencia (SERPAVI), tipología colectiva
-      properties:
-        rentaMedianaEurM2Mes:
-          type: number
-          description: "Renta mediana en € por m² y mes (cuantía mediana dividida\
-            \ entre la superficie mediana, según la metodología SERPAVI)"
-          example: 13.16
-        cuantiaMedianaEurMes:
-          type: number
-          description: Cuantía mediana del contrato en € al mes
-          example: 868.8
-    MercadoResponse:
-      type: object
-      description: Precios oficiales del mercado de la zona de un municipio
-      properties:
-        codigoINE:
-          type: string
-          description: Código INE de 5 dígitos consultado
-          example: "28079"
-        anio:
-          type: integer
-          format: int32
-          description: "Año del dato de alquiler municipal; si no hay alquiler, el\
-            \ año del dato de venta"
-          example: 2024
-        alquiler:
-          $ref: "#/components/schemas/AlquilerMercadoResponse"
-          description: "Alquiler municipal; null si el municipio no tiene dato publicado"
-        venta:
-          $ref: "#/components/schemas/VentaMercadoResponse"
-          description: "Valor tasado provincial; null si la fuente no publica esa\
-            \ provincia"
-        fuente:
-          type: string
-          description: Fuente obligatoria (aviso legal MIVAU)
-          example: Ministerio de Vivienda y Agenda Urbana
-    VentaMercadoResponse:
-      type: object
-      description: Valor tasado de venta de la provincia
-      properties:
-        valorEurM2:
-          type: number
-          description: Valor tasado en € por m²
-          example: 1588.7
-        ambito:
-          type: string
-          description: Ámbito del dato
-          example: PROVINCIA
-        provincia:
-          type: string
-          description: Nombre de la provincia
-          example: Zaragoza
-        anio:
-          type: integer
-          format: int32
-          description: Año del dato
-          example: 2026
-        trimestre:
-          type: integer
-          format: int32
-          description: Trimestre del dato (1..4)
-          example: 3
   securitySchemes:
     bearerAuth:
       type: http
