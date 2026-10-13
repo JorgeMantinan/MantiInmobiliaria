@@ -19,15 +19,19 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Evaluación de las alertas activas (issue #96): encolado en el outbox
- * COMPARTIDO, marca de agua anti-spam y drenaje en lotes de 10.
+ * Evaluación de las alertas activas (issue #96, endurecida en el follow-up
+ * #98): encolado en el outbox COMPARTIDO, marca de agua anti-spam y drenaje en
+ * lotes de 10 por alerta.
  *
  * <p>{@code TELEGRAM_CHAT_ID} se fuerza a vacío con una propiedad inline para
  * que el resultado NO dependa del {@code .env} de cada máquina (el camino con
  * chat configurado vive en {@link AlertaEvaluacionTelegramTest}). El job
  * programado NO existe en el perfil de test: se llama al servicio a mano.</p>
+ *
+ * <p>{@code manti.alertas.lote=1} obliga al barrido a paginar alerta a alerta,
+ * ejercitando el bucle de lotes del follow-up #98 en cada test de la clase.</p>
  */
-@SpringBootTest(properties = "TELEGRAM_CHAT_ID=")
+@SpringBootTest(properties = {"TELEGRAM_CHAT_ID=", "manti.alertas.lote=1"})
 @ActiveProfiles("test")
 class AlertaEvaluacionTest {
 
@@ -220,6 +224,51 @@ class AlertaEvaluacionTest {
         assertThat(todas).hasSize(2);
         assertThat(contar(todas.get(1).get("cuerpo").toString(), "<li>")).isEqualTo(2);
         assertThat(marcaActual(alerta)).isEqualTo(ultima);
+    }
+
+    @Test
+    void evaluar_maximoIdIgualALaMenorMarca_noBarreNada() {
+        String email = "it-alerta-" + fijo() + "@example.com";
+        long usuario = FixturesAlertas.usuario(jdbc, email);
+        // Alerta cuya marca YA alcanza al mayor inmueble: el cortocircuito del
+        // follow-up #98 sale sin encolar ni tocar la alerta.
+        long alerta = FixturesAlertas.alerta(jdbc, usuario, "Al día", "It-alerta-" + fijo(),
+                new BigDecimal("500000"), FixturesAlertas.maximoIdInmuebles(jdbc));
+
+        assertThat(evaluacion.evaluar()).isZero();
+
+        Integer avisos = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM notificaciones_outbox WHERE alerta_id = ?",
+                Integer.class, alerta);
+        assertThat(avisos).isZero();
+    }
+
+    @Test
+    void evaluar_alertaConMarcaRecienteNoTapaALaAntigua_avisaASoloLaPendiente() {
+        // El cortocircuito usa la MENOR marca entre las activas: una alerta
+        // reciente (marca al día) no debe tapar a otra antigua con pendientes.
+        String emailA = "it-alerta-" + fijo() + "@example.com";
+        String emailB = "it-alerta-" + fijo() + "@example.com";
+        long usuarioA = FixturesAlertas.usuario(jdbc, emailA);
+        long usuarioB = FixturesAlertas.usuario(jdbc, emailB);
+        String municipioB = "It-alerta-" + fijo();
+        long marcaActual = FixturesAlertas.maximoIdInmuebles(jdbc);
+        long pendiente = FixturesAlertas.inmueble(jdbc, municipioB, new BigDecimal("200000"));
+        long alertaReciente = FixturesAlertas.alerta(jdbc, usuarioA, "Sin pendientes",
+                "It-alerta-" + fijo(), new BigDecimal("500000"), pendiente);
+        long alertaAntigua = FixturesAlertas.alerta(jdbc, usuarioB, "Pendiente",
+                municipioB, new BigDecimal("500000"), marcaActual);
+
+        assertThat(evaluacion.evaluar()).isEqualTo(1);
+
+        Integer avisosReciente = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM notificaciones_outbox WHERE alerta_id = ?",
+                Integer.class, alertaReciente);
+        assertThat(avisosReciente).isZero();
+        Integer avisosAntigua = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM notificaciones_outbox WHERE alerta_id = ?",
+                Integer.class, alertaAntigua);
+        assertThat(avisosAntigua).isEqualTo(1);
     }
 
     // ------------------------------------------------------------------

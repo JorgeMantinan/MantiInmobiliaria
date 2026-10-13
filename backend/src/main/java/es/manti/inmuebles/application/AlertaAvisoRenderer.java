@@ -29,8 +29,17 @@ final class AlertaAvisoRenderer {
     private AlertaAvisoRenderer() {
     }
 
+    /** Fila del resumen agrupado de Telegram de una pasada del job. */
+    record Resumen(String nombre, int cuantas, String enlace) {
+    }
+
     static String asuntoDe(AlertaBusqueda alerta, int cuantas) {
         return "%d viviendas nuevas en tu alerta '%s'".formatted(cuantas, alerta.getNombre());
+    }
+
+    /** Asunto del ÚNICO mensaje de Telegram de la pasada (resumen agrupado). */
+    static String asuntoResumenTelegram(int cuantas) {
+        return "%d alertas han encontrado viviendas nuevas".formatted(cuantas);
     }
 
     /**
@@ -86,10 +95,19 @@ final class AlertaAvisoRenderer {
                 HtmlEscaping.escapar(enlace));
     }
 
-    static String cuerpoTelegram(AlertaBusqueda alerta, List<InmuebleResumen> nuevas,
-                                 String enlace) {
-        return "Alerta '%s': %d viviendas nuevas. Ver: %s"
-                .formatted(alerta.getNombre(), nuevas.size(), enlace);
+    /**
+     * Resumen de texto plano (Telegram) de TODAS las alertas avisadas en la
+     * pasada: una línea por alerta con su cuenta y su enlace.
+     */
+    static String resumenTelegram(List<Resumen> avisos) {
+        StringBuilder sb = new StringBuilder(avisos.size() * 96);
+        sb.append(asuntoResumenTelegram(avisos.size())).append(':');
+        for (Resumen aviso : avisos) {
+            sb.append("\n• ").append(aviso.nombre()).append(": ")
+                    .append(aviso.cuantas()).append(" viviendas nuevas. Ver: ")
+                    .append(aviso.enlace());
+        }
+        return sb.toString();
     }
 
     private static String codificar(String valor) {
