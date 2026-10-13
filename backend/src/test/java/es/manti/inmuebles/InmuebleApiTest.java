@@ -1,6 +1,7 @@
 package es.manti.inmuebles;
 
 import com.jayway.jsonpath.JsonPath;
+import es.manti.inmuebles.application.ConteoInmueblesCache;
 import es.manti.inmuebles.domain.EstadoInmueble;
 import es.manti.inmuebles.domain.Inmueble;
 import es.manti.inmuebles.domain.InmuebleDatos;
@@ -62,9 +63,16 @@ class InmuebleApiTest {
     @Autowired
     private JdbcTemplate jdbc;
 
+    @Autowired
+    private ConteoInmueblesCache conteoCache;
+
     @AfterEach
     void limpiarFixtures() {
         jdbc.update("DELETE FROM inmuebles WHERE municipio LIKE 'It-%'");
+        // Los fixtures se borran por JDBC (fuera del servicio de escritura):
+        // se evicta la caché de conteos (issue #27) para que ningún test
+        // herede un totalElements cacheado de otro.
+        conteoCache.invalidarTrasCommit();
     }
 
     // ------------------------------------------------------------------
