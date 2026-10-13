@@ -68,6 +68,11 @@ manti:
     # tarea programada puede borrar filas mientras corren los tests. La acción
     # se prueba llamando a RefreshTokenPurgaService.purgar() a mano.
     enabled: false
+  alertas:
+    # El job de alertas (issue #96) TAMPOCO existe en test: ninguna tarea
+    # programada encola avisos mientras corren los tests. La evaluación se
+    # prueba llamando a AlertaEvaluacionService.evaluar() a mano.
+    enabled: false
   notificaciones:
     # Guard del ENVÍO (no del planificador): con false el despachador no lee
     # ni envía nada aunque se le llame a mano. Si un test quiere probar el
