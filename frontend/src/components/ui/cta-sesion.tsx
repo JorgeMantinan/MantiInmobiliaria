@@ -1,12 +1,15 @@
 import Link from 'next/link';
-import { ENLACE_PRIMARIO, ENLACE_SECUNDARIO } from '../clases';
+import { ENLACE_PRIMARIO, ENLACE_SECUNDARIO } from '@/components/ui/enlaces';
 
 type CtaSesionProps = Readonly<{
   titulo: string;
   descripcion: string;
 }>;
 
-/** Pantalla para usuarios anónimos: nunca se llama a la API sin sesión. */
+/**
+ * Pantalla para usuarios anónimos: nunca se llama a la API sin sesión.
+ * Primitiva compartida (follow-up #98): la usan swipes y alertas.
+ */
 export function CtaSesion({ titulo, descripcion }: CtaSesionProps) {
   return (
     <section className="w-full max-w-md rounded-lg border border-borde bg-superficie p-6 text-center">

@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { Boton } from '@/components/ui/boton';
+import { ENLACE_SECUNDARIO } from '@/components/ui/enlaces';
 import { queryListado } from '@/features/inmuebles/filtros';
-import { ENLACE_SECUNDARIO } from '@/features/swipes/clases';
 import { filtrosDesdeAlerta, resumenFiltros } from '../serializacion';
 import type { AlertaBusqueda } from '../types';
 

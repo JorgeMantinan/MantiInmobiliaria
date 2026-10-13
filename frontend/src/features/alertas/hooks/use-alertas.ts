@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSesion } from '@/features/auth/session';
+import { esSinSesion, mensajeDeError } from '@/lib/errores';
 import { actualizarAlerta, eliminarAlerta, listarAlertas } from '../api';
-import { esSinSesion, mensajeDeError, MENSAJES } from '../mensajes';
+import { MENSAJES } from '../mensajes';
 import type { AlertaBusqueda } from '../types';
 
 export type EstadoAlertas = Readonly<{

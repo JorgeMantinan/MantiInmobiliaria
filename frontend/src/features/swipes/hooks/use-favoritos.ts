@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { InmuebleResumen } from '@/features/inmuebles/types';
 import { useSesion } from '@/features/auth/session';
+import { esSinSesion, mensajeDeError } from '@/lib/errores';
 import { eliminarFavorito, listarFavoritos } from '../api';
-import { esSinSesion, mensajeDeError, MENSAJES } from '../mensajes';
+import { MENSAJES } from '../mensajes';
 
 export type EstadoFavoritos = Readonly<{
   /** Sin sesión (401 o `useSesion` sin usuario): no se llama a la API. */

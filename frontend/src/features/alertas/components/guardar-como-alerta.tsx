@@ -4,11 +4,12 @@ import Link from 'next/link';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Boton } from '@/components/ui/boton';
+import { ENLACE_SECUNDARIO } from '@/components/ui/enlaces';
 import { useSesionOpcional } from '@/features/auth/session';
 import type { FiltrosInmuebles } from '@/features/inmuebles/types';
-import { ENLACE_SECUNDARIO } from '@/features/swipes/clases';
+import { mensajeDeError } from '@/lib/errores';
 import { crearAlerta } from '../api';
-import { mensajeDeError, MENSAJES } from '../mensajes';
+import { MENSAJES } from '../mensajes';
 import { filtrosParaAlerta } from '../serializacion';
 
 type GuardarComoAlertaProps = Readonly<{
