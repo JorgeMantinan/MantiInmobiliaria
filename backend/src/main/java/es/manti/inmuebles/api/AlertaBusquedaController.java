@@ -3,6 +3,7 @@ package es.manti.inmuebles.api;
 import es.manti.inmuebles.api.dto.AlertaCreateRequest;
 import es.manti.inmuebles.api.dto.AlertaActualizarRequest;
 import es.manti.inmuebles.api.dto.AlertaMapper;
+import es.manti.inmuebles.api.dto.AlertaPage;
 import es.manti.inmuebles.api.dto.AlertaResponse;
 import es.manti.inmuebles.application.AlertaBusquedaService;
 import es.manti.inmuebles.domain.AlertaBusqueda;
@@ -59,16 +60,19 @@ public class AlertaBusquedaController {
     @GetMapping
     @Operation(operationId = "listarAlertas",
             summary = "Lista tus alertas de búsqueda",
-            description = "Alertas del usuario autenticado, de más reciente a más antigua "
-                    + "(array vacío si no tiene ninguna).",
+            description = "Alertas del usuario autenticado, de más reciente a más antigua, "
+                    + "en envelope `content` + `totalElements` (igual que el resto de "
+                    + "listados; `content` vacío si no tiene ninguna). Sin paginación: el "
+                    + "techo por usuario es de 50 alertas.",
             security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Array de alertas del usuario"),
+            @ApiResponse(responseCode = "200", description = "Envelope con las alertas del usuario"),
             @ApiResponse(responseCode = "401", description = "Sin token",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
-    public ResponseEntity<List<AlertaResponse>> listar(
+    public ResponseEntity<AlertaPage> listar(
             @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
-        return ResponseEntity.ok(mapper.toResponseList(service.listar(usuarioId(jwt))));
+        List<AlertaResponse> contenido = mapper.toResponseList(service.listar(usuarioId(jwt)));
+        return ResponseEntity.ok(new AlertaPage(contenido, contenido.size()));
     }
 
     @PostMapping

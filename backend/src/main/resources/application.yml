@@ -158,6 +158,8 @@ auth:
     # issue #57 — olvido (5/hora) y canje (10/hora) de contraseña por IP.
     forgot-password-per-hour: ${AUTH_RATE_PASSWORD_FORGOT_PER_HOUR:5}
     reset-password-per-hour: ${AUTH_RATE_PASSWORD_RESET_PER_HOUR:10}
+    # follow-up #98 — escrituras del CRUD de alertas por IP (30/min).
+    alertas-per-minute: ${AUTH_RATE_ALERTAS_PER_MINUTE:30}
 
 manti:
   cors:
@@ -201,11 +203,13 @@ manti:
   #   * frontend-url: base del enlace "Ver la búsqueda" del email — misma
   #     variable FRONTEND_URL que usan Google OAuth2 y el reset de contraseña.
   # El ENVÍO sigue siendo de manti.notificaciones.enabled (outbox compartido).
+  # El follow-up #98 añade lote: tamaño del barrido por transacción (500).
   # ---------------------------------------------------------------------------
   alertas:
     enabled: ${ALERTAS_ENABLED:true}
     cadencia-ms: ${ALERTAS_CADENCIA_MS:900000}
     frontend-url: ${FRONTEND_URL:http://localhost:3000}
+    lote: ${ALERTAS_LOTE:500}
   # ---------------------------------------------------------------------------
   # FASE 5 — notificaciones (outbox transaccional + despachador @Scheduled).
   # Los secretos llegan SOLO por variables de entorno (.env en local, hosting

@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSesion } from '@/features/auth/session';
+import { esSinSesion, mensajeDeError } from '@/lib/errores';
 import { actualizarAlerta, eliminarAlerta, listarAlertas } from '../api';
-import { esSinSesion, mensajeDeError, MENSAJES } from '../mensajes';
+import { MENSAJES } from '../mensajes';
 import type { AlertaBusqueda } from '../types';
 
 export type EstadoAlertas = Readonly<{
@@ -50,7 +51,9 @@ export function useAlertas(): EstadoAlertas & AccionesAlertas {
     setError(null);
     setErrorAccion(null);
     try {
-      setAlertas(await listarAlertas());
+      // Envelope AlertaPage (follow-up #98): el listado vive en `content`.
+      const pagina = await listarAlertas();
+      setAlertas(pagina.content);
     } catch (fallo: unknown) {
       if (esSinSesion(fallo)) {
         setSesionPerdida(true);

@@ -218,11 +218,11 @@ class AlertaApiTest {
     }
 
     // ------------------------------------------------------------------
-    // GET /api/v1/alertas
+    // GET /api/v1/alertas (envelope AlertaPage, follow-up #98)
     // ------------------------------------------------------------------
 
     @Test
-    void listar_devuelveSoloLasAlertasDelUsuarioActual() throws Exception {
+    void listar_devuelveSoloLasAlertasDelUsuarioActualEnUnEnvelope() throws Exception {
         String tokenA = registrarUsuario();
         String tokenB = registrarUsuario();
         crearAlerta(tokenA, "Alerta de A");
@@ -231,18 +231,20 @@ class AlertaApiTest {
         mockMvc.perform(get("/api/v1/alertas")
                         .header("Authorization", "Bearer " + tokenA))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].nombre").value("Alerta de A"));
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].nombre").value("Alerta de A"));
     }
 
     @Test
-    void listar_sinAlertas_devuelveArrayVacio() throws Exception {
+    void listar_sinAlertas_devuelveEnvelopeVacio() throws Exception {
         String token = registrarUsuario();
 
         mockMvc.perform(get("/api/v1/alertas")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.content.length()").value(0));
     }
 
     // ------------------------------------------------------------------
@@ -344,6 +346,33 @@ class AlertaApiTest {
         assertThat(nombreDe(id)).isEqualTo("Sigue aquí");
     }
 
+    /**
+     * Cascada V13 ({@code fk_notificaciones_outbox_alerta ON DELETE CASCADE}):
+     * borrar la alerta purga TAMBIÉN sus avisos del outbox compartido, así un
+     * aviso pendiente nunca apunta a una alerta inexistente.
+     */
+    @Test
+    void eliminar_purgaEnCascadaSusAvisosDelOutbox() throws Exception {
+        String token = registrarUsuario();
+        long id = crearAlerta(token, "Con avisos");
+        jdbc.update("""
+                INSERT INTO notificaciones_outbox
+                    (alerta_id, canal, destinatario_tipo, destino, asunto, cuerpo,
+                     estado, intentos)
+                VALUES (?, 'EMAIL', 'USUARIO', 'ana@example.com', 'Aviso', '<p>x</p>',
+                        'PENDIENTE', 0)
+                """, id);
+
+        mockMvc.perform(delete("/api/v1/alertas/{id}", id)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
+
+        Integer avisos = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM notificaciones_outbox WHERE alerta_id = ?",
+                Integer.class, id);
+        assertThat(avisos).isZero();
+    }
+
     // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
@@ -365,7 +394,7 @@ class AlertaApiTest {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        return ((java.util.List<?>) JsonPath.read(cuerpo, "$")).size();
+        return ((java.util.List<?>) JsonPath.read(cuerpo, "$.content")).size();
     }
 
     private String nombreDe(long id) {

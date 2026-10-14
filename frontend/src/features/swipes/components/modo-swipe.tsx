@@ -3,12 +3,12 @@
 import Link from 'next/link';
 import { AnimatePresence, MotionConfig } from 'framer-motion';
 import { Boton } from '@/components/ui/boton';
-import { ENLACE_PRIMARIO, ENLACE_SECUNDARIO } from '../clases';
+import { CtaSesion } from '@/components/ui/cta-sesion';
+import { ENLACE_PRIMARIO, ENLACE_SECUNDARIO } from '@/components/ui/enlaces';
 import { useDeckSwipe } from '../hooks/use-deck-swipe';
 import type { DecisionSwipe } from '../types';
 import { BotonesDecision } from './botones-decision';
 import { CartaSwipe } from './carta-swipe';
-import { CtaSesion } from './cta-sesion';
 
 /** Sólo las 2-3 cartas superiores se montan; el resto espera en el deck. */
 const CARTAS_VISIBLES = 3;

@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { Boton } from '@/components/ui/boton';
-import { CtaSesion } from '@/features/swipes/components/cta-sesion';
-import { ENLACE_PRIMARIO } from '@/features/swipes/clases';
+import { CtaSesion } from '@/components/ui/cta-sesion';
+import { ENLACE_PRIMARIO } from '@/components/ui/enlaces';
 import { useAlertas } from '../hooks/use-alertas';
 import { TarjetaAlerta } from './tarjeta-alerta';
 

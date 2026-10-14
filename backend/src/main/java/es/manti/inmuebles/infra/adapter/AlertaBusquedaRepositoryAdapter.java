@@ -3,10 +3,12 @@ package es.manti.inmuebles.infra.adapter;
 import es.manti.inmuebles.domain.AlertaBusqueda;
 import es.manti.inmuebles.domain.AlertaBusquedaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalLong;
 
 /** Adaptador JPA del puerto {@link AlertaBusquedaRepository}. */
 @Repository
@@ -31,8 +33,14 @@ public class AlertaBusquedaRepositoryAdapter implements AlertaBusquedaRepository
     }
 
     @Override
-    public List<AlertaBusqueda> activas() {
-        return jpaRepository.findByActivaTrueOrderByIdAsc();
+    public OptionalLong minimaMarcaActiva() {
+        Long minima = jpaRepository.minimaMarcaActiva();
+        return minima == null ? OptionalLong.empty() : OptionalLong.of(minima);
+    }
+
+    @Override
+    public List<AlertaBusqueda> activasDesde(long desdeId, int limite) {
+        return jpaRepository.activasDesde(desdeId, PageRequest.of(0, limite));
     }
 
     @Override

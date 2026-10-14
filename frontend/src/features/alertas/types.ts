@@ -38,3 +38,13 @@ export type AlertaCambios = Readonly<{
   nombre?: string;
   activa?: boolean;
 }>;
+
+/**
+ * `AlertaPage` del backend (follow-up #98): envelope del listado, igual que
+ * `InmueblePage`/`SwipePage`. Sin paginación real (techo de 50 por usuario),
+ * por eso no hay `nextCursor`.
+ */
+export type AlertaPage = Readonly<{
+  content: readonly AlertaBusqueda[];
+  totalElements: number;
+}>;

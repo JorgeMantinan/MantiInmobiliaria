@@ -355,7 +355,7 @@ Lista tus alertas de búsqueda
 
 ===== Description
 
-Alertas del usuario autenticado, de más reciente a más antigua (array vacío si no tiene ninguna).
+Alertas del usuario autenticado, de más reciente a más antigua, en envelope `content` + `totalElements` (igual que el resto de listados; `content` vacío si no tiene ninguna). Sin paginación: el techo por usuario es de 50 alertas.
 
 
 // markup not found, no include::{specDir}api/v1/alertas/GET/spec.adoc[opts=optional]
@@ -372,7 +372,7 @@ Alertas del usuario autenticado, de más reciente a más antigua (array vacío s
 
 ===== Return Type
 
-array[<<AlertaResponse>>]
+<<AlertaPage>>
 
 
 ===== Content Type
@@ -388,8 +388,8 @@ array[<<AlertaResponse>>]
 
 
 | 200
-| Array de alertas del usuario
-| List[<<AlertaResponse>>] 
+| Envelope con las alertas del usuario
+|  <<AlertaPage>>
 
 
 | 401
@@ -3023,7 +3023,7 @@ Actualización parcial de una alerta (nombre y/o actividad)
 | 
 | 
 |   String  
-| Nuevo nombre (1..80); ausente &#x3D; sin cambios
+| Nuevo nombre (1..80, sin blanco si se envía); ausente &#x3D; sin cambios
 |     
 
 | activa
@@ -3125,6 +3125,35 @@ Filtros de la alerta (los mismos que acepta el listado público de inmuebles)
 |   Boolean  
 | Sólo destacados (true) o sólo no destacados (false); ausente &#x3D; sin filtrar
 |     
+
+|===
+
+
+
+[#AlertaPage]
+=== _AlertaPage_ 
+
+Listado de alertas del usuario autenticado
+
+
+[.fields-AlertaPage]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| content
+| 
+| 
+|   List   of <<AlertaResponse>>
+| Alertas del usuario, de más reciente a más antigua
+|     
+
+| totalElements
+| 
+| 
+|   Long  
+| Total de alertas del usuario
+| int64    
 
 |===
 

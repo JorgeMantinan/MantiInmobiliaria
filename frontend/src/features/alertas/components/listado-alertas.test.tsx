@@ -58,7 +58,7 @@ function renderConSesion(valor: ValorSesion, ui: ReactNode) {
   return render(<SesionContext.Provider value={valor}>{ui}</SesionContext.Provider>);
 }
 
-/** Cualquier GET devuelve la lista `pedida`; PATCH/DELETE devuelven undefined. */
+/** Cualquier GET devuelve el envelope de `pedida`; PATCH/DELETE el cambio. */
 function instalarAlertas(pedidas: readonly AlertaBusqueda[]): void {
   vi.mocked(apiFetch).mockImplementation(async (_ruta, opciones) => {
     if (opciones?.method === 'PATCH') {
@@ -68,7 +68,7 @@ function instalarAlertas(pedidas: readonly AlertaBusqueda[]): void {
       return { ...original!, activa: cuerpo.activa };
     }
     if (opciones?.method === 'DELETE') return undefined;
-    return pedidas;
+    return { content: pedidas, totalElements: pedidas.length };
   });
 }
 
@@ -129,7 +129,8 @@ describe('ListadoAlertas', () => {
     const usuario = userEvent.setup();
     vi.mocked(apiFetch).mockImplementation(async (_ruta, opciones) => {
       if (opciones?.method === 'DELETE') throw new Error('no se ha podido eliminar');
-      return [alerta(1, 'Pisos Madrid')];
+      const alertas = [alerta(1, 'Pisos Madrid')];
+      return { content: alertas, totalElements: alertas.length };
     });
 
     renderConSesion(CON_SESION, <ListadoAlertas />);
