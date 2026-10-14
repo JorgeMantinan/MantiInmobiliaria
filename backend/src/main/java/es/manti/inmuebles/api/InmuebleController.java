@@ -72,6 +72,10 @@ public class InmuebleController {
             @ApiResponse(responseCode = "400", description = "Cursor, sort, rango de filtros (precioMin>precioMax, "
                     + "precios negativos, habitacionesMin<0) o valor de parámetro no admitido "
                     + "(p. ej. estado=XYZ, limit=abc): ProblemDetail con errors:[{field, message}]",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "429", description = "Demasiadas peticiones (rate limit por IP; "
+                    + "issue #22 — el listado es anónimo y sin límite un cliente podría forzar "
+                    + "COUNT + ILIKE en cada request)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     @SecurityRequirements   // endpoint público: security: [] en la spec
     public ResponseEntity<InmueblePage> listar(

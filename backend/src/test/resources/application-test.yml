@@ -50,6 +50,15 @@ auth:
     forgot-password-per-hour: 100000
     reset-password-per-hour: 100000
     alertas-per-minute: 100000
+    # FASE P2 (issues #17 y #22): las rutas nuevas también quedan sin límite
+    # en la suite; el rate limit se prueba en sus clases dedicadas con
+    # overrides por @SpringBootTest(properties = ...).
+    refresh-per-minute: 100000
+    oauth2-token-per-minute: 100000
+    inmuebles-per-minute: 100000
+    swipes-per-minute: 100000
+    deck-per-minute: 100000
+    favoritos-per-minute: 100000
   password-reset:
     # Revisión del PR #64: en test el envío del enlace va EN LÍNEA para que
     # los tests puedan verificar el puerto con un mock sin carreras de hilos.

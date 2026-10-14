@@ -160,6 +160,27 @@ auth:
     reset-password-per-hour: ${AUTH_RATE_PASSWORD_RESET_PER_HOUR:10}
     # follow-up #98 — escrituras del CRUD de alertas por IP (30/min).
     alertas-per-minute: ${AUTH_RATE_ALERTAS_PER_MINUTE:30}
+    # ---------------------------------------------------------------------------
+    # FASE P2 (issues #17 y #22) — rutas nuevas del rate limit, todas con
+    # ventana de 60 s por IP y tunneables por variable de entorno:
+    #   * refresh: 60/min. El bootstrap multi-pestaña dispara varias rotaciones
+    #     seguidas al abrir la app; 60/min no corta esa ráfaga pero acota el
+    #     bombardeo de la cookie httpOnly (issue #17).
+    #   * oauth2-token: 20/min. Cada login con Google canjea UN código; el
+    #     límite frena el envío de códigos caducados, que obliga al backend a
+    #     llamar a Google en cada intento.
+    #   * inmuebles: 60/min. GET público anónimo del listado (issue #22): hoy
+    #     sólo la caché de COUNT del PR #94 amortigua el coste; este límite
+    #     acota además las queries de página (ILIKE trgm + keyset).
+    #   * swipes/deck/favoritos: escrituras y lecturas autenticadas baratas
+    #     (comentario del issue #17); los defaults son holgados para uso real.
+    # ---------------------------------------------------------------------------
+    refresh-per-minute: ${AUTH_RATE_REFRESH_PER_MINUTE:60}
+    oauth2-token-per-minute: ${AUTH_RATE_OAUTH2_TOKEN_PER_MINUTE:20}
+    inmuebles-per-minute: ${AUTH_RATE_INMUEBLES_PER_MINUTE:60}
+    swipes-per-minute: ${AUTH_RATE_SWIPES_PER_MINUTE:120}
+    deck-per-minute: ${AUTH_RATE_DECK_PER_MINUTE:60}
+    favoritos-per-minute: ${AUTH_RATE_FAVORITOS_PER_MINUTE:60}
 
 manti:
   cors:

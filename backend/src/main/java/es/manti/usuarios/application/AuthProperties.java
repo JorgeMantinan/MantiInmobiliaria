@@ -32,10 +32,24 @@ public record AuthProperties(
     public record Google(String frontendUrl, Duration codeTtl) {
     }
 
+    /**
+     * Límites por ruta de {@code AuthRateLimitFilter}: peticiones admitidas por
+     * IP dentro de la ventana que le corresponde (minuto o hora). Todos son
+     * tunneables por variable de entorno ({@code AUTH_RATE_*}) y se suben a un
+     * valor muy alto en el perfil de test para que la suite nunca dependa del
+     * rate limit (sólo lo comprueban las clases dedicadas, con overrides).
+     *
+     * <p>Issues #17 y #22: refresh y canje OAuth2 de Google (rotación de
+     * sesiones), listado público de inmuebles (COUNT + ILIKE) y las rutas de
+     * swipes del comentario del issue #17.</p>
+     */
     public record RateLimit(int loginPerMinute, int registerPerMinute,
                             int solicitudesPerHour, int registroProfesionalPerHour,
                             int forgotPasswordPerHour, int resetPasswordPerHour,
-                            int alertasPerMinute) {
+                            int alertasPerMinute,
+                            int refreshPerMinute, int oauth2TokenPerMinute,
+                            int inmueblesPerMinute, int swipesPerMinute,
+                            int deckPerMinute, int favoritosPerMinute) {
     }
 
     /** Falla al arrancar si el SameSite es inválido o incoherente con Secure. */
