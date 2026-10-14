@@ -66,13 +66,14 @@ import java.util.List;
 @EnableWebSecurity
 @EnableMethodSecurity
 @EnableConfigurationProperties({AuthProperties.class, CorsProperties.class,
-        PasswordResetProperties.class, LoginProteccionProperties.class})
+        PasswordResetProperties.class, LoginProteccionProperties.class, HstsProperties.class})
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final AuthProperties authProperties;
     private final CorsProperties corsProperties;
     private final LoginProteccionProperties loginProteccionProperties;
+    private final HstsProperties hstsProperties;
 
     /**
      * Firewall con {@code ;} permitido SÓLO bajo {@code /api/v1/auth/}:
@@ -187,8 +188,27 @@ public class SecurityConfig {
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
-                .headers(headers -> headers
-                        .addHeaderWriter(new StaticHeadersWriter("Referrer-Policy", "no-referrer")))
+                .headers(headers -> {
+                    headers.addHeaderWriter(new StaticHeadersWriter("Referrer-Policy", "no-referrer"));
+                    // issue #9 — HSTS controlado por manti.seguridad.hsts.*:
+                    // Spring Security lo trae ACTIVADO por defecto (un año,
+                    // includeSubDomains) y sólo emite la cabecera si la
+                    // petición es SEGURA — tras el TLS terminator de Vercel lo
+                    // es gracias a forward-headers-strategy=framework
+                    // (X-Forwarded-Proto). Fuera de prod hay que DESACTIVARLO
+                    // explícitamente; con el default, un túnel https en local
+                    // (o un test que marca isSecure) emitiría la cabecera.
+                    if (hstsProperties.enabled()) {
+                        headers.httpStrictTransportSecurity(hsts -> hsts
+                                .maxAgeInSeconds(hstsProperties.maxAgeSegundos())
+                                .includeSubDomains(true));
+                    } else {
+                        // HstsConfig de Security 7: disable() apaga el
+                        // writer por defecto (si no, un túnel https local
+                        // emitiría la cabecera de prod).
+                        headers.httpStrictTransportSecurity(hsts -> hsts.disable());
+                    }
+                })
                 // Filtros propios antes de la comprobación de autorización:
                 // límite de tamaño de cuerpo (413), rate limit por IP, CSRF
                 // por cabecera en los endpoints con cookie y la protección de

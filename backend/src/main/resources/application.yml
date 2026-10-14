@@ -100,7 +100,7 @@ management:
       exposure:
         # Sólo /actuator/health es anónimo; info, metrics y prometheus exigen
         # rol ADMIN (SecurityConfig, issue #25). En prod la lista se recorta a
-        # health,info (application-prod.yml) y se reabre con
+        # SOLO health (application-prod.yml, issue #6) y se reabre con
         # MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE si hace falta scrapear.
         include: health,info,metrics,prometheus
   # Export a Prometheus (issue #25): la clave POR REGISTRY es la que decide.
@@ -223,6 +223,17 @@ manti:
   cors:
     # Allowlist explícita (nunca '*'): separada por comas.
     allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000}
+  # ---------------------------------------------------------------------------
+  # issue #9 — HSTS (Strict-Transport-Security). Apagado fuera de prod: en
+  # local se sirve por http:// y la cabecera sería contraproducente. El perfil
+  # prod la activa (application-prod.yml) con includeSubDomains y un año de
+  # max-age tunneable por HSTS_MAX_AGE_SEGUNDOS. Spring Security sólo la
+  # emite si la petición es segura (X-Forwarded-Proto https vía proxy).
+  # ---------------------------------------------------------------------------
+  seguridad:
+    hsts:
+      enabled: ${HSTS_ENABLED:false}
+      max-age-segundos: ${HSTS_MAX_AGE_SEGUNDOS:31536000}
   # ---------------------------------------------------------------------------
   # FASE 7 (issue #27) — caché Caffeine del COUNT totalElements del listado
   # público de inmuebles (ConteoInmueblesCache). TTL corto como red de

@@ -11,6 +11,11 @@
 #   2. springdoc apagado por defecto: la especificación y el Swagger UI no se
 #      publican en producción. Se puede reabrir puntualmente con
 #      SPRINGDOC_ENABLED=true sin tocar este fichero (nunca con secretos).
+#      Interacción con issue #9: como swagger-ui queda APAGADO en prod, su CSP
+#      específica es irrelevante aquí; si se reabre puntualmente, la app no
+#      sirve HTML propio de swagger con recursos cross-origin (los assets van
+#      en same-origin del propio endpoint) y las cabeceras por defecto de
+#      Spring Security (sin frame-ancestors abiertos) bastan.
 spring:
   flyway:
     locations: classpath:db/migration
@@ -32,9 +37,36 @@ server:
   #
   # La variable FORWARD_HEADERS_STRATEGY ya está en Vercel (la reescribe el
   # edge); se expone por si hay que apagarla con 'none' sin redeploy de código.
+  # OJO (issue #5): poner 'none' en prod RECHAZA el arranque
+  # (ForwardHeadersGuardConfig) — el rate limit y HSTS dependen de esto.
   # El perfil base (dev/local) NO se toca: ahí no hay proxy y confiar en esas
   # cabeceras permitiría spoofing de IP.
   forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:framework}
+
+# ---------------------------------------------------------------------------
+# issues #6 y #9 — cookies de sesión endurecidas en prod.
+#   * name/path: prefijo __Host- (issue #9). Exige Path=/ y SIN atributo
+#     Domain, lo que impide que un subdominio hermano (*.vercel.app es un
+#     sufijo compartido) inyecte una cookie homónima que sobrescriba el
+#     refresh token. Front y API NO comparten dominio (mantiinmobiliaria.
+#     vercel.app vs mantiinmobiliaria-api.vercel.app), pero el prefijo se
+#     aplica del lado del que FIJA la cookie (la API) y no depende de eso.
+#     CONTRAPARTIDA: el refresh cookie se envía a toda la API (antes sólo a
+#     /api/v1/auth); sigue siendo HttpOnly y el endpoint sensible (/refresh)
+#     exige además X-Requested-With. Al desplegar esto, las sesiones abiertas
+#     con la cookie antigua (refresh_token, path /api/v1/auth) se invalidan una
+#     vez —los usuarios vuelven a loguearse— y la cookie vieja caduca sola.
+#     Reversión sin redeploy de código: COOKIE_NAME=refresh_token y
+#     COOKIE_PATH=/api/v1/auth.
+#   * secure/same-site: cross-site real (front y API en orígenes distintos):
+#     SameSite=None SÓLO funciona con Secure, y ambos quedan acotados a prod.
+# ---------------------------------------------------------------------------
+auth:
+  cookie:
+    name: ${COOKIE_NAME:__Host-refresh_token}
+    path: ${COOKIE_PATH:/}
+    secure: ${COOKIE_SECURE:true}
+    same-site: ${COOKIE_SAMESITE:None}
 
 springdoc:
   api-docs:
@@ -42,21 +74,36 @@ springdoc:
   swagger-ui:
     enabled: ${SPRINGDOC_ENABLED:false}
 
-# FASE 7 — recorte duro del actuator en producción (issue #25, revisión del PR).
-#   1. Exposición por defecto SÓLO health,info: metrics y prometheus quedan
+# ---------------------------------------------------------------------------
+# issue #9 — HSTS con includeSubDomains y un año de max-age (tuneable por
+# HSTS_MAX_AGE_SEGUNDOS). Sólo se emite en peticiones seguras: con el proxy
+# de Vercel delante (X-Forwarded-Proto=https + forward-headers-strategy), lo
+# son todas las de prod.
+# ---------------------------------------------------------------------------
+manti:
+  seguridad:
+    hsts:
+      enabled: ${HSTS_ENABLED:true}
+      max-age-segundos: ${HSTS_MAX_AGE_SEGUNDOS:31536000}
+
+# FASE 7 — recorte duro del actuator en producción (issue #25, revisión del
+# PR; issue #6 lo recorta a health SOLO).:
+#   1. Exposición por defecto SÓLO health: info, metrics y prometheus quedan
 #      fuera y hay que abrirlos a mano con
-#      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE si se scrapea Prometheus (el
-#      endpoint sigue exigiendo rol ADMIN aunque se exponga).
-#   2. El export a Prometheus apagado por defecto: sin scraper no se gasta CPU
+#      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE si se scrapea Prometheus (los
+#      endpoints siguen exigiendo rol ADMIN aunque se expongan —
+#      /actuator/health es el único anónimo, que es lo que usa el healthcheck
+#      del hosting y el smoke de producción).
+#   2. El export a Prometheus apagado por defecto: sin scraper se gasta CPU
 #      ni memoria en series que nadie lee; PROMETHEUS_EXPORT_ENABLED=true lo
 #      reabre junto a la exposure anterior.
-#   3. health sin detalle: fuera de componentes/indicators (ni versions de
+#   3. health sin detalle: fuera de components/indicators (ni versions de
 #      Hibernate/JDBC ni estado de discos) para el healthcheck anónimo.
 management:
   endpoints:
     web:
       exposure:
-        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health,info}
+        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health}
   prometheus:
     metrics:
       export:
