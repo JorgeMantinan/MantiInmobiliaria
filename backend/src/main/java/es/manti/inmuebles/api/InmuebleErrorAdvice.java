@@ -1,9 +1,12 @@
 package es.manti.inmuebles.api;
 
+import es.manti.inmuebles.domain.AlertaLimiteExcedidoException;
+import es.manti.inmuebles.domain.AlertaNoEncontradaException;
 import es.manti.inmuebles.domain.CursorInvalidoException;
 import es.manti.inmuebles.domain.InmuebleNoEncontradoException;
 import es.manti.inmuebles.domain.InmuebleYaEliminadoException;
 import es.manti.inmuebles.domain.ParametroInvalidoException;
+import es.manti.inmuebles.domain.SesionInvalidaException;
 import es.manti.shared.error.Problems;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.Ordered;
@@ -44,6 +47,32 @@ public class InmuebleErrorAdvice {
     public ProblemDetail yaEliminado(InmuebleYaEliminadoException e, HttpServletRequest request) {
         return Problems.crear(HttpStatus.CONFLICT, "inmueble-ya-eliminado",
                 "Inmueble ya eliminado", e.getMessage(), request);
+    }
+
+    /**
+     * Alerta inexistente o de OTRO usuario (owner-scoped): 404, nunca 403 —
+     * no se revela la existencia de un id ajeno (issue #96).
+     */
+    @ExceptionHandler(AlertaNoEncontradaException.class)
+    public ProblemDetail alertaNoEncontrada(AlertaNoEncontradaException e,
+                                            HttpServletRequest request) {
+        return Problems.crear(HttpStatus.NOT_FOUND, "no-encontrado",
+                "No encontrado", e.getMessage(), request);
+    }
+
+    /** Techo de alertas por usuario alcanzado (A04): 409, retry con borrado. */
+    @ExceptionHandler(AlertaLimiteExcedidoException.class)
+    public ProblemDetail alertaLimiteExcedido(AlertaLimiteExcedidoException e,
+                                              HttpServletRequest request) {
+        return Problems.crear(HttpStatus.CONFLICT, "alertas-limite-excedido",
+                "Límite de alertas alcanzado", e.getMessage(), request);
+    }
+
+    /** Token autenticado pero con un {@code sub} no utilizable → 401. */
+    @ExceptionHandler(SesionInvalidaException.class)
+    public ProblemDetail sesionInvalida(SesionInvalidaException e, HttpServletRequest request) {
+        return Problems.crear(HttpStatus.UNAUTHORIZED, "no-autenticado",
+                "No autenticado", e.getMessage(), request);
     }
 
     /**

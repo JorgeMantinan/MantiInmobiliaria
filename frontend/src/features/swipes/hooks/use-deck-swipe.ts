@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { InmuebleResumen } from '@/features/inmuebles/types';
 import { useSesion } from '@/features/auth/session';
+import { esSinSesion, mensajeDeError } from '@/lib/errores';
 import { obtenerDeck, registrarSwipe } from '../api';
-import { esSinSesion, mensajeDeError, MENSAJES } from '../mensajes';
+import { MENSAJES } from '../mensajes';
 import type { DecisionSwipe } from '../types';
 
 /** Posición de la carta actual dentro de las cartas ya cargadas. */

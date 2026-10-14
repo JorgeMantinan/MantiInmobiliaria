@@ -24,6 +24,22 @@ public interface InmuebleRepository {
     /** Total de inmuebles que cumplen los filtros (sin cursor), para {@code totalElements}. */
     long contar(InmuebleFiltros filtros);
 
+    /**
+     * Inmuebles vigentes con {@code id > desdeId} que cumplen los filtros,
+     * orden {@code id ASC} y acotados a {@code limite} (issue #96: el job de
+     * alertas sólo mira lo nuevo desde su marca de agua; el LIMIT evita cargar
+     * el catálogo entero y el resto de coincidencias se drena en pasadas
+     * siguientes).
+     *
+     * @param filtros filtros opcionales de la alerta (nulos = sin filtrar)
+     * @param desdeId marca de agua: sólo inmuebles con id superior
+     * @param limite  máximo de filas (10 en el job)
+     */
+    List<InmuebleResumen> listarNuevosDesde(InmuebleFiltros filtros, Long desdeId, int limite);
+
+    /** Mayor id de inmuebles (marca de agua inicial de una alerta); 0 si no hay. */
+    long maximoId();
+
     /** Detalle: sólo inmuebles vigentes (no eliminados). Lo usa la API pública. */
     Optional<Inmueble> porId(Long id);
 

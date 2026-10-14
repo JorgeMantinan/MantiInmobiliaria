@@ -1,6 +1,8 @@
 /**
- * Clases Tailwind compartidas del feature de swipes (DRY): enlaces de acción
- * con tokens del sistema madera, sin hexadecimales fuera de la paleta.
+ * Clases Tailwind compartidas de acciones/enlaces (DRY, follow-up #98):
+ * tokens del sistema madera, sin hexadecimales fuera de la paleta. Nacieron
+ * en `features/swipes/clases` y suben a `components/ui` al empezar a
+ * compartirse con alertas.
  */
 
 /** Enlace/acción primaria: nogal sobre crema, focus ring visible. */

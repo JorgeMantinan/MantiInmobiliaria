@@ -54,7 +54,9 @@ public class BrevoEmailAdapter implements EmailNotificadorPort {
         } catch (RestClientException e) {
             throw clasificar(e);
         }
-        log.debug("Email enviado a {}", destino);
+        // El destino es PII: se loguea enmascarado (follow-up #98), igual que
+        // el resto de avisos de email del backend.
+        log.debug("Email enviado a {}", Emails.mascarar(destino));
     }
 
     private static Map<String, Object> payload(String destino, String asunto, String html,

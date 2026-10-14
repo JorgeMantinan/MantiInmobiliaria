@@ -32,6 +32,394 @@ API del portal inmobiliario MantiInmobiliaria
 == Endpoints
 
 
+[.Alertas]
+=== Alertas
+
+
+[.actualizarAlerta]
+==== actualizarAlerta
+
+`PATCH /api/v1/alertas/{id}`
+
+Actualiza el nombre y/o la actividad de una alerta
+
+===== Description
+
+Edición PARCIAL: los campos ausentes no cambian. Los filtros no se editan (para cambiarlos, crea otra alerta). 404 si la alerta no existe o NO es del usuario actual.
+
+
+// markup not found, no include::{specDir}api/v1/alertas/\{id\}/PATCH/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+====== Path Parameters
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| id
+| Identificador de la alerta 
+| X
+| null
+| 
+
+|===
+
+====== Body Parameter
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| AlertaActualizarRequest
+|  <<AlertaActualizarRequest>>
+| X
+| 
+| 
+
+|===
+
+
+
+
+
+===== Return Type
+
+<<AlertaResponse>>
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| Alerta actualizada
+|  <<AlertaResponse>>
+
+
+| 400
+| Validación fallida (ProblemDetail con errors[])
+|  <<ProblemDetail>>
+
+
+| 401
+| Sin token
+|  <<ProblemDetail>>
+
+
+| 404
+| Alerta inexistente o de otro usuario (ProblemDetail)
+|  <<ProblemDetail>>
+
+
+| 413
+| Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/alertas/\{id\}/PATCH/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/alertas/\{id\}/PATCH/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/alertas/{id}/PATCH/PATCH.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/alertas/\{id\}/PATCH/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.crearAlerta]
+==== crearAlerta
+
+`POST /api/v1/alertas`
+
+Crea una alerta con los filtros del listado
+
+===== Description
+
+Alta con los MISMOS filtros que `GET /api/v1/inmuebles`: un rango inválido (precioMin > precioMax, precios negativos, habitaciones < 0) responde 400 igual que el listado. La alerta nace ACTIVA y con su marca de agua en el mayor id de inmueble existente, así que sólo se avisará de los inmuebles que entren DESPUÉS de guardarla (máximo 50 alertas por usuario).
+
+
+// markup not found, no include::{specDir}api/v1/alertas/POST/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+====== Body Parameter
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| AlertaCreateRequest
+|  <<AlertaCreateRequest>>
+| X
+| 
+| 
+
+|===
+
+
+
+
+
+===== Return Type
+
+<<AlertaResponse>>
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 201
+| Alerta creada (cabecera Location)
+|  <<AlertaResponse>>
+
+
+| 400
+| Validación fallida o rango de filtros inválido (ProblemDetail con errors[])
+|  <<ProblemDetail>>
+
+
+| 401
+| Sin token
+|  <<ProblemDetail>>
+
+
+| 409
+| Máximo de alertas por usuario alcanzado (ProblemDetail)
+|  <<ProblemDetail>>
+
+
+| 413
+| Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/alertas/POST/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/alertas/POST/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/alertas/POST/POST.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/alertas/POST/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.eliminarAlerta]
+==== eliminarAlerta
+
+`DELETE /api/v1/alertas/{id}`
+
+Elimina una alerta
+
+===== Description
+
+Borra la alerta y sus avisos pendientes en cascada. 404 si la alerta no existe o NO es del usuario actual.
+
+
+// markup not found, no include::{specDir}api/v1/alertas/\{id\}/DELETE/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+====== Path Parameters
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| id
+| Identificador de la alerta 
+| X
+| null
+| 
+
+|===
+
+
+
+
+
+
+===== Return Type
+
+
+
+-
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 204
+| Alerta eliminada (sin cuerpo)
+|  <<>>
+
+
+| 401
+| Sin token
+|  <<ProblemDetail>>
+
+
+| 404
+| Alerta inexistente o de otro usuario (ProblemDetail)
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/alertas/\{id\}/DELETE/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/alertas/\{id\}/DELETE/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/alertas/{id}/DELETE/DELETE.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/alertas/\{id\}/DELETE/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.listarAlertas]
+==== listarAlertas
+
+`GET /api/v1/alertas`
+
+Lista tus alertas de búsqueda
+
+===== Description
+
+Alertas del usuario autenticado, de más reciente a más antigua, en envelope `content` + `totalElements` (igual que el resto de listados; `content` vacío si no tiene ninguna). Sin paginación: el techo por usuario es de 50 alertas.
+
+
+// markup not found, no include::{specDir}api/v1/alertas/GET/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+
+
+
+
+
+===== Return Type
+
+<<AlertaPage>>
+
+
+===== Content Type
+
+* */*
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| Envelope con las alertas del usuario
+|  <<AlertaPage>>
+
+
+| 401
+| Sin token
+|  <<ProblemDetail>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}api/v1/alertas/GET/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}api/v1/alertas/GET/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :api/v1/alertas/GET/GET.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}api/v1/alertas/GET/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
 [.Auth]
 === Auth
 
@@ -2618,6 +3006,221 @@ endif::internal-generation[]
 
 [#models]
 == Models
+
+
+[#AlertaActualizarRequest]
+=== _AlertaActualizarRequest_ 
+
+Actualización parcial de una alerta (nombre y/o actividad)
+
+
+[.fields-AlertaActualizarRequest]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| nombre
+| 
+| 
+|   String  
+| Nuevo nombre (1..80, sin blanco si se envía); ausente &#x3D; sin cambios
+|     
+
+| activa
+| 
+| 
+|   Boolean  
+| Activa o pausa la alerta; ausente &#x3D; sin cambios. Pausada, el job deja de evaluarla (los avisos no se pierden: al reactivar se continúa desde la última marca de agua)
+|     
+
+|===
+
+
+
+[#AlertaCreateRequest]
+=== _AlertaCreateRequest_ 
+
+Alta de una alerta de búsqueda con los filtros del listado
+
+
+[.fields-AlertaCreateRequest]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| nombre
+| X
+| 
+|   String  
+| Nombre propio de la alerta (1..80 caracteres)
+|     
+
+| filtros
+| X
+| 
+| <<AlertaFiltros>>    
+| Filtros a guardar (los mismos del listado público)
+|     
+
+|===
+
+
+
+[#AlertaFiltros]
+=== _AlertaFiltros_ 
+
+Filtros de la alerta (los mismos que acepta el listado público de inmuebles)
+
+
+[.fields-AlertaFiltros]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| estado
+| 
+| 
+|  <<String>>  
+| Estado comercial (VENTA o ALQUILER); ausente &#x3D; sin filtrar
+|  _Enum:_ VENTA, ALQUILER,  
+
+| tipo
+| 
+| 
+|  <<String>>  
+| Tipo de inmueble; ausente &#x3D; sin filtrar
+|  _Enum:_ PISO, CASA, ATICO, DUPLEX, ESTUDIO, LOCAL, TERRENO,  
+
+| municipio
+| 
+| 
+|   String  
+| Municipio, coincidencia parcial e insensible a mayúsculas (máx. 120)
+|     
+
+| precioMin
+| 
+| 
+|   BigDecimal  
+| Precio mínimo en euros (&gt;&#x3D; 0; no puede superar precioMax)
+|     
+
+| precioMax
+| 
+| 
+|   BigDecimal  
+| Precio máximo en euros (&gt;&#x3D; 0; no puede ser menor que precioMin)
+|     
+
+| habitacionesMin
+| 
+| 
+|   Integer  
+| Número mínimo de habitaciones (&gt;&#x3D; 0)
+| int32    
+
+| destacado
+| 
+| 
+|   Boolean  
+| Sólo destacados (true) o sólo no destacados (false); ausente &#x3D; sin filtrar
+|     
+
+|===
+
+
+
+[#AlertaPage]
+=== _AlertaPage_ 
+
+Listado de alertas del usuario autenticado
+
+
+[.fields-AlertaPage]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| content
+| 
+| 
+|   List   of <<AlertaResponse>>
+| Alertas del usuario, de más reciente a más antigua
+|     
+
+| totalElements
+| 
+| 
+|   Long  
+| Total de alertas del usuario
+| int64    
+
+|===
+
+
+
+[#AlertaResponse]
+=== _AlertaResponse_ 
+
+Alerta de búsqueda del usuario autenticado
+
+
+[.fields-AlertaResponse]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| id
+| 
+| 
+|   Long  
+| Identificador de la alerta
+| int64    
+
+| nombre
+| 
+| 
+|   String  
+| Nombre propio de la alerta
+|     
+
+| filtros
+| 
+| 
+| <<AlertaFiltros>>    
+| Filtros guardados (los mismos del listado público)
+|     
+
+| activa
+| 
+| 
+|   Boolean  
+| Si está activa, el job la evalúa en cada pasada
+|     
+
+| ultimoAvisoEn
+| 
+| 
+|   Date  
+| Instante ISO-8601 del último aviso enviado; null si aún no avisó
+| date-time    
+
+| creadoEn
+| 
+| 
+|   Date  
+| Instante ISO-8601 de creación
+| date-time    
+
+| actualizadoEn
+| 
+| 
+|   Date  
+| Instante ISO-8601 de la última modificación
+| date-time    
+
+|===
+
 
 
 [#AlquilerMercadoResponse]

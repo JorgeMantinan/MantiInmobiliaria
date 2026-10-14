@@ -2,6 +2,8 @@ package es.manti.usuarios.application;
 
 import es.manti.usuarios.domain.CredencialesInvalidasException;
 import es.manti.usuarios.domain.EmailYaRegistradoException;
+import es.manti.usuarios.domain.PasswordComprometidoException;
+import es.manti.usuarios.domain.PasswordComprometidoPort;
 import es.manti.usuarios.domain.Rol;
 import es.manti.usuarios.domain.Usuario;
 import es.manti.usuarios.domain.UsuarioInactivoException;
@@ -51,6 +53,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final CuentaGoogleService cuentaGoogle;
+    private final PasswordComprometidoPort passwordComprometido;
 
     /**
      * Transacción de escritura del registro: alta de usuario + emisión de la
@@ -74,12 +77,14 @@ public class AuthService {
 
     public AuthService(UsuarioRepository usuarios, RefreshTokenService refreshTokens,
                        JwtService jwtService, PasswordEncoder passwordEncoder,
-                       CuentaGoogleService cuentaGoogle, TransactionTemplate transaccion) {
+                       CuentaGoogleService cuentaGoogle, PasswordComprometidoPort passwordComprometido,
+                       TransactionTemplate transaccion) {
         this.usuarios = usuarios;
         this.refreshTokens = refreshTokens;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
         this.cuentaGoogle = cuentaGoogle;
+        this.passwordComprometido = passwordComprometido;
         this.transaccion = transaccion;
         this.passwordHashDummy = passwordEncoder.encode(UUID.randomUUID().toString());
     }
@@ -91,11 +96,19 @@ public class AuthService {
      * (60-150 ms de CPU) se calcula ANTES de abrir transacción; sólo el alta y
      * la emisión de la sesión entran en la transacción nueva
      * ({@link TransactionTemplate}), que siguen siendo atómicas entre sí.</p>
+     *
+     * <p><b>Password pwned (issue #10).</b> ANTES de BCrypt se consulta el
+     * puerto {@link PasswordComprometidoPort} (HIBP, fail open): una
+     * contraseña filtrada se rechaza con 400 y NUNCA llega a guardarse. El
+     * orden respecto al 409 de email existe se mantiene (mismo contrato).</p>
      */
     public AuthResult registrar(RegistroCommand comando) {
         String email = normalizarEmail(comando.email());
         if (usuarios.existsByEmail(email)) {
             throw new EmailYaRegistradoException();
+        }
+        if (passwordComprometido.estaComprometido(comando.password())) {
+            throw new PasswordComprometidoException();
         }
         String passwordHash = passwordEncoder.encode(comando.password());
         return transaccion.execute(estado -> {

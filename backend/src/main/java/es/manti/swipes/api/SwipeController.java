@@ -74,6 +74,9 @@ public class SwipeController {
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "409", description = "Conflicto de unicidad no resuelto por el "
                     + "reintento (dos escrituras simultáneas sobre la misma pareja usuario+inmueble)",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "429", description = "Demasiadas peticiones (rate limit por IP; "
+                    + "comentario del issue #17)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     public ResponseEntity<SwipeResponse> registrar(
             @Valid @RequestBody SwipeRequest request,
@@ -97,6 +100,9 @@ public class SwipeController {
                     + "(ProblemDetail con errors[])",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "401", description = "Sin token",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "429", description = "Demasiadas peticiones (rate limit por IP; "
+                    + "comentario del issue #17)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     public ResponseEntity<SwipePage> deck(
             @Parameter(description = "Cursor opaco de la página anterior (base64); ausente en la primera página")
@@ -119,6 +125,9 @@ public class SwipeController {
                     + "(ProblemDetail con errors[])",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "401", description = "Sin token",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "429", description = "Demasiadas peticiones (rate limit por IP; "
+                    + "comentario del issue #17)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     public ResponseEntity<SwipePage> favoritos(
             @Parameter(description = "Cursor opaco de la página anterior (base64); ausente en la primera página")

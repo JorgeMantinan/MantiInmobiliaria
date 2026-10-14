@@ -42,6 +42,18 @@ ALLOWED_ORIGINS: http://localhost:3000
 # Los tests MockMvc comparten la misma IP de origen; se suben los límites para
 # no interferir con el rate limiting (que se testea en una clase propia).
 auth:
+  hibp:
+    # issue #10 — en la suite NUNCA se consulta HIBP (sin red en CI): el puerto
+    # se resuelve con el adaptador no-op. Los tests de la comprobación usan un
+    # mock del puerto (@MockitoBean) o el adaptador real con MockRestServiceServer.
+    enabled: false
+  login:
+    # issues #10/#5 — la protección de login (backoff por cuenta + ventana por
+    # par IP+email) está APAGADA en la suite: su estado vive en memoria por
+    # contexto y afectaría a tests que comparten emails fijos. Las clases
+    # dedicadas (LoginBackoffTest, LoginLimitePorParTest) la reactivan con
+    # @SpringBootTest(properties=...) y límites bajos.
+    enabled: false
   rate-limit:
     login-per-minute: 100000
     register-per-minute: 100000
@@ -49,6 +61,16 @@ auth:
     registro-profesional-per-hour: 100000
     forgot-password-per-hour: 100000
     reset-password-per-hour: 100000
+    alertas-per-minute: 100000
+    # FASE P2 (issues #17 y #22): las rutas nuevas también quedan sin límite
+    # en la suite; el rate limit se prueba en sus clases dedicadas con
+    # overrides por @SpringBootTest(properties = ...).
+    refresh-per-minute: 100000
+    oauth2-token-per-minute: 100000
+    inmuebles-per-minute: 100000
+    swipes-per-minute: 100000
+    deck-per-minute: 100000
+    favoritos-per-minute: 100000
   password-reset:
     # Revisión del PR #64: en test el envío del enlace va EN LÍNEA para que
     # los tests puedan verificar el puerto con un mock sin carreras de hilos.
@@ -67,6 +89,11 @@ manti:
     # El job de purga de refresh_tokens (issue #8) NO existe en test: ninguna
     # tarea programada puede borrar filas mientras corren los tests. La acción
     # se prueba llamando a RefreshTokenPurgaService.purgar() a mano.
+    enabled: false
+  alertas:
+    # El job de alertas (issue #96) TAMPOCO existe en test: ninguna tarea
+    # programada encola avisos mientras corren los tests. La evaluación se
+    # prueba llamando a AlertaEvaluacionService.evaluar() a mano.
     enabled: false
   notificaciones:
     # Guard del ENVÍO (no del planificador): con false el despachador no lee

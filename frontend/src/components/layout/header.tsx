@@ -33,6 +33,9 @@ export function Header() {
               <Link href="/favoritos" className={ENLACE}>
                 Favoritos
               </Link>
+              <Link href="/alertas" className={ENLACE}>
+                Alertas
+              </Link>
               {usuario.rol === 'ADMIN' ? (
                 <Link href="/admin" className={ENLACE}>
                   Admin

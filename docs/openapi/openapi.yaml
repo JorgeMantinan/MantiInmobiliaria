@@ -8,39 +8,40 @@ servers:
   description: Generated server url
 tags:
 - name: Telegram (admin)
-  description: "Diagnóstico del bot de Telegram: chats que han escrito al bot (requiere\
-    \ rol ADMIN)"
-- name: Mercado
-  description: "Precios oficiales del mercado por zona (fuente: Ministerio de Vivienda\
-    \ y Agenda Urbana)"
+  description: 'Diagnóstico del bot de Telegram: chats que han escrito al bot (requiere rol ADMIN)'
+- name: Alertas
+  description: 'Alertas de búsqueda del usuario: guardar los filtros del listado y recibir aviso de los inmuebles nuevos que
+    encajan'
 - name: Inmuebles (admin)
-  description: "Alta, actualización y borrado de inmuebles (requiere rol ADMIN)"
+  description: Alta, actualización y borrado de inmuebles (requiere rol ADMIN)
 - name: Solicitudes (admin)
   description: Listado de solicitudes recibidas (requiere rol ADMIN)
 - name: Mercado (admin)
   description: Reimportación de los CSV oficiales del MIVAU (requiere rol ADMIN)
 - name: Profesionales (admin)
   description: Moderación de altas de profesionales (requiere rol ADMIN)
-- name: Swipes
-  description: Deck de swipes (like/nope) y favoritos del usuario autenticado
 - name: Gremios
   description: Catálogo público de oficios (sin autenticación)
 - name: Inmuebles
   description: Listado y detalle público de inmuebles (sin autenticación)
+- name: Mercado
+  description: 'Precios oficiales del mercado por zona (fuente: Ministerio de Vivienda y Agenda Urbana)'
+- name: Swipes
+  description: Deck de swipes (like/nope) y favoritos del usuario autenticado
 - name: Profesionales
   description: Registro público de profesionales (sin autenticación)
 - name: Solicitudes
   description: Solicitud de servicio de un usuario del portal (sin autenticación)
 - name: Auth
-  description: "Registro, login email/password, refresh y login con Google"
+  description: Registro, login email/password, refresh y login con Google
 paths:
   /api/v1/admin/inmuebles/{id}:
     put:
       tags:
       - Inmuebles (admin)
       summary: Actualiza un inmueble (PUT completo)
-      description: "Reemplaza la representación completa del recurso; los campos no\
-        \ enviados (opcional: `destacado`) conservan su valor."
+      description: 'Reemplaza la representación completa del recurso; los campos no enviados (opcional: `destacado`) conservan
+        su valor.'
       operationId: actualizar
       parameters:
       - name: id
@@ -55,59 +56,58 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/InmuebleRequest"
+              $ref: '#/components/schemas/InmuebleRequest'
         required: true
       responses:
-        "200":
+        '200':
           description: Inmueble actualizado
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/InmuebleResponse"
-        "400":
-          description: "Validación fallida (ProblemDetail con errors[])"
+                $ref: '#/components/schemas/InmuebleResponse'
+        '400':
+          description: Validación fallida (ProblemDetail con errors[])
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "401":
+                $ref: '#/components/schemas/ProblemDetail'
+        '401':
           description: Sin token
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "403":
+                $ref: '#/components/schemas/ProblemDetail'
+        '403':
           description: Token sin rol ADMIN
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "404":
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
           description: Inexistente
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "409":
+                $ref: '#/components/schemas/ProblemDetail'
+        '409':
           description: Inmueble ya eliminado (soft-delete); no se reescribe un borrado
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "413":
+                $ref: '#/components/schemas/ProblemDetail'
+        '413':
           description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
       security:
       - bearerAuth: []
     delete:
       tags:
       - Inmuebles (admin)
       summary: Elimina un inmueble (soft-delete)
-      description: "Marca `eliminado_en`: desaparece del listado y del detalle pú\
-        blico, pero la fila se conserva (auditoría)."
+      description: 'Marca `eliminado_en`: desaparece del listado y del detalle público, pero la fila se conserva (auditoría).'
       operationId: eliminar
       parameters:
       - name: id
@@ -119,32 +119,32 @@ paths:
           format: int64
         example: 1
       responses:
-        "204":
+        '204':
           description: Eliminado (sin cuerpo)
-        "401":
+        '401':
           description: Sin token
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "403":
+                $ref: '#/components/schemas/ProblemDetail'
+        '403':
           description: Token sin rol ADMIN
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "404":
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
           description: Inexistente
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "409":
+                $ref: '#/components/schemas/ProblemDetail'
+        '409':
           description: Inmueble ya eliminado (soft-delete); no se repite el borrado
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
       security:
       - bearerAuth: []
   /api/v1/swipes:
@@ -152,64 +152,73 @@ paths:
       tags:
       - Swipes
       summary: Registra un like o nope sobre un inmueble
-      description: "Idempotente por DISEÑO (la constraint `uq_swipes_usuario_inmueble`\
-        \ garantiza una fila por pareja): 201 en la primera decisión; repetir la MISMA\
-        \ decisión → 200 sin crear fila; cambiar de opinión → 200 actualizando. No\
-        \ requiere cabecera `Idempotency-Key`: la unicidad natural es la idempotencia.\
-        \ Ante una carrera de inserción (doble tap del frontend) el servicio reintenta\
-        \ una vez en una transacción nueva y responde 200; sólo si la relectura sigue\
-        \ vacía devuelve 409. 404 si el inmueble no existe o está eliminado."
+      description: 'Idempotente por DISEÑO (la constraint `uq_swipes_usuario_inmueble` garantiza una fila por pareja): 201
+        en la primera decisión; repetir la MISMA decisión → 200 sin crear fila; cambiar de opinión → 200 actualizando. No
+        requiere cabecera `Idempotency-Key`: la unicidad natural es la idempotencia. Ante una carrera de inserción (doble
+        tap del frontend) el servicio reintenta una vez en una transacción nueva y responde 200; sólo si la relectura sigue
+        vacía devuelve 409. 404 si el inmueble no existe o está eliminado.'
       operationId: registrarSwipe
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SwipeRequest"
+              $ref: '#/components/schemas/SwipeRequest'
         required: true
       responses:
-        "201":
+        '201':
           description: Primera decisión registrada
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/SwipeResponse"
-        "200":
+                $ref: '#/components/schemas/SwipeResponse'
+        '200':
           description: Repetición idempotente o cambio de decisión
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/SwipeResponse"
-        "400":
-          description: "Validación fallida (ProblemDetail con errors[])"
+                $ref: '#/components/schemas/SwipeResponse'
+        '400':
+          description: Validación fallida (ProblemDetail con errors[])
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "401":
+                $ref: '#/components/schemas/ProblemDetail'
+        '401':
           description: Sin token
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "404":
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
           description: Inmueble inexistente o eliminado
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "409":
-          description: Conflicto de unicidad no resuelto por el reintento (dos escrituras
-            simultáneas sobre la misma pareja usuario+inmueble)
+                $ref: '#/components/schemas/ProblemDetail'
+        '409':
+          description: Conflicto de unicidad no resuelto por el reintento (dos escrituras simultáneas sobre la misma pareja
+            usuario+inmueble)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "413":
+                $ref: '#/components/schemas/ProblemDetail'
+        '429':
+          description: 'Demasiadas peticiones (rate limit por IP; comentario del issue #17)'
+          headers:
+            Retry-After:
+              description: Segundos hasta liberar una petición en la ventana de rate limit
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '413':
           description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
       security:
       - bearerAuth: []
   /api/v1/solicitudes:
@@ -217,20 +226,17 @@ paths:
       tags:
       - Solicitudes
       summary: Crea una solicitud de servicio
-      description: "Alta anónima de una petición de trabajo (municipio, descripció\
-        n y 1..8 gremios del catálogo). En la MISMA transacción se encolan las notificaciones\
-        \ a los profesionales ACTIVOS que compartan algún gremio (outbox). Rate limit:\
-        \ 10 peticiones/hora por IP. Cabecera opcional `Idempotency-Key` (máx. 64\
-        \ caracteres): reenviar la MISMA clave devuelve la respuesta original (replay,\
-        \ mismo id) en vez de crear una segunda solicitud, y una clave reutilizada\
-        \ con un cuerpo distinto responde 409. Sin `Location`: el recurso no tiene\
-        \ GET público."
+      description: 'Alta anónima de una petición de trabajo (municipio, descripción y 1..8 gremios del catálogo). En la MISMA
+        transacción se encolan las notificaciones a los profesionales ACTIVOS que compartan algún gremio (outbox). Rate limit:
+        10 peticiones/hora por IP. Cabecera opcional `Idempotency-Key` (máx. 64 caracteres): reenviar la MISMA clave devuelve
+        la respuesta original (replay, mismo id) en vez de crear una segunda solicitud, y una clave reutilizada con un cuerpo
+        distinto responde 409. Sin `Location`: el recurso no tiene GET público.'
       operationId: crearSolicitud
       parameters:
       - name: Idempotency-Key
         in: header
-        description: "Clave opcional de idempotencia (máx. 64 caracteres): la misma\
-          \ clave devuelve la respuesta original en vez de duplicar la solicitud"
+        description: 'Clave opcional de idempotencia (máx. 64 caracteres): la misma clave devuelve la respuesta original en
+          vez de duplicar la solicitud'
         required: false
         schema:
           type: string
@@ -240,419 +246,516 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SolicitudCreateRequest"
+              $ref: '#/components/schemas/SolicitudCreateRequest'
         required: true
       responses:
-        "201":
-          description: "Solicitud creada en estado NUEVA (sin `Location`: el recurso\
-            \ no tiene GET público)"
+        '201':
+          description: 'Solicitud creada en estado NUEVA (sin `Location`: el recurso no tiene GET público)'
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/SolicitudResponse"
-        "400":
-          description: "Validación fallida o gremios inexistentes (ProblemDetail con\
-            \ errors[])"
+                $ref: '#/components/schemas/SolicitudResponse'
+        '400':
+          description: Validación fallida o gremios inexistentes (ProblemDetail con errors[])
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "409":
-          description: '`Idempotency-Key` reutilizada con un cuerpo distinto al de
-            la petición original (ProblemDetail)'
+                $ref: '#/components/schemas/ProblemDetail'
+        '409':
+          description: '`Idempotency-Key` reutilizada con un cuerpo distinto al de la petición original (ProblemDetail)'
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "429":
+                $ref: '#/components/schemas/ProblemDetail'
+        '429':
           description: Rate limit por IP superado (10/hora)
           headers:
             Retry-After:
-              description: Segundos hasta liberar una petición en la ventana de rate
-                limit
+              description: Segundos hasta liberar una petición en la ventana de rate limit
               schema:
                 type: string
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "413":
+                $ref: '#/components/schemas/ProblemDetail'
+        '413':
           description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
       security: []
   /api/v1/profesionales/registro:
     post:
       tags:
       - Profesionales
       summary: Registra un profesional (queda PENDIENTE)
-      description: "Alta anónima de una empresa o autónomo que quiere recibir solicitudes.\
-        \ Siempre nace con estado `PENDIENTE`: sólo un administrador puede moverla\
-        \ a `ACTIVO` o `RECHAZADO`. Rate limit: 5 peticiones/hora por IP."
+      description: 'Alta anónima de una empresa o autónomo que quiere recibir solicitudes. Siempre nace con estado `PENDIENTE`:
+        sólo un administrador puede moverla a `ACTIVO` o `RECHAZADO`. Rate limit: 5 peticiones/hora por IP.'
       operationId: registrarProfesional
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ProfesionalRegistroRequest"
+              $ref: '#/components/schemas/ProfesionalRegistroRequest'
         required: true
       responses:
-        "201":
+        '201':
           description: Profesional registrado en estado PENDIENTE
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProfesionalEstadoResponse"
-        "400":
-          description: "Validación fallida o gremios inexistentes (ProblemDetail con\
-            \ errors[])"
+                $ref: '#/components/schemas/ProfesionalEstadoResponse'
+        '400':
+          description: Validación fallida o gremios inexistentes (ProblemDetail con errors[])
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "409":
+                $ref: '#/components/schemas/ProblemDetail'
+        '409':
           description: El email ya está registrado como profesional
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "429":
+                $ref: '#/components/schemas/ProblemDetail'
+        '429':
           description: Rate limit por IP superado (5/hora)
           headers:
             Retry-After:
-              description: Segundos hasta liberar una petición en la ventana de rate
-                limit
+              description: Segundos hasta liberar una petición en la ventana de rate limit
               schema:
                 type: string
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "413":
+                $ref: '#/components/schemas/ProblemDetail'
+        '413':
           description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
       security: []
   /api/v1/auth/register:
     post:
       tags:
       - Auth
       summary: Registra un usuario y le devuelve la sesión (auto-login)
+      description: 'El password se comprueba contra las filtraciones públicas de Have I Been
+        Pwned (k-anonymity, issue #10): si aparece, se responde 400 con `errors[0].field =
+        password`.'
       operationId: registrar
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RegistroRequest"
+              $ref: '#/components/schemas/RegistroRequest'
         required: true
       responses:
-        "201":
+        '201':
           description: Usuario creado; sesión emitida
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/AuthResponse"
-        "400":
-          description: Validación fallida (ProblemDetail)
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Validación fallida o contraseña comprometida en filtraciones públicas
+            (ProblemDetail)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "409":
+                $ref: '#/components/schemas/ProblemDetail'
+        '409':
           description: Email ya registrado
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "429":
+                $ref: '#/components/schemas/ProblemDetail'
+        '429':
           description: Demasiados intentos (rate limit)
           headers:
             Retry-After:
-              description: Segundos hasta liberar una petición en la ventana de rate
-                limit
+              description: Segundos hasta liberar una petición en la ventana de rate limit
               schema:
                 type: string
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "413":
+                $ref: '#/components/schemas/ProblemDetail'
+        '413':
           description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
       security: []
   /api/v1/auth/refresh:
     post:
       tags:
       - Auth
       summary: Rota el refresh token de la cookie y emite un nuevo access token
-      description: "Requiere la cookie httpOnly de refresh y la cabecera `X-Requested-With:\
-        \ XMLHttpRequest` (protección CSRF elegida)."
+      description: 'Requiere la cookie httpOnly de refresh y la cabecera `X-Requested-With: XMLHttpRequest` (protección CSRF
+        elegida).'
       operationId: refrescar
       responses:
-        "200":
+        '200':
           description: Sesión renovada
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/AuthResponse"
-        "401":
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
           description: Refresh token inválido o caducado
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "403":
+                $ref: '#/components/schemas/ProblemDetail'
+        '403':
           description: Falta la cabecera X-Requested-With
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
+        '429':
+          description: 'Demasiadas peticiones (rate limit por IP; issue #17)'
+          headers:
+            Retry-After:
+              description: Segundos hasta liberar una petición en la ventana de rate limit
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
       security: []
   /api/v1/auth/password/reset:
     post:
       tags:
       - Auth
       summary: Restablece la contraseña con el token del email
-      description: "Canjea el token de un solo uso: guarda la contraseña nueva con\
-        \ BCrypt, invalida el token y revoca TODA la familia de refresh tokens del\
-        \ usuario (las sesiones abiertas quedan fuera). Rate limit: 10 peticiones/hora\
-        \ por IP."
+      description: 'Canjea el token de un solo uso: guarda la contraseña nueva con BCrypt, invalida
+        el token y revoca TODA la familia de refresh tokens del usuario (las sesiones abiertas
+        quedan fuera). Si la contraseña nueva aparece en filtraciones públicas (HIBP, issue #10)
+        se responde 400 con `errors[0].field = password` y el token sigue vigente. Rate limit:
+        10 peticiones/hora por IP.'
       operationId: restablecerPassword
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PasswordResetRequest"
+              $ref: '#/components/schemas/PasswordResetRequest'
         required: true
       responses:
-        "204":
+        '204':
           description: Contraseña actualizada; sesión cerrada
-        "400":
-          description: "Token inválido, caducado o ya usado, o validación fallida\
-            \ (ProblemDetail)"
+        '400':
+          description: Token inválido, caducado o ya usado, validación fallida o contraseña comprometida
+            (ProblemDetail)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "429":
+                $ref: '#/components/schemas/ProblemDetail'
+        '429':
           description: Demasiadas peticiones (rate limit)
           headers:
             Retry-After:
-              description: Segundos hasta liberar una petición en la ventana de rate
-                limit
+              description: Segundos hasta liberar una petición en la ventana de rate limit
               schema:
                 type: string
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "413":
+                $ref: '#/components/schemas/ProblemDetail'
+        '413':
           description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
       security: []
   /api/v1/auth/password/forgot:
     post:
       tags:
       - Auth
       summary: Pide el enlace de restablecimiento de contraseña
-      description: "Si el email corresponde a una cuenta CON contraseña, se envía\
-        \ un enlace `FRONTEND_URL/restablecer?token=<opaco>` (el token, opaco y de\
-        \ un solo uso, caduca en `auth.password-reset.ttl`, 15 min por defecto). Si\
-        \ la cuenta ya tiene un enlace vigente no se envía otro (el primero sigue\
-        \ siendo válido). El envío del email es asíncrono: el 202 no espera al proveedor.\
-        \ La respuesta es SIEMPRE `202 Accepted` aunque la cuenta no exista (sin enumeració\
-        n de emails ni por tiempo de respuesta) y aunque el proveedor de email falle.\
-        \ Rate limit: 5 peticiones/hora por IP."
+      description: 'Si el email corresponde a una cuenta CON contraseña, se envía un enlace `FRONTEND_URL/restablecer?token=<opaco>`
+        (el token, opaco y de un solo uso, caduca en `auth.password-reset.ttl`, 15 min por defecto). Si la cuenta ya tiene
+        un enlace vigente no se envía otro (el primero sigue siendo válido). El envío del email es asíncrono: el 202 no espera
+        al proveedor. La respuesta es SIEMPRE `202 Accepted` aunque la cuenta no exista (sin enumeración de emails ni por
+        tiempo de respuesta) y aunque el proveedor de email falle. Rate limit: 5 peticiones/hora por IP.'
       operationId: solicitarPasswordOlvidada
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PasswordForgotRequest"
+              $ref: '#/components/schemas/PasswordForgotRequest'
         required: true
       responses:
-        "202":
+        '202':
           description: Solicitud aceptada (siempre; no revela si la cuenta existe)
-        "400":
+        '400':
           description: Validación fallida (ProblemDetail)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "429":
+                $ref: '#/components/schemas/ProblemDetail'
+        '429':
           description: Demasiadas peticiones (rate limit)
           headers:
             Retry-After:
-              description: Segundos hasta liberar una petición en la ventana de rate
-                limit
+              description: Segundos hasta liberar una petición en la ventana de rate limit
               schema:
                 type: string
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "413":
+                $ref: '#/components/schemas/ProblemDetail'
+        '413':
           description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
       security: []
   /api/v1/auth/oauth2/token:
     post:
       tags:
       - Auth
       summary: Canjea el código del callback de Google por la sesión
-      description: "Segundo paso del flujo Google: el frontend intercambia aquí el\
-        \ código opaco de un solo uso recibido en /auth/google/callback."
+      description: 'Segundo paso del flujo Google: el frontend intercambia aquí el código opaco de un solo uso recibido en
+        /auth/google/callback.'
       operationId: canjearCodigoGoogle
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/OAuth2TokenRequest"
+              $ref: '#/components/schemas/OAuth2TokenRequest'
         required: true
       responses:
-        "200":
+        '200':
           description: Código válido; sesión emitida
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/AuthResponse"
-        "400":
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
           description: Código ausente o inválido (ProblemDetail)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "401":
+                $ref: '#/components/schemas/ProblemDetail'
+        '401':
           description: Código inválido o caducado
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "413":
+                $ref: '#/components/schemas/ProblemDetail'
+        '429':
+          description: 'Demasiadas peticiones (rate limit por IP; issue #17)'
+          headers:
+            Retry-After:
+              description: Segundos hasta liberar una petición en la ventana de rate limit
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '413':
           description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
       security: []
   /api/v1/auth/logout:
     post:
       tags:
       - Auth
       summary: Invalida el refresh token y borra la cookie
-      description: "Requiere la cabecera `X-Requested-With: XMLHttpRequest` (protecció\
-        n CSRF elegida)."
+      description: 'Requiere la cabecera `X-Requested-With: XMLHttpRequest` (protección CSRF elegida).'
       operationId: cerrarSesion
       responses:
-        "204":
-          description: "Sesión cerrada (siempre, aunque el token fuera inválido)"
-        "403":
+        '204':
+          description: Sesión cerrada (siempre, aunque el token fuera inválido)
+        '403':
           description: Falta la cabecera X-Requested-With
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
       security: []
   /api/v1/auth/login:
     post:
       tags:
       - Auth
       summary: Autentica con email y password
+      description: 'Además del rate limit por IP, el login aplica backoff exponencial por cuenta
+        tras fallos consecutivos (issue #10) y una ventana por la combinación IP+email (issue
+        #5); ambas responden 429 con Retry-After.'
       operationId: login
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/LoginRequest"
+              $ref: '#/components/schemas/LoginRequest'
         required: true
       responses:
-        "200":
+        '200':
           description: Credenciales válidas; sesión emitida
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/AuthResponse"
-        "401":
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
           description: Credenciales incorrectas (ProblemDetail)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "429":
-          description: Demasiados intentos (rate limit)
+                $ref: '#/components/schemas/ProblemDetail'
+        '429':
+          description: Demasiados intentos (rate limit por IP, backoff de la cuenta o ventana
+            IP+email)
           headers:
             Retry-After:
-              description: Segundos hasta liberar una petición en la ventana de rate
-                limit
+              description: Segundos hasta liberar una petición en la ventana de rate limit o
+                hasta que expire el backoff de la cuenta
               schema:
                 type: string
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "413":
+                $ref: '#/components/schemas/ProblemDetail'
+        '413':
           description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
       security: []
+  /api/v1/alertas:
+    get:
+      tags:
+      - Alertas
+      summary: Lista tus alertas de búsqueda
+      description: 'Alertas del usuario autenticado, de más reciente a más antigua, en envelope `content` + `totalElements`
+        (igual que el resto de listados; `content` vacío si no tiene ninguna). Sin paginación: el techo por usuario es de
+        50 alertas.'
+      operationId: listarAlertas
+      responses:
+        '200':
+          description: Envelope con las alertas del usuario
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/AlertaPage'
+        '401':
+          description: Sin token
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      security:
+      - bearerAuth: []
+    post:
+      tags:
+      - Alertas
+      summary: Crea una alerta con los filtros del listado
+      description: 'Alta con los MISMOS filtros que `GET /api/v1/inmuebles`: un rango inválido (precioMin > precioMax, precios
+        negativos, habitaciones < 0) responde 400 igual que el listado. La alerta nace ACTIVA y con su marca de agua en el
+        mayor id de inmueble existente, así que sólo se avisará de los inmuebles que entren DESPUÉS de guardarla (máximo 50
+        alertas por usuario).'
+      operationId: crearAlerta
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertaCreateRequest'
+        required: true
+      responses:
+        '201':
+          description: Alerta creada (cabecera Location)
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/AlertaResponse'
+        '400':
+          description: Validación fallida o rango de filtros inválido (ProblemDetail con errors[])
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '401':
+          description: Sin token
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '409':
+          description: Máximo de alertas por usuario alcanzado (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '429':
+          description: Demasiadas peticiones (rate limit por IP)
+          headers:
+            Retry-After:
+              description: Segundos hasta liberar una petición en la ventana de rate limit
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '413':
+          description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      security:
+      - bearerAuth: []
   /api/v1/admin/mercado/actualizar:
     post:
       tags:
       - Mercado (admin)
       summary: Reimporta los CSV del MIVAU y actualiza los precios
-      description: "Descarga VDP001 (alquiler municipal, 37,8 MB) y VDP006 (valor\
-        \ tasado provincial) desde el CDN del Ministerio, los interpreta y hace upsert\
-        \ por clave natural. Puede tardar varios segundos; timeout de 30 s/60 s en\
-        \ la descarga. Sólo se admite UNA importación a la vez: si ya hay una en curso\
-        \ responde 409."
+      description: 'Descarga VDP001 (alquiler municipal, 37,8 MB) y VDP006 (valor tasado provincial) desde el CDN del Ministerio,
+        los interpreta y hace upsert por clave natural. Puede tardar varios segundos; timeout de 30 s/60 s en la descarga.
+        Sólo se admite UNA importación a la vez: si ya hay una en curso responde 409.'
       operationId: actualizarPreciosMercado
       responses:
-        "200":
+        '200':
           description: Importación completada; nº de filas escritas
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/MercadoImportacionResponse"
-        "401":
+                $ref: '#/components/schemas/MercadoImportacionResponse'
+        '401':
           description: Sin token
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "403":
+                $ref: '#/components/schemas/ProblemDetail'
+        '403':
           description: Token sin rol ADMIN
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "409":
+                $ref: '#/components/schemas/ProblemDetail'
+        '409':
           description: Ya hay una importación en curso (ProblemDetail)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "500":
-          description: "El CDN del MIVAU no responde o publica un CSV con estructura\
-            \ distinta (ProblemDetail)"
+                $ref: '#/components/schemas/ProblemDetail'
+        '500':
+          description: El CDN del MIVAU no responde o publica un CSV con estructura distinta (ProblemDetail)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
       security:
       - bearerAuth: []
   /api/v1/admin/inmuebles:
@@ -665,39 +768,149 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/InmuebleRequest"
+              $ref: '#/components/schemas/InmuebleRequest'
         required: true
       responses:
-        "201":
+        '201':
           description: Creado; cabecera Location con el recurso público
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/InmuebleResponse"
-        "400":
-          description: "Validación fallida (ProblemDetail con errors[])"
+                $ref: '#/components/schemas/InmuebleResponse'
+        '400':
+          description: Validación fallida (ProblemDetail con errors[])
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "401":
+                $ref: '#/components/schemas/ProblemDetail'
+        '401':
           description: Sin token
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "403":
+                $ref: '#/components/schemas/ProblemDetail'
+        '403':
           description: Token sin rol ADMIN
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "413":
+                $ref: '#/components/schemas/ProblemDetail'
+        '413':
           description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
+      security:
+      - bearerAuth: []
+  /api/v1/alertas/{id}:
+    delete:
+      tags:
+      - Alertas
+      summary: Elimina una alerta
+      description: Borra la alerta y sus avisos pendientes en cascada. 404 si la alerta no existe o NO es del usuario actual.
+      operationId: eliminarAlerta
+      parameters:
+      - name: id
+        in: path
+        description: Identificador de la alerta
+        required: true
+        schema:
+          type: integer
+          format: int64
+        example: 1
+      responses:
+        '204':
+          description: Alerta eliminada (sin cuerpo)
+        '401':
+          description: Sin token
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
+          description: Alerta inexistente o de otro usuario (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '429':
+          description: Demasiadas peticiones (rate limit por IP)
+          headers:
+            Retry-After:
+              description: Segundos hasta liberar una petición en la ventana de rate limit
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+      security:
+      - bearerAuth: []
+    patch:
+      tags:
+      - Alertas
+      summary: Actualiza el nombre y/o la actividad de una alerta
+      description: 'Edición PARCIAL: los campos ausentes no cambian. Los filtros no se editan (para cambiarlos, crea otra
+        alerta). 404 si la alerta no existe o NO es del usuario actual.'
+      operationId: actualizarAlerta
+      parameters:
+      - name: id
+        in: path
+        description: Identificador de la alerta
+        required: true
+        schema:
+          type: integer
+          format: int64
+        example: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertaActualizarRequest'
+        required: true
+      responses:
+        '200':
+          description: Alerta actualizada
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/AlertaResponse'
+        '400':
+          description: Validación fallida (ProblemDetail con errors[])
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '401':
+          description: Sin token
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
+          description: Alerta inexistente o de otro usuario (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '429':
+          description: Demasiadas peticiones (rate limit por IP)
+          headers:
+            Retry-After:
+              description: Segundos hasta liberar una petición en la ventana de rate limit
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '413':
+          description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
       security:
       - bearerAuth: []
   /api/v1/admin/profesionales/{id}:
@@ -705,11 +918,10 @@ paths:
       tags:
       - Profesionales (admin)
       summary: Cambia el estado de un profesional
-      description: "Sólo admite `ACTIVO` (puede recibir solicitudes) o `RECHAZADO`.\
-        \ Un profesional `PENDIENTE` aprobado pasa a `ACTIVO`; desde `ACTIVO` ya no\
-        \ vuelve a `PENDIENTE`. Control optimista (`@Version`): si otro administrador\
-        \ moderó al profesional mientras el cliente tenía la lista abierta, responde\
-        \ 409 `conflicto-concurrencia` y hay que recargar la lista."
+      description: 'Sólo admite `ACTIVO` (puede recibir solicitudes) o `RECHAZADO`. Un profesional `PENDIENTE` aprobado pasa
+        a `ACTIVO`; desde `ACTIVO` ya no vuelve a `PENDIENTE`. Control optimista (`@Version`): si otro administrador moderó
+        al profesional mientras el cliente tenía la lista abierta, responde 409 `conflicto-concurrencia` y hay que recargar
+        la lista.'
       operationId: actualizarEstadoProfesional
       parameters:
       - name: id
@@ -724,54 +936,52 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ProfesionalEstadoRequest"
+              $ref: '#/components/schemas/ProfesionalEstadoRequest'
         required: true
       responses:
-        "200":
-          description: "Estado actualizado: {id, estado}"
+        '200':
+          description: 'Estado actualizado: {id, estado}'
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProfesionalEstadoResponse"
-        "400":
-          description: "Validación fallida: el estado debe ser ACTIVO o RECHAZADO\
-            \ (ProblemDetail con errors[])"
+                $ref: '#/components/schemas/ProfesionalEstadoResponse'
+        '400':
+          description: 'Validación fallida: el estado debe ser ACTIVO o RECHAZADO (ProblemDetail con errors[])'
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "401":
+                $ref: '#/components/schemas/ProblemDetail'
+        '401':
           description: Sin token
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "403":
+                $ref: '#/components/schemas/ProblemDetail'
+        '403':
           description: Token sin rol ADMIN
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "404":
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
           description: Profesional inexistente
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "409":
-          description: "Conflicto de concurrencia: otro administrador modificó al\
-            \ profesional entre la lectura y la escritura (type `conflicto-concurrencia`;\
-            \ recarga la lista)"
+                $ref: '#/components/schemas/ProblemDetail'
+        '409':
+          description: 'Conflicto de concurrencia: otro administrador modificó al profesional entre la lectura y la escritura
+            (type `conflicto-concurrencia`; recarga la lista)'
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "413":
+                $ref: '#/components/schemas/ProblemDetail'
+        '413':
           description: Cuerpo de la petición superior a 256 KiB (ProblemDetail)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
       security:
       - bearerAuth: []
   /api/v1/swipes/favoritos:
@@ -779,46 +989,54 @@ paths:
       tags:
       - Swipes
       summary: Lista los favoritos (likes) del usuario
-      description: "Swipes con decisión LIKE, orden `swipe creado_en DESC, id DESC`.\
-        \ Paginación keyset: pase `nextCursor` como `cursor`; `limit` 1..50 (20 por\
-        \ defecto)."
+      description: 'Swipes con decisión LIKE, orden `swipe creado_en DESC, id DESC`. Paginación keyset: pase `nextCursor`
+        como `cursor`; `limit` 1..50 (20 por defecto).'
       operationId: favoritos
       parameters:
       - name: cursor
         in: query
-        description: Cursor opaco de la página anterior (base64); ausente en la primera
-          página
+        description: Cursor opaco de la página anterior (base64); ausente en la primera página
         required: false
         schema:
           type: string
       - name: limit
         in: query
-        description: "Tamaño de página, 1..50 (20 por defecto)"
+        description: Tamaño de página, 1..50 (20 por defecto)
         required: false
         schema:
           type: integer
           format: int32
           default: 20
       responses:
-        "200":
+        '200':
           description: Página de favoritos
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/SwipePage"
-        "400":
-          description: "Cursor inválido o `limit` fuera de rango (ProblemDetail con\
-            \ errors[])"
+                $ref: '#/components/schemas/SwipePage'
+        '400':
+          description: Cursor inválido o `limit` fuera de rango (ProblemDetail con errors[])
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "401":
+                $ref: '#/components/schemas/ProblemDetail'
+        '401':
           description: Sin token
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
+        '429':
+          description: 'Demasiadas peticiones (rate limit por IP; comentario del issue #17)'
+          headers:
+            Retry-After:
+              description: Segundos hasta liberar una petición en la ventana de rate limit
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
       security:
       - bearerAuth: []
   /api/v1/swipes/deck:
@@ -826,46 +1044,54 @@ paths:
       tags:
       - Swipes
       summary: Deck de inmuebles pendientes del usuario
-      description: "Inmuebles ACTIVOS que el usuario todavía no ha swipeado (LIKE\
-        \ ni NOPE), orden `created_at DESC, id DESC`. Paginación keyset: pase `nextCursor`\
-        \ como `cursor`; `limit` 1..50 (20 por defecto)."
+      description: 'Inmuebles ACTIVOS que el usuario todavía no ha swipeado (LIKE ni NOPE), orden `created_at DESC, id DESC`.
+        Paginación keyset: pase `nextCursor` como `cursor`; `limit` 1..50 (20 por defecto).'
       operationId: deck
       parameters:
       - name: cursor
         in: query
-        description: Cursor opaco de la página anterior (base64); ausente en la primera
-          página
+        description: Cursor opaco de la página anterior (base64); ausente en la primera página
         required: false
         schema:
           type: string
       - name: limit
         in: query
-        description: "Tamaño de página, 1..50 (20 por defecto)"
+        description: Tamaño de página, 1..50 (20 por defecto)
         required: false
         schema:
           type: integer
           format: int32
           default: 20
       responses:
-        "200":
+        '200':
           description: Página del deck
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/SwipePage"
-        "400":
-          description: "Cursor inválido o `limit` fuera de rango (ProblemDetail con\
-            \ errors[])"
+                $ref: '#/components/schemas/SwipePage'
+        '400':
+          description: Cursor inválido o `limit` fuera de rango (ProblemDetail con errors[])
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "401":
+                $ref: '#/components/schemas/ProblemDetail'
+        '401':
           description: Sin token
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
+        '429':
+          description: 'Demasiadas peticiones (rate limit por IP; comentario del issue #17)'
+          headers:
+            Retry-After:
+              description: Segundos hasta liberar una petición en la ventana de rate limit
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
       security:
       - bearerAuth: []
   /api/v1/mercado:
@@ -873,9 +1099,8 @@ paths:
       tags:
       - Mercado
       summary: Obtiene el alquiler medio y el valor tasado de la zona de un municipio
-      description: "Alquiler municipal (SERPAVI) del último año disponible + valor\
-        \ tasado de la provincia. Si el municipio no tiene NINGÚN dato publicado responde\
-        \ 404. La respuesta incluye siempre la atribución legal de la fuente."
+      description: Alquiler municipal (SERPAVI) del último año disponible + valor tasado de la provincia. Si el municipio
+        no tiene NINGÚN dato publicado responde 404. La respuesta incluye siempre la atribución legal de la fuente.
       operationId: consultar
       parameters:
       - name: codigoINE
@@ -886,35 +1111,32 @@ paths:
           type: string
           pattern: '[0-9]{5}'
       responses:
-        "200":
-          description: "Precios de la zona (los bloques alquiler y venta pueden ser\
-            \ null de forma independiente)"
+        '200':
+          description: Precios de la zona (los bloques alquiler y venta pueden ser null de forma independiente)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/MercadoResponse"
-        "400":
-          description: "codigoINE no es un código de 5 dígitos (ProblemDetail con\
-            \ errors[])"
+                $ref: '#/components/schemas/MercadoResponse'
+        '400':
+          description: codigoINE no es un código de 5 dígitos (ProblemDetail con errors[])
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "404":
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
           description: Sin datos publicados para ese municipio (ProblemDetail)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
       security: []
   /api/v1/inmuebles:
     get:
       tags:
       - Inmuebles
       summary: Lista inmuebles con filtros y paginación por cursor
-      description: "Orden por defecto `created_at DESC, id DESC` (o `sort=precio_asc|precio_desc`).\
-        \ La paginación es keyset: pase `nextCursor` como `cursor` para la página\
-        \ siguiente. `limit` se acota a 1..50 (20 por defecto)."
+      description: 'Orden por defecto `created_at DESC, id DESC` (o `sort=precio_asc|precio_desc`). La paginación es keyset:
+        pase `nextCursor` como `cursor` para la página siguiente. `limit` se acota a 1..50 (20 por defecto).'
       operationId: listar
       parameters:
       - name: estado
@@ -928,8 +1150,7 @@ paths:
           - ALQUILER
       - name: tipo
         in: query
-        description: "Tipo de inmueble (PISO, CASA, ATICO, DUPLEX, ESTUDIO, LOCAL,\
-          \ TERRENO)"
+        description: Tipo de inmueble (PISO, CASA, ATICO, DUPLEX, ESTUDIO, LOCAL, TERRENO)
         required: false
         schema:
           type: string
@@ -943,8 +1164,7 @@ paths:
           - TERRENO
       - name: municipio
         in: query
-        description: "Municipio, coincidencia parcial e insensible a mayúsculas (má\
-          x. 120)"
+        description: Municipio, coincidencia parcial e insensible a mayúsculas (máx. 120)
         required: false
         schema:
           type: string
@@ -977,40 +1197,63 @@ paths:
           type: boolean
       - name: cursor
         in: query
-        description: Cursor opaco de la página anterior (base64); ausente en la primera
-          página
+        description: Cursor opaco de la página anterior (base64); ausente en la primera página
         required: false
         schema:
           type: string
       - name: sort
         in: query
-        description: "Orden: precio_asc o precio_desc (por defecto, más recientes)"
+        description: 'Orden: precio_asc o precio_desc (por defecto, más recientes)'
         required: false
         schema:
           type: string
       - name: limit
         in: query
-        description: "Tamaño de página, 1..50 (20 por defecto)"
+        description: Tamaño de página, 1..50 (20 por defecto)
         required: false
         schema:
           type: integer
           format: int32
           default: 20
       responses:
-        "200":
-          description: Página de inmuebles
+        '200':
+          description: Página de inmuebles (cabecera `ETag` débil para revalidación)
+          headers:
+            ETag:
+              description: ETag débil del body
+              style: simple
+              schema:
+                type: string
+                example: W/"7a3b2c1d"
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/InmueblePage"
-        "400":
-          description: "Cursor, sort, rango de filtros (precioMin>precioMax, precios\
-            \ negativos, habitacionesMin<0) o valor de parámetro no admitido (p. ej.\
-            \ estado=XYZ, limit=abc): ProblemDetail con errors:[{field, message}]"
+                $ref: '#/components/schemas/InmueblePage'
+        '304':
+          description: El cliente envió `If-None-Match` y el body no cambió (sin cuerpo)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/InmueblePage'
+        '400':
+          description: 'Cursor, sort, rango de filtros (precioMin>precioMax, precios negativos, habitacionesMin<0) o valor
+            de parámetro no admitido (p. ej. estado=XYZ, limit=abc): ProblemDetail con errors:[{field, message}]'
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '429':
+          description: 'Demasiadas peticiones (rate limit por IP; issue #22 — el listado es anónimo y sin límite un cliente
+            podría forzar COUNT + ILIKE en cada request)'
+          headers:
+            Retry-After:
+              description: Segundos hasta liberar una petición en la ventana de rate limit
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
       security: []
   /api/v1/inmuebles/{id}:
     get:
@@ -1029,37 +1272,49 @@ paths:
           format: int64
         example: 1
       responses:
-        "200":
-          description: Inmueble encontrado
+        '200':
+          description: Inmueble encontrado (cabecera `ETag` débil para revalidación)
+          headers:
+            ETag:
+              description: ETag débil del body
+              style: simple
+              schema:
+                type: string
+                example: W/"7a3b2c1d"
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/InmuebleResponse"
-        "404":
+                $ref: '#/components/schemas/InmuebleResponse'
+        '304':
+          description: El cliente envió `If-None-Match` y el body no cambió (sin cuerpo)
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/InmuebleResponse'
+        '404':
           description: Inexistente o eliminado (ProblemDetail)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
       security: []
   /api/v1/gremios:
     get:
       tags:
       - Gremios
       summary: Lista el catálogo de gremios
-      description: "Devuelve todos los oficios disponibles con su `slug` (identificador\
-        \ que los formularios envían en `gremios[]`) y su `nombre`. Recurso estático:\
-        \ `Cache-Control: public, max-age=60`."
+      description: 'Devuelve todos los oficios disponibles con su `slug` (identificador que los formularios envían en `gremios[]`)
+        y su `nombre`. Recurso estático: `Cache-Control: public, max-age=60`.'
       operationId: listarGremios
       responses:
-        "200":
-          description: "Catálogo completo (array de {slug, nombre})"
+        '200':
+          description: Catálogo completo (array de {slug, nombre})
           content:
             '*/*':
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/GremioResponse"
+                  $ref: '#/components/schemas/GremioResponse'
       security: []
   /api/v1/auth/me:
     get:
@@ -1068,18 +1323,18 @@ paths:
       summary: Devuelve el usuario autenticado (access token requerido)
       operationId: usuarioActual
       responses:
-        "200":
+        '200':
           description: Usuario autenticado
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/UsuarioSummary"
-        "401":
+                $ref: '#/components/schemas/UsuarioSummary'
+        '401':
           description: Sin token o token caducado
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
       security:
       - bearerAuth: []
   /api/v1/admin/telegram/diagnostico:
@@ -1087,42 +1342,41 @@ paths:
       tags:
       - Telegram (admin)
       summary: Lista los chats que han escrito al bot
-      description: "Llama a `getUpdates` de la Bot API de Telegram (timeout 5 s) y\
-        \ resume los chats vistos: `chatId`, `tipo` (private/group/supergroup/channel)\
-        \ y un extracto del último mensaje. Útil para descubrir el `chat_id` de un\
-        \ grupo y configurar `TELEGRAM_CHAT_ID`."
+      description: 'Llama a `getUpdates` de la Bot API de Telegram (timeout 5 s) y resume los chats vistos: `chatId`, `tipo`
+        (private/group/supergroup/channel) y un extracto del último mensaje. Útil para descubrir el `chat_id` de un grupo
+        y configurar `TELEGRAM_CHAT_ID`.'
       operationId: diagnosticoTelegram
       responses:
-        "200":
-          description: "Chats vistos: {chatsVistos: [{chatId, tipo, textoMuestra}]}"
+        '200':
+          description: 'Chats vistos: {chatsVistos: [{chatId, tipo, textoMuestra}]}'
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/TelegramDiagnosticoResponse"
-        "401":
+                $ref: '#/components/schemas/TelegramDiagnosticoResponse'
+        '401':
           description: Sin token
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "403":
+                $ref: '#/components/schemas/ProblemDetail'
+        '403':
           description: Token sin rol ADMIN
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "409":
-          description: "Telegram sin credencial: falta `TELEGRAM_BOT_TOKEN` (ProblemDetail)"
+                $ref: '#/components/schemas/ProblemDetail'
+        '409':
+          description: 'Telegram sin credencial: falta `TELEGRAM_BOT_TOKEN` (ProblemDetail)'
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "502":
+                $ref: '#/components/schemas/ProblemDetail'
+        '502':
           description: Telegram no disponible o ha rechazado `getUpdates` (ProblemDetail)
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
       security:
       - bearerAuth: []
   /api/v1/admin/solicitudes:
@@ -1130,30 +1384,30 @@ paths:
       tags:
       - Solicitudes (admin)
       summary: Lista las últimas solicitudes
-      description: "Devuelve las 50 solicitudes más recientes (array plano, sin paginació\
-        n — MVP) con sus gremios pedidos en `slug`."
+      description: Devuelve las 50 solicitudes más recientes (array plano, sin paginación — MVP) con sus gremios pedidos en
+        `slug`.
       operationId: listarSolicitudes
       responses:
-        "200":
-          description: "Solicitudes más recientes (array, máx. 50)"
+        '200':
+          description: Solicitudes más recientes (array, máx. 50)
           content:
             '*/*':
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/SolicitudAdminResponse"
-        "401":
+                  $ref: '#/components/schemas/SolicitudAdminResponse'
+        '401':
           description: Sin token
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "403":
+                $ref: '#/components/schemas/ProblemDetail'
+        '403':
           description: Token sin rol ADMIN
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
       security:
       - bearerAuth: []
   /api/v1/admin/profesionales:
@@ -1161,15 +1415,13 @@ paths:
       tags:
       - Profesionales (admin)
       summary: Lista profesionales por estado
-      description: "Lista simple SIN paginación (MVP): devuelve todos los profesionales\
-        \ del estado indicado, más recientes primero, con sus gremios en `slug`. Si\
-        \ se omite `estado`, devuelve todos."
+      description: 'Lista simple SIN paginación (MVP): devuelve todos los profesionales del estado indicado, más recientes
+        primero, con sus gremios en `slug`. Si se omite `estado`, devuelve todos.'
       operationId: listarProfesionales
       parameters:
       - name: estado
         in: query
-        description: "Estado a filtrar (PENDIENTE, ACTIVO o RECHAZADO); si se omite,\
-          \ todos"
+        description: Estado a filtrar (PENDIENTE, ACTIVO o RECHAZADO); si se omite, todos
         required: false
         schema:
           type: string
@@ -1178,33 +1430,32 @@ paths:
           - ACTIVO
           - RECHAZADO
       responses:
-        "200":
+        '200':
           description: Lista de profesionales (array)
           content:
             '*/*':
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ProfesionalAdminResponse"
-        "400":
-          description: "`estado` no admitido (PENDIENTE, ACTIVO o RECHAZADO): ProblemDetail\
-            \ con errors[]"
+                  $ref: '#/components/schemas/ProfesionalAdminResponse'
+        '400':
+          description: '`estado` no admitido (PENDIENTE, ACTIVO o RECHAZADO): ProblemDetail con errors[]'
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "401":
+                $ref: '#/components/schemas/ProblemDetail'
+        '401':
           description: Sin token
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "403":
+                $ref: '#/components/schemas/ProblemDetail'
+        '403':
           description: Token sin rol ADMIN
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
       security:
       - bearerAuth: []
   /api/v1/swipes/favoritos/{inmuebleId}:
@@ -1212,9 +1463,8 @@ paths:
       tags:
       - Swipes
       summary: Elimina un favorito
-      description: Borra el swipe LIKE y el inmueble vuelve al deck. 404 si el USUARIO
-        ACTUAL no tiene ese favorito (también si es favorito de otro usuario o si
-        el swipe era un NOPE).
+      description: Borra el swipe LIKE y el inmueble vuelve al deck. 404 si el USUARIO ACTUAL no tiene ese favorito (también
+        si es favorito de otro usuario o si el swipe era un NOPE).
       operationId: eliminarFavorito
       parameters:
       - name: inmuebleId
@@ -1226,20 +1476,20 @@ paths:
           format: int64
         example: 42
       responses:
-        "204":
+        '204':
           description: Favorito eliminado (sin cuerpo)
-        "401":
+        '401':
           description: Sin token
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
-        "404":
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
           description: No es un favorito del usuario actual
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ProblemDetail"
+                $ref: '#/components/schemas/ProblemDetail'
       security:
       - bearerAuth: []
 components:
@@ -1307,14 +1557,14 @@ components:
         direccion:
           type: string
           description: Dirección completa
-          example: "Calle Mayor 1, 3º B"
+          example: Calle Mayor 1, 3º B
           maxLength: 500
           minLength: 0
         codigoPostal:
           type: string
-          description: "Código postal español (5 dígitos, opcional)"
-          example: "28013"
-          pattern: "^[0-9]{5}$"
+          description: Código postal español (5 dígitos, opcional)
+          example: '28013'
+          pattern: ^[0-9]{5}$
         municipio:
           type: string
           description: Municipio
@@ -1330,14 +1580,14 @@ components:
         lat:
           type: number
           format: double
-          description: "Latitud WGS84 (España: 27..44)"
+          description: 'Latitud WGS84 (España: 27..44)'
           example: 40.4168
           maximum: 44.0
           minimum: 27.0
         lng:
           type: number
           format: double
-          description: "Longitud WGS84 (España: -19..5)"
+          description: 'Longitud WGS84 (España: -19..5)'
           example: -3.7038
           maximum: 5.0
           minimum: -19.0
@@ -1347,10 +1597,10 @@ components:
           example: https://picsum.photos/seed/inm1/800/600
           maxLength: 500
           minLength: 0
-          pattern: "^https://[A-Za-z0-9\\-._~:/?#\\[\\]@!$&'()*+,;=%]+$"
+          pattern: ^https://[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+$
         destacado:
           type: boolean
-          description: "Marca de destacado; sólo ADMIN (opcional, por defecto false)"
+          description: Marca de destacado; sólo ADMIN (opcional, por defecto false)
           example: false
       required:
       - direccion
@@ -1390,12 +1640,10 @@ components:
             properties:
               field:
                 type: string
-                description: "Campo o parámetro que falló (p. ej. precioMin, estado);\
-                  \ ausente cuando sólo procede el mensaje"
+                description: Campo o parámetro que falló (p. ej. precioMin, estado); ausente cuando sólo procede el mensaje
               message:
                 type: string
-                description: "Motivo fijo del error, sin datos internos de la petició\
-                  n"
+                description: Motivo fijo del error, sin datos internos de la petición
             required:
             - message
     InmuebleResponse:
@@ -1456,11 +1704,11 @@ components:
         direccion:
           type: string
           description: Dirección completa
-          example: "Calle Mayor 1, 3º B"
+          example: Calle Mayor 1, 3º B
         codigoPostal:
           type: string
           description: Código postal español (5 dígitos)
-          example: "28013"
+          example: '28013'
         municipio:
           type: string
           description: Municipio
@@ -1471,9 +1719,9 @@ components:
           example: Madrid
         codigoIne:
           type: string
-          description: "Código INE de 5 dígitos del municipio; null si no está catalogado\
-            \ (se usa para los precios oficiales del MIVAU)"
-          example: "28079"
+          description: Código INE de 5 dígitos del municipio; null si no está catalogado (se usa para los precios oficiales
+            del MIVAU)
+          example: '28079'
         lat:
           type: number
           format: double
@@ -1496,12 +1744,12 @@ components:
           type: string
           format: date-time
           description: Fecha de alta (ISO-8601)
-          example: 2026-09-01T10:00:00Z
+          example: '2026-09-01T10:00:00Z'
         updatedAt:
           type: string
           format: date-time
           description: Última modificación (ISO-8601)
-          example: 2026-09-01T10:00:00Z
+          example: '2026-09-01T10:00:00Z'
     SwipeRequest:
       type: object
       description: Decisión de un swipe sobre un inmueble
@@ -1514,7 +1762,7 @@ components:
           exclusiveMinimum: 0
         decision:
           type: string
-          description: "Decisión: LIKE (favorito) o NOPE (descartar)"
+          description: 'Decisión: LIKE (favorito) o NOPE (descartar)'
           enum:
           - LIKE
           - NOPE
@@ -1647,7 +1895,7 @@ components:
           minLength: 0
         password:
           type: string
-          description: "Contraseña: 8-72 caracteres"
+          description: 'Contraseña: 8-72 caracteres'
           example: secreto123
           maxLength: 72
           minLength: 8
@@ -1657,12 +1905,11 @@ components:
       - password
     AuthResponse:
       type: object
-      description: "Sesión emitida: access token en body + refresh token en cookie\
-        \ httpOnly"
+      description: 'Sesión emitida: access token en body + refresh token en cookie httpOnly'
       properties:
         accessToken:
           type: string
-          description: "Access token JWT (HS256, 15 min)"
+          description: Access token JWT (HS256, 15 min)
           example: eyJhbGciOiJIUzI1NiJ9...
         expiresIn:
           type: integer
@@ -1670,7 +1917,7 @@ components:
           description: Segundos hasta la expiración del access token
           example: 900
         user:
-          $ref: "#/components/schemas/UsuarioSummary"
+          $ref: '#/components/schemas/UsuarioSummary'
           description: Usuario autenticado
     UsuarioSummary:
       type: object
@@ -1701,7 +1948,7 @@ components:
           type: string
           format: date-time
           description: Fecha de alta (ISO-8601)
-          example: 2026-01-01T10:00:00Z
+          example: '2026-01-01T10:00:00Z'
     PasswordResetRequest:
       type: object
       description: Restablecimiento de contraseña con el token recibido por email
@@ -1714,7 +1961,7 @@ components:
           minLength: 0
         password:
           type: string
-          description: "Contraseña: 8-72 caracteres (mismas reglas que el registro)"
+          description: 'Contraseña: 8-72 caracteres (mismas reglas que el registro)'
           example: secreto123
           maxLength: 72
           minLength: 8
@@ -1766,6 +2013,131 @@ components:
       required:
       - email
       - password
+    AlertaCreateRequest:
+      type: object
+      description: Alta de una alerta de búsqueda con los filtros del listado
+      properties:
+        nombre:
+          type: string
+          description: Nombre propio de la alerta (1..80 caracteres)
+          example: Pisos en Madrid
+          maxLength: 80
+          minLength: 0
+        filtros:
+          $ref: '#/components/schemas/AlertaFiltros'
+          description: Filtros a guardar (los mismos del listado público)
+      required:
+      - filtros
+      - nombre
+    AlertaFiltros:
+      type: object
+      description: Filtros de la alerta (los mismos que acepta el listado público de inmuebles)
+      properties:
+        estado:
+          type: string
+          description: Estado comercial (VENTA o ALQUILER); ausente = sin filtrar
+          enum:
+          - VENTA
+          - ALQUILER
+        tipo:
+          type: string
+          description: Tipo de inmueble; ausente = sin filtrar
+          enum:
+          - PISO
+          - CASA
+          - ATICO
+          - DUPLEX
+          - ESTUDIO
+          - LOCAL
+          - TERRENO
+        municipio:
+          type: string
+          description: Municipio, coincidencia parcial e insensible a mayúsculas (máx. 120)
+          example: Madrid
+          maxLength: 120
+          minLength: 0
+        precioMin:
+          type: number
+          description: Precio mínimo en euros (>= 0; no puede superar precioMax)
+          example: 100000
+          maximum: 9999999999.99
+        precioMax:
+          type: number
+          description: Precio máximo en euros (>= 0; no puede ser menor que precioMin)
+          example: 250000
+          maximum: 9999999999.99
+        habitacionesMin:
+          type: integer
+          format: int32
+          description: Número mínimo de habitaciones (>= 0)
+          example: 3
+        destacado:
+          type: boolean
+          description: Sólo destacados (true) o sólo no destacados (false); ausente = sin filtrar
+    AlertaResponse:
+      type: object
+      description: Alerta de búsqueda del usuario autenticado
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identificador de la alerta
+          example: 1
+        nombre:
+          type: string
+          description: Nombre propio de la alerta
+          example: Pisos en Madrid
+        filtros:
+          $ref: '#/components/schemas/AlertaFiltros'
+          description: Filtros guardados (los mismos del listado público)
+        activa:
+          type: boolean
+          description: Si está activa, el job la evalúa en cada pasada
+        ultimoAvisoEn:
+          type: string
+          format: date-time
+          description: Instante ISO-8601 del último aviso enviado; null si aún no avisó
+        creadoEn:
+          type: string
+          format: date-time
+          description: Instante ISO-8601 de creación
+        actualizadoEn:
+          type: string
+          format: date-time
+          description: Instante ISO-8601 de la última modificación
+    MercadoImportacionResponse:
+      type: object
+      description: Resultado de la reimportación de los CSV del MIVAU
+      properties:
+        filasAlquiler:
+          type: integer
+          format: int32
+          description: Filas de alquiler municipal escritas (nuevas + actualizadas)
+          example: 7665
+        filasVenta:
+          type: integer
+          format: int32
+          description: Filas de valor tasado provincial escritas (nuevas + actualizadas)
+          example: 8412
+        fechaDescarga:
+          type: string
+          format: date-time
+          description: Instante de descarga de los dos ficheros (ISO-8601)
+          example: '2026-10-11T15:20:07Z'
+    AlertaActualizarRequest:
+      type: object
+      description: Actualización parcial de una alerta (nombre y/o actividad)
+      properties:
+        nombre:
+          type: string
+          description: Nuevo nombre (1..80, sin blanco si se envía); ausente = sin cambios
+          example: Pisos en Madrid
+          maxLength: 80
+          minLength: 1
+        activa:
+          type: boolean
+          description: 'Activa o pausa la alerta; ausente = sin cambios. Pausada, el job deja de evaluarla (los avisos no
+            se pierden: al reactivar se continúa desde la última marca de agua)'
     ProfesionalEstadoRequest:
       type: object
       properties:
@@ -1856,16 +2228,16 @@ components:
           type: string
           format: date-time
           description: Fecha de alta (ISO-8601)
-          example: 2026-09-01T10:00:00Z
+          example: '2026-09-01T10:00:00Z'
     SwipePage:
       type: object
-      description: "Página del deck o de favoritos, paginada por cursor"
+      description: Página del deck o de favoritos, paginada por cursor
       properties:
         content:
           type: array
           description: Filas de la página
           items:
-            $ref: "#/components/schemas/InmuebleSummary"
+            $ref: '#/components/schemas/InmuebleSummary'
         nextCursor:
           type: string
           description: Cursor opaco para la página siguiente; null si no hay más
@@ -1875,6 +2247,68 @@ components:
           format: int64
           description: Total de filas del listado (sólo primera página)
           example: 35
+    AlquilerMercadoResponse:
+      type: object
+      description: Alquiler municipal de referencia (SERPAVI), tipología colectiva
+      properties:
+        rentaMedianaEurM2Mes:
+          type: number
+          description: Renta mediana en € por m² y mes (cuantía mediana dividida entre la superficie mediana, según la metodología
+            SERPAVI)
+          example: 13.16
+        cuantiaMedianaEurMes:
+          type: number
+          description: Cuantía mediana del contrato en € al mes
+          example: 868.8
+    MercadoResponse:
+      type: object
+      description: Precios oficiales del mercado de la zona de un municipio
+      properties:
+        codigoINE:
+          type: string
+          description: Código INE de 5 dígitos consultado
+          example: '28079'
+        anio:
+          type: integer
+          format: int32
+          description: Año del dato de alquiler municipal; si no hay alquiler, el año del dato de venta
+          example: 2024
+        alquiler:
+          $ref: '#/components/schemas/AlquilerMercadoResponse'
+          description: Alquiler municipal; null si el municipio no tiene dato publicado
+        venta:
+          $ref: '#/components/schemas/VentaMercadoResponse'
+          description: Valor tasado provincial; null si la fuente no publica esa provincia
+        fuente:
+          type: string
+          description: Fuente obligatoria (aviso legal MIVAU)
+          example: Ministerio de Vivienda y Agenda Urbana
+    VentaMercadoResponse:
+      type: object
+      description: Valor tasado de venta de la provincia
+      properties:
+        valorEurM2:
+          type: number
+          description: Valor tasado en € por m²
+          example: 1588.7
+        ambito:
+          type: string
+          description: Ámbito del dato
+          example: PROVINCIA
+        provincia:
+          type: string
+          description: Nombre de la provincia
+          example: Zaragoza
+        anio:
+          type: integer
+          format: int32
+          description: Año del dato
+          example: 2026
+        trimestre:
+          type: integer
+          format: int32
+          description: Trimestre del dato (1..4)
+          example: 3
     InmueblePage:
       type: object
       description: Página del listado de inmuebles paginada por cursor
@@ -1883,7 +2317,7 @@ components:
           type: array
           description: Filas de la página
           items:
-            $ref: "#/components/schemas/InmuebleSummary"
+            $ref: '#/components/schemas/InmuebleSummary'
         nextCursor:
           type: string
           description: Cursor opaco para la página siguiente; null si no hay más
@@ -1900,6 +2334,20 @@ components:
           type: string
         nombre:
           type: string
+    AlertaPage:
+      type: object
+      description: Listado de alertas del usuario autenticado
+      properties:
+        content:
+          type: array
+          description: Alertas del usuario, de más reciente a más antigua
+          items:
+            $ref: '#/components/schemas/AlertaResponse'
+        totalElements:
+          type: integer
+          format: int64
+          description: Total de alertas del usuario
+          example: 2
     ChatVisto:
       type: object
       properties:
@@ -1915,7 +2363,7 @@ components:
         chatsVistos:
           type: array
           items:
-            $ref: "#/components/schemas/ChatVisto"
+            $ref: '#/components/schemas/ChatVisto'
     SolicitudAdminResponse:
       type: object
       properties:
@@ -1964,92 +2412,9 @@ components:
         creadoEn:
           type: string
           format: date-time
-    MercadoImportacionResponse:
-      type: object
-      description: Resultado de la reimportación de los CSV del MIVAU
-      properties:
-        filasAlquiler:
-          type: integer
-          format: int32
-          description: Filas de alquiler municipal escritas (nuevas + actualizadas)
-          example: 7665
-        filasVenta:
-          type: integer
-          format: int32
-          description: Filas de valor tasado provincial escritas (nuevas + actualizadas)
-          example: 8412
-        fechaDescarga:
-          type: string
-          format: date-time
-          description: Instante de descarga de los dos ficheros (ISO-8601)
-          example: "2026-10-11T15:20:07Z"
-    AlquilerMercadoResponse:
-      type: object
-      description: Alquiler municipal de referencia (SERPAVI), tipología colectiva
-      properties:
-        rentaMedianaEurM2Mes:
-          type: number
-          description: "Renta mediana en € por m² y mes (cuantía mediana dividida\
-            \ entre la superficie mediana, según la metodología SERPAVI)"
-          example: 13.16
-        cuantiaMedianaEurMes:
-          type: number
-          description: Cuantía mediana del contrato en € al mes
-          example: 868.8
-    MercadoResponse:
-      type: object
-      description: Precios oficiales del mercado de la zona de un municipio
-      properties:
-        codigoINE:
-          type: string
-          description: Código INE de 5 dígitos consultado
-          example: "28079"
-        anio:
-          type: integer
-          format: int32
-          description: "Año del dato de alquiler municipal; si no hay alquiler, el\
-            \ año del dato de venta"
-          example: 2024
-        alquiler:
-          $ref: "#/components/schemas/AlquilerMercadoResponse"
-          description: "Alquiler municipal; null si el municipio no tiene dato publicado"
-        venta:
-          $ref: "#/components/schemas/VentaMercadoResponse"
-          description: "Valor tasado provincial; null si la fuente no publica esa\
-            \ provincia"
-        fuente:
-          type: string
-          description: Fuente obligatoria (aviso legal MIVAU)
-          example: Ministerio de Vivienda y Agenda Urbana
-    VentaMercadoResponse:
-      type: object
-      description: Valor tasado de venta de la provincia
-      properties:
-        valorEurM2:
-          type: number
-          description: Valor tasado en € por m²
-          example: 1588.7
-        ambito:
-          type: string
-          description: Ámbito del dato
-          example: PROVINCIA
-        provincia:
-          type: string
-          description: Nombre de la provincia
-          example: Zaragoza
-        anio:
-          type: integer
-          format: int32
-          description: Año del dato
-          example: 2026
-        trimestre:
-          type: integer
-          format: int32
-          description: Trimestre del dato (1..4)
-          example: 3
   securitySchemes:
     bearerAuth:
       type: http
-      description: "Access token JWT (HS256, 15 min) devuelto por /api/v1/auth/login"
+      description: Access token JWT (HS256, 15 min) devuelto por /api/v1/auth/login
       scheme: bearer
       bearerFormat: JWT

@@ -3,6 +3,32 @@ services:
     image: postgres:18-alpine
     container_name: manti-postgres
     restart: unless-stopped
+    # Issue #31 — observabilidad de consultas en DESARROLLO (db-auditor):
+    #   * shared_preload_libraries=pg_stat_statements: carga el módulo al
+    #     arrancar el servidor. ES OBLIGATORIO hacerlo aquí: sin el preload no
+    #     se puede CREATE EXTENSION y la vista no existe. Sirve para mirar las
+    #     queries más caras con
+    #       SELECT query, calls, mean_exec_time, rows
+    #         FROM pg_stat_statements
+    #        ORDER BY mean_exec_time * calls DESC LIMIT 20;
+    #   * track_io_timing=on: mide el tiempo real de I/O de cada consulta
+    #     (sin él las columnas de bloqueo/IO salen a 0 y el plan es incompleto);
+    #     se puede cambiar en caliente, aquí queda declarado junto al resto.
+    #   * pg_stat_statements.max=5000: acota la memoria que usa el módulo.
+    # El volumen existente sigue funcionando: sólo cambian los argumentos del
+    # servidor (docker recrea el contenedor, NO el volumen). La extensión se
+    # crea UNA vez por base de datos: automática en volúmenes nuevos (script de
+    # /docker-entrypoint-initdb.d) y en el volumen actual, a mano:
+    #   docker compose exec postgres psql -U manti -d manti \
+    #     -c "CREATE EXTENSION IF NOT EXISTS pg_stat_statements;"
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - track_io_timing=on
+      - -c
+      - pg_stat_statements.max=5000
     environment:
       POSTGRES_DB: manti
       POSTGRES_USER: manti
@@ -13,6 +39,9 @@ services:
       - "127.0.0.1:5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql
+      # Issue #31 — initdb: se ejecuta SOLO la primera vez que se forma el
+      # volumen (data dir vacío); en el volumen existente no hace nada.
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U manti -d manti"]
       interval: 5s

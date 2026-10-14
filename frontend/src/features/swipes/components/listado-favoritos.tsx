@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { Boton } from '@/components/ui/boton';
+import { CtaSesion } from '@/components/ui/cta-sesion';
+import { ENLACE_PRIMARIO, ENLACE_SECUNDARIO } from '@/components/ui/enlaces';
 import { ListadoCargando, ListadoError } from '@/features/inmuebles/components/estados-listado';
 import { TarjetaInmueble } from '@/features/inmuebles/components/tarjeta-inmueble';
-import { ENLACE_PRIMARIO, ENLACE_SECUNDARIO } from '../clases';
 import { useFavoritos } from '../hooks/use-favoritos';
-import { CtaSesion } from './cta-sesion';
 
 /**
  * Grid de favoritos: reutiliza `TarjetaInmueble` y añade por tarjeta el botón
