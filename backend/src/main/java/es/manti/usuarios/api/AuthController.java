@@ -90,12 +90,16 @@ public class AuthController {
 
     @PostMapping("/login")
     @SecurityRequirements   // endpoint público: security: [] en la spec
-    @Operation(summary = "Autentica con email y password")
+    @Operation(summary = "Autentica con email y password",
+            description = "Además del rate limit por IP, el login aplica backoff exponencial por "
+                    + "cuenta tras fallos consecutivos (issue #10) y una ventana por la "
+                    + "combinación IP+email (issue #5); ambas responden 429 con Retry-After.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Credenciales válidas; sesión emitida"),
             @ApiResponse(responseCode = "401", description = "Credenciales incorrectas (ProblemDetail)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
-            @ApiResponse(responseCode = "429", description = "Demasiados intentos (rate limit)",
+            @ApiResponse(responseCode = "429", description = "Demasiados intentos (rate limit por IP, "
+                    + "backoff de la cuenta o ventana IP+email)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         AuthResult result = authService.login(request.email(), request.password());
