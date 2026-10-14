@@ -7,6 +7,7 @@ import es.manti.usuarios.domain.CredencialesInvalidasException;
 import es.manti.usuarios.domain.CuentaGoogleConflictivaException;
 import es.manti.usuarios.domain.CuentaGoogleSinVerificarException;
 import es.manti.usuarios.domain.EmailYaRegistradoException;
+import es.manti.usuarios.domain.PasswordComprometidoException;
 import es.manti.usuarios.domain.PasswordResetInvalidoException;
 import es.manti.usuarios.domain.TokenInvalidoException;
 import es.manti.usuarios.domain.UsuarioInactivoException;
@@ -18,6 +19,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.List;
 
 /**
  * Mapeo a ProblemDetail RFC 9457 de las excepciones de dominio de USUARIOS.
@@ -82,5 +85,20 @@ public class UsuarioErrorAdvice {
                                             HttpServletRequest request) {
         return Problems.crear(HttpStatus.BAD_REQUEST, "token-invalido",
                 "Token inválido", e.getMessage(), request);
+    }
+
+    /**
+     * 400 (issue #10): la contraseña aparece en filtraciones públicas (HIBP).
+     * Contrato {@code errors[]} idéntico al de la validación de Jakarta: el
+     * cliente sabe que el campo a corregir es {@code password}. Handler
+     * propio aunque la excepción herede de {@link AuthException} (Spring elige
+     * el más específico): un pwned NO es un 401.
+     */
+    @ExceptionHandler(PasswordComprometidoException.class)
+    public ProblemDetail passwordComprometida(PasswordComprometidoException e,
+                                              HttpServletRequest request) {
+        return Problems.conErrores(HttpStatus.BAD_REQUEST, "password-comprometida",
+                "Contraseña comprometida", e.getMessage(), request,
+                List.of(Problems.error("password", e.getMessage())));
     }
 }

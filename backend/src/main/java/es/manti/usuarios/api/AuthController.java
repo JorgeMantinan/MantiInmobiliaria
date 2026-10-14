@@ -67,10 +67,14 @@ public class AuthController {
 
     @PostMapping("/register")
     @SecurityRequirements   // endpoint público: security: [] en la spec
-    @Operation(summary = "Registra un usuario y le devuelve la sesión (auto-login)")
+    @Operation(summary = "Registra un usuario y le devuelve la sesión (auto-login)",
+            description = "El password se comprueba contra las filtraciones públicas de Have I "
+                    + "Been Pwned (k-anonymity, issue #10): si aparece, se responde 400 con "
+                    + "`errors[0].field = password`.")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Usuario creado; sesión emitida"),
-            @ApiResponse(responseCode = "400", description = "Validación fallida (ProblemDetail)",
+            @ApiResponse(responseCode = "400", description = "Validación fallida o contraseña "
+                    + "comprometida en filtraciones públicas (ProblemDetail)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "409", description = "Email ya registrado",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
@@ -214,11 +218,14 @@ public class AuthController {
             summary = "Restablece la contraseña con el token del email",
             description = "Canjea el token de un solo uso: guarda la contraseña nueva con BCrypt, "
                     + "invalida el token y revoca TODA la familia de refresh tokens del usuario "
-                    + "(las sesiones abiertas quedan fuera). Rate limit: 10 peticiones/hora por IP.")
+                    + "(las sesiones abiertas quedan fuera). Si la contraseña nueva aparece en "
+                    + "filtraciones públicas (HIBP, issue #10) se responde 400 con "
+                    + "`errors[0].field = password` y el token sigue vigente. Rate limit: "
+                    + "10 peticiones/hora por IP.")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Contraseña actualizada; sesión cerrada"),
             @ApiResponse(responseCode = "400", description = "Token inválido, caducado o ya usado, "
-                    + "o validación fallida (ProblemDetail)",
+                    + "validación fallida o contraseña comprometida (ProblemDetail)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "429", description = "Demasiadas peticiones (rate limit)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})

@@ -42,6 +42,11 @@ ALLOWED_ORIGINS: http://localhost:3000
 # Los tests MockMvc comparten la misma IP de origen; se suben los límites para
 # no interferir con el rate limiting (que se testea en una clase propia).
 auth:
+  hibp:
+    # issue #10 — en la suite NUNCA se consulta HIBP (sin red en CI): el puerto
+    # se resuelve con el adaptador no-op. Los tests de la comprobación usan un
+    # mock del puerto (@MockitoBean) o el adaptador real con MockRestServiceServer.
+    enabled: false
   rate-limit:
     login-per-minute: 100000
     register-per-minute: 100000

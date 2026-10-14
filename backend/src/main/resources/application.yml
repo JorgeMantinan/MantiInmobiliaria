@@ -149,6 +149,18 @@ auth:
     # (el 202 no espera a Brevo); true = envío en línea, sólo para tests
     # (application-test.yml) que verifican el puerto con un mock.
     sync: ${AUTH_PASSWORD_RESET_SYNC:false}
+  # ---------------------------------------------------------------------------
+  # issue #10 — Have I Been Pwned (pwned passwords). En registro y
+  # restablecimiento de contraseña se comprueba si el password aparece en
+  # filtraciones públicas, vía protocolo de k-anonymity (SÓLO sale el prefijo
+  # de 5 caracteres del SHA-1; sin API key). Si HIBP no responde en 3 s se
+  # deja pasar el password (fail open + log.warn): la disponibilidad del
+  # registro no depende de un tercero. El perfil de test lo apaga para que la
+  # suite nunca salga a la red (application-test.yml). Desactivable con
+  # AUTH_HIBP_ENABLED=false.
+  # ---------------------------------------------------------------------------
+  hibp:
+    enabled: ${AUTH_HIBP_ENABLED:true}
   rate-limit:
     login-per-minute: ${AUTH_RATE_LOGIN_PER_MINUTE:10}
     register-per-minute: ${AUTH_RATE_REGISTER_PER_MINUTE:5}

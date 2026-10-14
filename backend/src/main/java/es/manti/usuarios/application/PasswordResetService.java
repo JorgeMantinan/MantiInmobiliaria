@@ -1,5 +1,7 @@
 package es.manti.usuarios.application;
 
+import es.manti.usuarios.domain.PasswordComprometidoException;
+import es.manti.usuarios.domain.PasswordComprometidoPort;
 import es.manti.usuarios.domain.PasswordResetInvalidoException;
 import es.manti.usuarios.domain.PasswordResetToken;
 import es.manti.usuarios.domain.PasswordResetTokenRepository;
@@ -68,12 +70,15 @@ public class PasswordResetService {
     private final PasswordResetEmailSender sender;
     private final ApplicationEventPublisher eventos;
     private final PasswordResetProperties properties;
+    private final PasswordComprometidoPort passwordComprometido;
     private final TransactionTemplate transaccion;
 
     public PasswordResetService(UsuarioRepository usuarios, PasswordResetTokenRepository tokens,
                                 RefreshTokenService refreshTokens, PasswordEncoder passwordEncoder,
                                 PasswordResetEmailSender sender, ApplicationEventPublisher eventos,
-                                PasswordResetProperties properties, TransactionTemplate transaccion) {
+                                PasswordResetProperties properties,
+                                PasswordComprometidoPort passwordComprometido,
+                                TransactionTemplate transaccion) {
         this.usuarios = usuarios;
         this.tokens = tokens;
         this.refreshTokens = refreshTokens;
@@ -81,6 +86,7 @@ public class PasswordResetService {
         this.sender = sender;
         this.eventos = eventos;
         this.properties = properties;
+        this.passwordComprometido = passwordComprometido;
         this.transaccion = transaccion;
     }
 
@@ -155,8 +161,17 @@ public class PasswordResetService {
      * previa: se marca el token como usado (un solo uso) y se revoca la
      * familia entera de refresh tokens.
      *
+     * <p><b>Password pwned (issue #10).</b> ANTES de canjear el token ni de
+     * pagar BCrypt se consulta el puerto {@link PasswordComprometidoPort}
+     * (HIBP, fail open): una contraseña filtrada devuelve 400 con error de
+     * campo {@code password} y el token SIGUE VIGENTE (no se consume), para
+     * que el usuario pueda repetir el canje con otra contraseña dentro de su
+     * TTL.</p>
+     *
      * @throws PasswordResetInvalidoException 400 si el token no existe, está
      *                                       caducado o ya fue canjeado
+     * @throws PasswordComprometidoException 400 si la contraseña nueva está en
+     *                                        filtraciones públicas (HIBP)
      */
     public void restablecer(String tokenEnClaro, String password) {
         if (tokenEnClaro == null || tokenEnClaro.isBlank()) {
@@ -169,6 +184,11 @@ public class PasswordResetService {
         }
         // JOIN FETCH: el usuario ya viene resuelto con el token.
         Long usuarioId = token.getUsuario().getId();
+        // HIBP ANTES de canjear: si la contraseña es pwned, ni se consume el
+        // token ni se paga BCrypt (issue #10).
+        if (passwordComprometido.estaComprometido(password)) {
+            throw new PasswordComprometidoException();
+        }
         // BCrypt FUERA de la transacción (issue #24): 60-150 ms de CPU sin
         // retener una conexión de Hikari.
         String passwordHash = passwordEncoder.encode(password);
