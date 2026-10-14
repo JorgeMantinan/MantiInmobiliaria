@@ -43,8 +43,16 @@ public class PublicGetEtagFilter extends ShallowEtagHeaderFilter {
             "/api/v1/mercado",
             "/api/v1/gremios");
 
-    /** Prefijo del detalle de inmueble ({@code /api/v1/inmuebles/{id}}). */
-    private static final String PREFIJO_DETALLE = "/api/v1/inmuebles/";
+    /** Detalle de inmueble ({@code /api/v1/inmuebles/{id}}) — sólo dígitos. */
+    private static final java.util.regex.Pattern DETALLE_INMUEBLE =
+            java.util.regex.Pattern.compile("/api/v1/inmuebles/\\d+");
+
+    public PublicGetEtagFilter() {
+        // Hash débil (W/"..."): el body se genera por petición y el ETag es
+        // un hash de bytes, no una semántica de entidad. Coherente con el
+        // javadoc de la clase y con la revalidación por If-None-Match.
+        setWriteWeakETag(true);
+    }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -53,7 +61,10 @@ public class PublicGetEtagFilter extends ShallowEtagHeaderFilter {
             return true;
         }
         String ruta = rutaDe(request);
-        return !RUTAS_EXACTAS.contains(ruta) && !ruta.startsWith(PREFIJO_DETALLE);
+        // El detalle se compara con patrón de dígitos, no por prefijo: un
+        // endpoint futuro tipo /api/v1/inmuebles/export no debe heredar el
+        // buffer del ETag sin decidirlo (revisión PR #100).
+        return !RUTAS_EXACTAS.contains(ruta) && !DETALLE_INMUEBLE.matcher(ruta).matches();
     }
 
     /**

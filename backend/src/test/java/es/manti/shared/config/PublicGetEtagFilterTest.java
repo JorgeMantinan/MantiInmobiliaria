@@ -27,8 +27,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class PublicGetEtagFilterTest {
 
+    /** Código INE sintético (rango 96xxx fuera de los CSV reales). */
+    private static final String INE_TEST = "96001";
+
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @org.junit.jupiter.api.AfterEach
+    void limpiar() {
+        jdbc.update("DELETE FROM precios_mercado WHERE codigo_ine = ?", INE_TEST);
+    }
 
     @Test
     void listadoPublico_devuelveEtag_yResponde304AlRevalidar() throws Exception {
@@ -52,6 +63,33 @@ class PublicGetEtagFilterTest {
         mockMvc.perform(get("/api/v1/gremios"))
                 .andExpect(status().isOk())
                 .andExpect(header().exists("ETag"));
+    }
+
+    @Test
+    void mercado_devuelveEtag() throws Exception {
+        // El ETag sólo se genera en respuestas 200 (criterio de
+        // ShallowEtagHeaderFilter), así que el test siembra un precio mínimo.
+        jdbc.update("""
+                INSERT INTO precios_mercado
+                    (codigo_ine, ambito, tipo, indicador, tipologia, anio, trimestre,
+                     valor, unidad, n_testigos, provincia)
+                VALUES (?, 'MUNICIPIO', 'ALQUILER', 'RENTA_MEDIANA', 'COLECTIVA', 2024, 4,
+                        10.5, 'EUR_M2_MES', 100, NULL)
+                """, INE_TEST);
+
+        mockMvc.perform(get("/api/v1/mercado").queryParam("codigoINE", INE_TEST))
+                .andExpect(status().isOk())
+                .andExpect(header().exists("ETag"));
+    }
+
+    /**
+     * El detalle se limita al patrón de dígitos: un hipotético endpoint bajo
+     * el mismo prefijo pero no numérico no hereda el buffer del ETag.
+     */
+    @Test
+    void detalleNoNumerico_noLlevaEtag() throws Exception {
+        mockMvc.perform(get("/api/v1/inmuebles/export"))
+                .andExpect(header().doesNotExist("ETag"));
     }
 
     /** El alcance es mínimo: rutas de auth y cualquier GET no listado, sin ETag. */

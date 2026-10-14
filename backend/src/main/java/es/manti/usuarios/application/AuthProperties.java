@@ -75,5 +75,33 @@ public record AuthProperties(
             default -> throw new IllegalStateException(
                     "auth.cookie.same-site inválido: '" + sameSite + "' (valores: Lax, Strict, None)");
         }
+        validarRateLimit();
+    }
+
+    /**
+     * Fail-fast de los límites: un 0 o negativo por typo de variable de
+     * entorno bloquearía la ruta ENTERA con 429 permanente (revisión de
+     * seguridad PR #100). El comportamiento "límite 0" sólo se prueba
+     * construyendo el record a mano, fuera de Spring.
+     */
+    private void validarRateLimit() {
+        RateLimit rl = rateLimit();
+        if (rl == null) {
+            return;
+        }
+        var invalidos = java.util.stream.Stream.of(
+                        rl.loginPerMinute(), rl.registerPerMinute(),
+                        rl.solicitudesPerHour(), rl.registroProfesionalPerHour(),
+                        rl.forgotPasswordPerHour(), rl.resetPasswordPerHour(),
+                        rl.alertasPerMinute(), rl.refreshPerMinute(),
+                        rl.oauth2TokenPerMinute(), rl.inmueblesPerMinute(),
+                        rl.swipesPerMinute(), rl.deckPerMinute(), rl.favoritosPerMinute())
+                .filter(v -> v < 1)
+                .count();
+        if (invalidos > 0) {
+            throw new IllegalStateException(
+                    "auth.rate-limit.* debe ser >= 1 en todas las rutas (hay " + invalidos
+                            + " valores < 1): un 0 bloquea la ruta entera con 429 permanente");
+        }
     }
 }

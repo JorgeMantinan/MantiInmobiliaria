@@ -69,11 +69,13 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     /**
      * Marcas de tiempo de una clave (ruta + IP).
      *
-     * <p>Sin {@code equals()} a propósito (identidad): en cada petición se
-     * devuelve una envoltura NUEVA con el mismo {@code Deque} mutado. Así
-     * Caffeine ve una escritura distinta, renueva el {@code expireAfterWrite}
-     * y la ventana deslizante no se cierra antes de tiempo; si se devolviera la
-     * misma instancia el TTL no se refrescaría.</p>
+     * <p>Envoltura de identidad defensiva (a propósito sin {@code equals()}):
+     * en cada petición se devuelve una instancia NUEVA con el mismo
+     * {@code Deque} mutado para que la escritura en el mapa sea visible.
+     * Medido con Caffeine 3.2.4, {@code asMap().compute} renueva
+     * {@code expireAfterWrite} incluso devolviendo la MISMA instancia, así que
+     * el wrapper no es estrictamente necesario — se mantiene por claridad y
+     * para no depender de ese detalle de implementación.</p>
      */
     private static final class Marcas {
         private final Deque<Long> marcas;
@@ -88,12 +90,20 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     }
 
     public AuthRateLimitFilter(AuthProperties properties) {
+        this(properties, null);
+    }
+
+    /** Variante con ticker inyectable (tests del invariante TTL >= ventana). */
+    AuthRateLimitFilter(AuthProperties properties, com.github.benmanes.caffeine.cache.Ticker ticker) {
         this.properties = properties;
-        this.ventanas = Caffeine.newBuilder()
+        Caffeine<Object, Object> builder = Caffeine.newBuilder()
                 .maximumSize(MAX_ENTRADAS)
                 // Vida = ventana MÁXIMA (1 hora): véase el javadoc de la clase.
-                .expireAfterWrite(Duration.ofMillis(VENTANA_HORA_MS))
-                .build();
+                .expireAfterWrite(Duration.ofMillis(VENTANA_HORA_MS));
+        if (ticker != null) {
+            builder.ticker(ticker);
+        }
+        this.ventanas = builder.build();
     }
 
     @Override
@@ -135,7 +145,10 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         if (esEscrituraDeAlertas(metodo, rutaNormalizada)) {
             return new Limite(rateLimit.alertasPerMinute(), VENTANA_MINUTO_MS);
         }
-        if ("GET".equals(metodo)) {
+        // HEAD ejecuta el mismo handler que GET en Spring MVC (@GetMapping
+        // matchea HEAD vía doHead→doGet): sin contarHEAD, un atacante evade
+        // el límite del listado con `curl -I` (revisión de seguridad PR #100).
+        if ("GET".equals(metodo) || "HEAD".equals(metodo)) {
             return switch (rutaNormalizada) {
                 // issue #22 — listado PÚBLICO: sin límite un cliente anónimo
                 // puede forzar COUNT + ILIKE trgm en cada petición. El detalle
@@ -165,10 +178,10 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             // no cortar una ráfaga legítima de pestañas al abrir la app).
             case "/api/v1/auth/refresh" ->
                     new Limite(rateLimit.refreshPerMinute(), VENTANA_MINUTO_MS);
-            // issue #17 — canje del código de Google: cada login legítimo hace
-            // UNA petición; limitar por IP acota el bombardeo con códigos
-            // caducados, que provocaría un intercambio contra Google por cada
-            // intento.
+            // issue #17 — canje del código de Google: UNA petición local por
+            // login (el intercambio real con Google vive en el OAuth2 de
+            // Security). El límite acota la fuerza bruta sobre el código opaco
+            // de un solo uso.
             case "/api/v1/auth/oauth2/token" ->
                     new Limite(rateLimit.oauth2TokenPerMinute(), VENTANA_MINUTO_MS);
             // Comentario del issue #17 — escritura barata, acotada por la

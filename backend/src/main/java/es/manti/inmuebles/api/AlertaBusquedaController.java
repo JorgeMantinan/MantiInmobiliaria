@@ -96,6 +96,8 @@ public class AlertaBusquedaController {
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "409",
                     description = "Máximo de alertas por usuario alcanzado (ProblemDetail)",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "429", description = "Demasiadas peticiones (rate limit por IP)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     public ResponseEntity<AlertaResponse> crear(
             @Valid @RequestBody AlertaCreateRequest request,
@@ -121,6 +123,8 @@ public class AlertaBusquedaController {
             @ApiResponse(responseCode = "401", description = "Sin token",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "404", description = "Alerta inexistente o de otro usuario (ProblemDetail)",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "429", description = "Demasiadas peticiones (rate limit por IP)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     public ResponseEntity<AlertaResponse> actualizar(
             @Parameter(description = "Identificador de la alerta", example = "1")
@@ -142,6 +146,8 @@ public class AlertaBusquedaController {
             @ApiResponse(responseCode = "401", description = "Sin token",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "404", description = "Alerta inexistente o de otro usuario (ProblemDetail)",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "429", description = "Demasiadas peticiones (rate limit por IP)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     public ResponseEntity<Void> eliminar(
             @Parameter(description = "Identificador de la alerta", example = "1")

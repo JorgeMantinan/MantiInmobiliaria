@@ -7,6 +7,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
+import java.time.Duration;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -147,6 +148,74 @@ class AuthRateLimitFilterTest {
 
         assertThat(respuesta.getStatus()).isEqualTo(200);
         verify(chain).doFilter(any(), any());
+    }
+
+    /**
+     * Revisión de seguridad PR #100: Spring MVC ejecuta el handler de GET
+     * también para HEAD (doHead → doGet), así que HEAD debe consumir la MISMA
+     * ventana o el límite del listado se evadiría con {@code curl -I}.
+     */
+    @Test
+    void listado_headComparteVentanaConGet() throws Exception {
+        AuthProperties.RateLimit limites =
+                new AuthProperties.RateLimit(100, 100, 100, 100, 100, 100, 100,
+                        100, 100, 2, 100, 100, 100); // inmuebles = 2/min
+        AuthRateLimitFilter filter =
+                new AuthRateLimitFilter(new AuthProperties(null, null, null, limites));
+        FilterChain chain = mock(FilterChain.class);
+
+        assertThat(filtrar(filter, chain, "GET", "/api/v1/inmuebles").getStatus()).isEqualTo(200);
+        assertThat(filtrar(filter, chain, "HEAD", "/api/v1/inmuebles").getStatus()).isEqualTo(200);
+        assertThat(filtrar(filter, chain, "HEAD", "/api/v1/inmuebles").getStatus()).isEqualTo(429);
+    }
+
+    /**
+     * Invariante del almacenamiento (issue #32): la vida de la entrada en la
+     * caché Caffeine (1 h) NUNCA puede ser menor que la ventana de su ruta.
+     * Si alguien la bajara a 60 s, una ruta "por hora" se convertiría en
+     * "por minuto" (bypass: esperar 61 s y repetir) sin que ningún otro test
+     * lo detectara. Con ticker falso: a t0+61 min la marca horaria EXPIRÓ de
+     * la caché (correcto: la ventana es de 1 h); la aserción clave es que a
+     * t0+61 s la marca MINUTO sigue viva (una vida de 60 s la habría
+     * expulsado).
+     */
+    @Test
+    void ttlDeCaffeine_nuncaMenorQueLaVentanaDeLaRuta() throws Exception {
+        TickerFalso ticker = new TickerFalso();
+        // Sólo la ruta de login limitada (1/min): el resto a 100 para aislar.
+        AuthProperties.RateLimit limites =
+                new AuthProperties.RateLimit(1, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100);
+        AuthRateLimitFilter filter =
+                new AuthRateLimitFilter(new AuthProperties(null, null, null, limites), ticker);
+        FilterChain chain = mock(FilterChain.class);
+
+        assertThat(filtrar(filter, chain, "POST", "/api/v1/auth/login").getStatus()).isEqualTo(200);
+
+        // +61 s: dentro de la ventana de 1 min y dentro de la vida de 1 h →
+        // la marca sigue y la 2ª petición cae en 429 (la ventana no se cerró).
+        ticker.avanzar(Duration.ofSeconds(61));
+        assertThat(filtrar(filter, chain, "POST", "/api/v1/auth/login").getStatus()).isEqualTo(429);
+
+        // +61 min: la ventana horaria habría expirado igualmente (1 h), pero
+        // el punto es que la ENTRADA de Caffeine no se habría expulsado antes
+        // con un TTL de 60 s. Con la vida de 1 h, a los 61 min la entrada ya
+        // no existe (venció) y la petición vuelve a pasar.
+        ticker.avanzar(Duration.ofMinutes(60));
+        assertThat(filtrar(filter, chain, "POST", "/api/v1/auth/login").getStatus()).isEqualTo(200);
+    }
+
+    /** Reloj falso para el {@code Ticker} de Caffeine. */
+    private static final class TickerFalso implements com.github.benmanes.caffeine.cache.Ticker {
+        private long nanos;
+
+        @Override
+        public long read() {
+            return nanos;
+        }
+
+        void avanzar(Duration duracion) {
+            nanos += duracion.toNanos();
+        }
     }
 
     private static AuthRateLimitFilter filtro(int alertasPerMinute) {

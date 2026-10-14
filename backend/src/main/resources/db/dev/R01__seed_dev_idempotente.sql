@@ -9,116 +9,14 @@
 --     lo que hace este R__ con guardas idempotentes.
 --
 -- Orden de Flyway: primero los versionados (V900-V902) y después los
--- repeatables. Por eso, en una BD nueva los datos los inserta V900 y este
--- fichero no hace nada; en una BD ya sembrada, tampoco. Sólo existe en el
--- perfil dev (spring.flyway.locations de application-dev.yml): ni prod ni la
--- suite de tests incluyen db/dev.
+-- repeatables. Sólo existe en el perfil dev (spring.flyway.locations de
+-- application-dev.yml): ni prod ni la suite de tests incluyen db/dev.
 --
--- Estrategia de idempotencia por seed:
---   * inmuebles (V900) → GUARDA "tabla vacía". No hay ON CONFLICT posible:
---     inmuebles no tiene clave natural única y sin target el INSERT duplicaría
---     de todos modos; añadir una UNIQUE sólo para el seed sería un constraint
---     de negocio falso. Si la tabla tiene cualquier fila, no se inserta nada.
---   * usuario admin (V901) → INSERT ... ON CONFLICT (email) DO NOTHING
---     (contra uq_usuarios_email; ya era idempotente).
---   * código INE (V902) → UPDATE ... WHERE codigo_ine IS NULL (ya era
---     idempotente).
+-- El seed de INMUEBLES vive únicamente en V900 (tabla vacía como guardia; no
+-- hay ON CONFLICT posible sin clave natural). Este fichero sólo repara admin
+-- y código INE, que sí tienen guardas idempotentes baratas.
 
--- 1) Inmuebles de ejemplo (35) — sólo si la tabla está vacía.
-DO $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM inmuebles) THEN
-        RETURN;
-    END IF;
-
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Piso reformado en Fuencarral', 'Piso luminoso reformado con salón comedor, cocina office y tres dormitorios con armarios. Metro Tribunal a 4 minutos.', 485000.00, 110, 3, 2, 'PISO', 'VENTA', 'Calle Fuencarral 84, 4º Izquierda', '28004', 'Madrid', 'Madrid', 40.4307, -3.7015, 'https://picsum.photos/seed/inm01/800/600', true, '2026-09-02T09:15:00Z', '2026-09-02T09:15:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Estudio en Lavapiés', 'Estudio tipo loft con mezanine, ideal para teletrabajo. Incluye gastos de comunidad y agua.', 950.00, 38, 1, 1, 'ESTUDIO', 'ALQUILER', 'Calle de la Ribera de Curtidores 22', '28012', 'Madrid', 'Madrid', 40.4089, -3.7023, 'https://picsum.photos/seed/inm02/800/600', false, '2026-09-03T10:30:00Z', '2026-09-03T10:30:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Ático con terraza en el punto kilométrico 0', 'Ático de obra nueva con terraza de 35 m² orientado al sur, vistas a Cuatro Caminos y ascensor privado.', 695000.00, 145, 4, 2, 'ATICO', 'VENTA', 'Paseo de la Castellana 120, Ático', '28046', 'Madrid', 'Madrid', 40.4480, -3.6920, 'https://picsum.photos/seed/inm03/800/600', true, '2026-09-05T12:00:00Z', '2026-09-05T12:00:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Piso en el centro de Getafe', 'Piso de tres dormitorios a dos minutos del parque de las Cubillas, con plaza de garaje opcional.', 215000.00, 82, 3, 1, 'PISO', 'VENTA', 'Calle de Madrid 12, 2º B', '28901', 'Getafe', 'Madrid', 40.3057, -3.7626, 'https://picsum.photos/seed/inm04/800/600', false, '2026-09-07T08:45:00Z', '2026-09-07T08:45:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Casa adosada en Alcalá de Henares', 'Adosado con jardín privado de 60 m², tres dormitorios en suite y trastero. Colegios y Cercanías a pie.', 349000.00, 168, 4, 2, 'CASA', 'VENTA', 'Calle Mayor 51', '28801', 'Alcalá de Henares', 'Madrid', 40.4814, -3.3644, 'https://picsum.photos/seed/inm05/800/600', false, '2026-09-09T17:20:00Z', '2026-09-09T17:20:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Dúplex amueblado junto a Atocha', 'Dúplex de dos plantas con dormitorio principal en suite, salón de doble altura y zona de trabajo.', 1850.00, 120, 3, 2, 'DUPLEX', 'ALQUILER', 'Calle de O Donnell 15, Dúplex', '28009', 'Madrid', 'Madrid', 40.4240, -3.6770, 'https://picsum.photos/seed/inm06/800/600', false, '2026-09-11T11:05:00Z', '2026-09-11T11:05:00Z');
-
--- Barcelona y área metropolitana
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Piso modernista en l Eixample', 'Piso con techos altos, molduras originales y suelo de pasta catalana, recién reformado con ascensor.', 435000.00, 96, 3, 2, 'PISO', 'VENTA', 'Carrer de Provença 210, 3r 1a', '08036', 'Barcelona', 'Barcelona', 41.3918, 2.1520, 'https://picsum.photos/seed/inm07/800/600', true, '2026-09-02T09:40:00Z', '2026-09-02T09:40:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Estudio reformado en la Dreta', 'Estudio compacto con cocina equipada y baño de diseño, a un paso de la plaza de Tetuán.', 1100.00, 42, 1, 1, 'ESTUDIO', 'ALQUILER', 'Carrer de Girona 58, 2n 2a', '08009', 'Barcelona', 'Barcelona', 41.3940, 2.1640, 'https://picsum.photos/seed/inm08/800/600', false, '2026-09-04T13:10:00Z', '2026-09-04T13:10:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Ático en el Eixample Dret', 'Ático con dos terrazas orientadas al este, cuatro dormitorios y cocina de concepto abierto.', 780000.00, 150, 4, 3, 'ATICO', 'VENTA', 'Passeig de Gràcia 96, Àtic', '08008', 'Barcelona', 'Barcelona', 41.3940, 2.1620, 'https://picsum.photos/seed/inm09/800/600', false, '2026-09-06T15:45:00Z', '2026-09-06T15:45:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Piso en Badalona centre', 'Piso exterior con balcón, tres dormitorios y reforma integral. Línea 2 del metro a la puerta.', 265000.00, 88, 3, 1, 'PISO', 'VENTA', 'Avinguda Martí Pujol 5, 4t 2a', '08911', 'Badalona', 'Barcelona', 41.4500, 2.2470, 'https://picsum.photos/seed/inm10/800/600', false, '2026-09-10T10:00:00Z', '2026-09-10T10:00:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Local comercial en Paral·lel', 'Local de planta única con dos frentes, apto para hostelería o clínica. Licencia de actividad consultable.', 320000.00, 75, NULL, 1, 'LOCAL', 'VENTA', 'Carrer del Parlament 34', '08015', 'Barcelona', 'Barcelona', 41.3760, 2.1600, 'https://picsum.photos/seed/inm11/800/600', false, '2026-09-14T09:00:00Z', '2026-09-14T09:00:00Z');
-
--- Valencia
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Piso en el barrio de El Pla', 'Piso exterior con tres dormitorios, parquet y aire acondicionado por conductos. Mercado Central en 5 minutos.', 235000.00, 92, 3, 1, 'PISO', 'VENTA', 'Calle de Colón 45, 3r B', '46004', 'Valencia', 'Valencia', 39.4705, -0.3640, 'https://picsum.photos/seed/inm12/800/600', false, '2026-09-03T08:30:00Z', '2026-09-03T08:30:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Piso amueblado en Benimaclet', 'Piso amueblado con dos dormitorios, cerca de Metro de Línea 3 y de la universidad. Gastos incluidos.', 1050.00, 70, 2, 1, 'PISO', 'ALQUILER', 'Carrer de Sor Maria de la Concepción 12', '46015', 'Valencia', 'Valencia', 39.4810, -0.3640, 'https://picsum.photos/seed/inm13/800/600', false, '2026-09-08T16:00:00Z', '2026-09-08T16:00:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Chalet en la zona norte', 'Casa independiente con piscina comunitaria, cuatro dormitorios y garaje doble. Colegios internacionales cerca.', 415000.00, 190, 4, 3, 'CASA', 'VENTA', 'Camí de Vera 8', '46022', 'Valencia', 'Valencia', 39.4830, -0.3450, 'https://picsum.photos/seed/inm14/800/600', false, '2026-09-12T12:30:00Z', '2026-09-12T12:30:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Parcela junto al camino de l Albufera', 'Parcela rústica de 800 m² con frente a camino asfaltado y servicios a menos de 200 metros.', 95000.00, 800, NULL, NULL, 'TERRENO', 'VENTA', 'Camino del Palmar, parcela 14', '46012', 'Valencia', 'Valencia', 39.4400, -0.3500, 'https://picsum.photos/seed/inm15/800/600', false, '2026-09-18T10:15:00Z', '2026-09-18T10:15:00Z');
-
--- Sevilla
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Piso clásico en el Arenal', 'Piso con tres dormitorios, suelo hidráulico recuperado y ventanal a la calle San Fernando.', 198000.00, 78, 3, 1, 'PISO', 'VENTA', 'Calle San Fernando 24, 2º Izquierda', '41004', 'Sevilla', 'Sevilla', 37.3920, -5.9900, 'https://picsum.photos/seed/inm16/800/600', false, '2026-09-04T09:00:00Z', '2026-09-04T09:00:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Piso junto al Torneo', 'Piso exterior con dos dormitorios, cocina nueva y calefación central. Ideal para estudiantes.', 850.00, 65, 2, 1, 'PISO', 'ALQUILER', 'Calle Torneo 7, 1º Derecha', '41001', 'Sevilla', 'Sevilla', 37.3910, -5.9960, 'https://picsum.photos/seed/inm17/800/600', false, '2026-09-09T14:20:00Z', '2026-09-09T14:20:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Ático en la Avenida de la Constitución', 'Ático con vistas a la Giralda, terraza privada de 20 m² y ascensor desde el portal.', 375000.00, 130, 3, 2, 'ATICO', 'VENTA', 'Avenida de la Constitución 18, Ático', '41004', 'Sevilla', 'Sevilla', 37.3891, -5.9845, 'https://picsum.photos/seed/inm18/800/600', true, '2026-09-15T11:45:00Z', '2026-09-15T11:45:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Casa entreplantas en Nervión', 'Casa con patio interior, cuatro dormitorios y reforma completa. Metro Nervión a 300 metros.', 289000.00, 155, 4, 2, 'CASA', 'VENTA', 'Calle San Juan de Ávila 30', '41009', 'Sevilla', 'Sevilla', 37.3760, -5.9680, 'https://picsum.photos/seed/inm19/800/600', false, '2026-09-20T16:10:00Z', '2026-09-20T16:10:00Z');
-
--- Málaga
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Piso en el Centro Histórico', 'Piso en calle Larios con tres dormitorios, reforma mediterránea y ascensor. Playa a 10 minutos en autobús.', 289000.00, 95, 3, 2, 'PISO', 'VENTA', 'Calle Larios 5, 3º Centro', '29015', 'Málaga', 'Málaga', 36.7213, -4.4214, 'https://picsum.photos/seed/inm20/800/600', false, '2026-09-05T10:10:00Z', '2026-09-05T10:10:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Piso con vistas al mar', 'Piso exterior con dos dormitorios, terraza corrida y vistas parciales a la bahía. Comunidad con piscina.', 1250.00, 80, 2, 2, 'PISO', 'ALQUILER', 'Calle Falange Española 12, 5º A', '29010', 'Málaga', 'Málaga', 36.7350, -4.4250, 'https://picsum.photos/seed/inm21/800/600', false, '2026-09-11T09:30:00Z', '2026-09-11T09:30:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Villa con piscina en El Limonar', 'Villa de dos plantas con piscina, jardín maduro, cuatro dormitorios y garaje para dos coches.', 535000.00, 210, 4, 3, 'CASA', 'VENTA', 'Camino del Colmenar 3', '29014', 'Málaga', 'Málaga', 36.7450, -4.4000, 'https://picsum.photos/seed/inm22/800/600', true, '2026-09-17T13:00:00Z', '2026-09-17T13:00:00Z');
-
--- Bilbao
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Piso en la Gran Vía bilbaína', 'Piso señorial con tres dormitorios, moldures y suelo original, a metros del museo Guggenheim.', 349000.00, 88, 3, 1, 'PISO', 'VENTA', 'Gran Vía de Don Diego López de Haro 42, 4º Dcha', '48009', 'Bilbao', 'Bizkaia', 43.2630, -2.9350, 'https://picsum.photos/seed/inm23/800/600', false, '2026-09-06T08:20:00Z', '2026-09-06T08:20:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Piso en Deusto con terraza', 'Piso exterior de dos dormitorios con terraza, comunidad con zonas verdes y trastero incluido.', 1350.00, 75, 2, 1, 'PISO', 'ALQUILER', 'Calle Ibarrekolta 15, 3º Izquierda', '48013', 'Bilbao', 'Bizkaia', 43.2560, -2.9440, 'https://picsum.photos/seed/inm24/800/600', false, '2026-09-12T17:40:00Z', '2026-09-12T17:40:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Dúplex en la ría', 'Dúplex de diseño junto al puente del Campo de Volantín, con ventanal a la ría y dos plazas de garaje.', 595000.00, 140, 4, 2, 'DUPLEX', 'VENTA', 'Paseo de Uribitarte 6, Dúplex', '48011', 'Bilbao', 'Bizkaia', 43.2610, -2.9310, 'https://picsum.photos/seed/inm25/800/600', false, '2026-09-19T10:50:00Z', '2026-09-19T10:50:00Z');
-
--- Zaragoza
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Piso en Paseo Independencia', 'Piso reformado de tres dormitorios en zona centro, con ascensor y calefacción de gas natural.', 175000.00, 85, 3, 1, 'PISO', 'VENTA', 'Paseo de Independencia 12, 2º Izquierda', '50004', 'Zaragoza', 'Zaragoza', 41.6520, -0.8810, 'https://picsum.photos/seed/inm26/800/600', false, '2026-09-07T11:25:00Z', '2026-09-07T11:25:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Estudio en la calle Don Jaime I', 'Estudio céntrico con electrodomésticos nuevos, ideal para estancia universitaria. Se admite mascota.', 620.00, 35, 1, 1, 'ESTUDIO', 'ALQUILER', 'Calle Don Jaime I 30, Bajo', '50001', 'Zaragoza', 'Zaragoza', 41.6488, -0.8750, 'https://picsum.photos/seed/inm27/800/600', false, '2026-09-13T12:15:00Z', '2026-09-13T12:15:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Casa con jardín en Valdefierro', 'Casa pareada con jardín de 80 m², porche, cuatro dormitorios y garaje interior.', 298000.00, 175, 4, 2, 'CASA', 'VENTA', 'Calle de Valdefierro 8', '50015', 'Zaragoza', 'Zaragoza', 41.6600, -0.9100, 'https://picsum.photos/seed/inm28/800/600', false, '2026-09-21T09:35:00Z', '2026-09-21T09:35:00Z');
-
--- Alicante, Murcia, Palma, Vigo y Granada
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Piso en el centro de Alicante', 'Piso exterior con tres dormitorios, parquet y aire acondicionado. Mercado Central a dos manzanas.', 225000.00, 80, 3, 1, 'PISO', 'VENTA', 'Calle San Fernando 34, 4º B', '03002', 'Alicante', 'Alicante', 38.3452, -0.4810, 'https://picsum.photos/seed/inm29/800/600', false, '2026-09-08T10:40:00Z', '2026-09-08T10:40:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Piso amueblado en Maisonnave', 'Piso amueblado con dos dormitorios, reformado en 2025, calefacción individual y trastero.', 980.00, 70, 2, 1, 'PISO', 'ALQUILER', 'Avinguda de Maisonnave 40, 6º A', '03002', 'Alicante', 'Alicante', 38.3430, -0.4900, 'https://picsum.photos/seed/inm30/800/600', false, '2026-09-16T15:55:00Z', '2026-09-16T15:55:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Piso en la Trapería murciana', 'Piso de tres dormitorios en pleno centro, con ascensor y zona comunitaria con piscina.', 165000.00, 76, 3, 1, 'PISO', 'VENTA', 'Calle Trapería 22, 2º Dcha', '30001', 'Murcia', 'Murcia', 37.9870, -1.1300, 'https://picsum.photos/seed/inm31/800/600', false, '2026-09-10T13:35:00Z', '2026-09-10T13:35:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Piso en Sant Miquel, Palma', 'Piso señorial con techos de madera, tres dormitorios y balcón a la calle peatonal del centro.', 395000.00, 105, 3, 2, 'PISO', 'VENTA', 'Carrer de Sant Miquel 18, 2n 1a', '07002', 'Palma', 'Illes Balears', 39.5696, 2.6502, 'https://picsum.photos/seed/inm32/800/600', true, '2026-09-14T10:05:00Z', '2026-09-14T10:05:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Casa con patio en la zona alta', 'Casa amueblada con patio, cuatro dormitorios y terraza. Renta mensual con gastos de comunidad incluidos.', 2400.00, 190, 4, 3, 'CASA', 'ALQUILER', 'Carrer Alexandre Rosselló 9', '07014', 'Palma', 'Illes Balears', 39.5750, 2.6430, 'https://picsum.photos/seed/inm33/800/600', false, '2026-09-18T14:45:00Z', '2026-09-18T14:45:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Piso en el Areal de Vigo', 'Piso con dos dormitorios, recién pintado, a un minuto del paseo marítimo y del mercado de O Estrado.', 145000.00, 68, 2, 1, 'PISO', 'VENTA', 'Rúa do Areal 15, 1º Dcha', '36201', 'Vigo', 'Pontevedra', 42.2380, -8.7220, 'https://picsum.photos/seed/inm34/800/600', false, '2026-09-15T16:30:00Z', '2026-09-15T16:30:00Z');
-INSERT INTO inmuebles (titulo, descripcion, precio, superficie_m2, habitaciones, banios, tipo, estado, direccion, codigo_postal, municipio, provincia, lat, lng, imagen_url, destacado, created_at, updated_at) VALUES
-('Piso en el centro de Granada', 'Piso exterior con dos dormitorios, aire acondicionado y suelo de tarima. Alcaicería a cinco minutos.', 890.00, 72, 2, 1, 'PISO', 'ALQUILER', 'Calle de las Recogidas 12, 3º B', '18009', 'Granada', 'Granada', 37.1765, -3.5979, 'https://picsum.photos/seed/inm35/800/600', true, '2026-09-22T11:15:00Z', '2026-09-22T11:15:00Z');
-END $$;
-
--- 2) Usuario admin de desarrollo — idempotente por uq_usuarios_email.
--- FASE 2 — cuenta ADMIN de DESARROLLO (perfil dev únicamente).
+-- 1) Usuario admin de desarrollo — idempotente por uq_usuarios_email.
 -- La contraseña en claro NO se escribe en ningún sitio del repositorio: sólo
 -- vive aquí el hash BCrypt strength 10 (mismo BCryptPasswordEncoder que usa
 -- SecurityConfig) y el email de la cuenta de desarrollo.
@@ -129,23 +27,11 @@ VALUES ('admin@manti.dev',
         '$2a$10$94FsVRaZhI3zkBFY6wSnvOOXE6xWI2hwP3POD9L.X2zUmt50NM39a',
         'Admin Dev', 'ADMIN', true)
 ON CONFLICT (email) DO NOTHING;
--- 3) Backfill del código INE de los inmuebles del seed — idempotente.
--- V902__inmuebles_codigo_ine.sql — seed de DESARROLLO (perfil dev únicamente).
---
--- Activado por spring.flyway.locations en application-dev.yml (db/migration +
--- db/dev). En prod NO se aplica: application-prod.yml sólo incluye db/migration,
--- de modo que el código INE de los inmuebles de producción queda a NULL hasta
--- que el backoffice permita asignarlo (follow-up del issue #12).
---
--- Backfill de los 35 inmuebles del seed V900 por municipio. Corre DESPUÉS de
--- V11 (que añade la columna) tanto en volúmenes nuevos como en los que ya
--- tenían V900/V901 aplicados. Idempotente: sólo toca filas sin código.
---
--- Los códigos se han doble-checkeado contra la cabecera real del CSV del MIVAU
--- (VDP001_01.csv, columna COD_POSTAL) y contra la tabla oficial de códigos de
--- municipio del INE. CORRECCIÓN respecto al ticket: Alcalá de Henares es
--- 28005 (28001 es "Acebeda, La").
 
+-- 2) Backfill del código INE de los inmuebles del seed — idempotente.
+-- Sólo toca filas sin código (los inmuebles de V900 y los creados a mano en
+-- dev que aún no lo tengan). Los códigos están doble-checkeados contra la
+-- cabecera real del CSV del MIVAU (VDP001_01.csv) y la tabla del INE.
 UPDATE inmuebles
    SET codigo_ine = CASE municipio
         WHEN 'Madrid'             THEN '28079'
@@ -163,5 +49,5 @@ UPDATE inmuebles
         WHEN 'Palma'              THEN '07040'
         WHEN 'Murcia'             THEN '30030'
         WHEN 'Vigo'               THEN '36057'
-   END
+    END
  WHERE codigo_ine IS NULL;

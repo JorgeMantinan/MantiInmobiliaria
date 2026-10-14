@@ -169,18 +169,20 @@ auth:
     #   * oauth2-token: 20/min. Cada login con Google canjea UN código; el
     #     límite frena el envío de códigos caducados, que obliga al backend a
     #     llamar a Google en cada intento.
-    #   * inmuebles: 60/min. GET público anónimo del listado (issue #22): hoy
-    #     sólo la caché de COUNT del PR #94 amortigua el coste; este límite
-    #     acota además las queries de página (ILIKE trgm + keyset).
+    #   * inmuebles: 300/min. GET público anónimo del listado (issue #22): la
+    #     caché de COUNT del PR #94 amortigua el coste; este límite acota las
+    #     queries de página (ILIKE trgm + keyset). 300/min porque la IP puede
+    #     ser compartida (NAT de oficina/CGNAT): un portal humano real no
+    #     pasa de ~30 req/min, pero varias personas detrás de la misma IP sí.
     #   * swipes/deck/favoritos: escrituras y lecturas autenticadas baratas
-    #     (comentario del issue #17); los defaults son holgados para uso real.
+    #     (comentario del issue #17); defaults holgados para uso real.
     # ---------------------------------------------------------------------------
     refresh-per-minute: ${AUTH_RATE_REFRESH_PER_MINUTE:60}
     oauth2-token-per-minute: ${AUTH_RATE_OAUTH2_TOKEN_PER_MINUTE:20}
-    inmuebles-per-minute: ${AUTH_RATE_INMUEBLES_PER_MINUTE:60}
+    inmuebles-per-minute: ${AUTH_RATE_INMUEBLES_PER_MINUTE:300}
     swipes-per-minute: ${AUTH_RATE_SWIPES_PER_MINUTE:120}
-    deck-per-minute: ${AUTH_RATE_DECK_PER_MINUTE:60}
-    favoritos-per-minute: ${AUTH_RATE_FAVORITOS_PER_MINUTE:60}
+    deck-per-minute: ${AUTH_RATE_DECK_PER_MINUTE:300}
+    favoritos-per-minute: ${AUTH_RATE_FAVORITOS_PER_MINUTE:300}
 
 manti:
   cors:

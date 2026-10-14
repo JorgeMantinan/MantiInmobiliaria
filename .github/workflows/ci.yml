@@ -207,6 +207,11 @@ jobs:
           GOOGLE_CLIENT_SECRET: e2e-smoke-client-secret
           # Sin credenciales: nada de email/Telegram en CI.
           NOTIFICACIONES_ENABLED: "false"
+          # Rate limit fuera del camino del smoke (defaults reales: 300/min
+          # listado; el smoke los cumple, pero un techo enorme elimina la
+          # fragilidad si crecen las specs).
+          AUTH_RATE_INMUEBLES_PER_MINUTE: "100000"
+          AUTH_RATE_SWIPES_PER_MINUTE: "100000"
         run: |
           nohup java -jar backend/target/*.jar > backend-e2e.log 2>&1 &
           for i in $(seq 1 60); do
