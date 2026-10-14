@@ -47,6 +47,13 @@ auth:
     # se resuelve con el adaptador no-op. Los tests de la comprobación usan un
     # mock del puerto (@MockitoBean) o el adaptador real con MockRestServiceServer.
     enabled: false
+  login:
+    # issues #10/#5 — la protección de login (backoff por cuenta + ventana por
+    # par IP+email) está APAGADA en la suite: su estado vive en memoria por
+    # contexto y afectaría a tests que comparten emails fijos. Las clases
+    # dedicadas (LoginBackoffTest, LoginLimitePorParTest) la reactivan con
+    # @SpringBootTest(properties=...) y límites bajos.
+    enabled: false
   rate-limit:
     login-per-minute: 100000
     register-per-minute: 100000

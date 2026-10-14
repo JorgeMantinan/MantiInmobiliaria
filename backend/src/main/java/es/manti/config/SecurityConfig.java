@@ -4,8 +4,11 @@ import es.manti.shared.config.BodySizeLimitFilter;
 import es.manti.usuarios.api.GoogleOAuth2FailureHandler;
 import es.manti.usuarios.api.GoogleOAuth2SuccessHandler;
 import es.manti.usuarios.application.AuthProperties;
+import es.manti.usuarios.application.IntentosLogin;
 import es.manti.usuarios.application.JwtService;
+import es.manti.usuarios.application.LoginProteccionProperties;
 import es.manti.usuarios.application.PasswordResetProperties;
+import es.manti.usuarios.infra.filter.AccountRateLimitFilter;
 import es.manti.usuarios.infra.filter.AuthRateLimitFilter;
 import es.manti.usuarios.infra.filter.CookieEndpointCsrfFilter;
 import es.manti.shared.error.ProblemAccessDeniedHandler;
@@ -52,7 +55,9 @@ import java.util.List;
  *       cabecera {@code X-Requested-With: XMLHttpRequest}
  *       ({@link CookieEndpointCsrfFilter}); se documenta en el PR.</li>
  *   <li>Rate limit en memoria por IP para login/registro
- *       ({@link AuthRateLimitFilter}).</li>
+ *       ({@link AuthRateLimitFilter}) y, además en login, backoff por cuenta +
+ *       ventana por par sha256(IP+email) (#10/#5,
+ *       {@link AccountRateLimitFilter}).</li>
  *   <li>Límite de tamaño de cuerpo: {@code Content-Length} &gt; 256 KiB → 413
  *       ({@link BodySizeLimitFilter}).</li>
  * </ul>
@@ -61,12 +66,13 @@ import java.util.List;
 @EnableWebSecurity
 @EnableMethodSecurity
 @EnableConfigurationProperties({AuthProperties.class, CorsProperties.class,
-        PasswordResetProperties.class})
+        PasswordResetProperties.class, LoginProteccionProperties.class})
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final AuthProperties authProperties;
     private final CorsProperties corsProperties;
+    private final LoginProteccionProperties loginProteccionProperties;
 
     /**
      * Firewall con {@code ;} permitido SÓLO bajo {@code /api/v1/auth/}:
@@ -82,10 +88,13 @@ public class SecurityConfig {
 
     // Los handlers se inyectan como parámetros del @Bean (no en el constructor
     // de la configuración) para evitar un ciclo: SecurityConfig → handler →
-    // AuthService → PasswordEncoder (@Bean de esta misma clase).
+    // AuthService → PasswordEncoder (@Bean de esta misma clase). IntentosLogin
+    // no participa en ese ciclo (no depende de PasswordEncoder).
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http,                                            GoogleOAuth2SuccessHandler googleSuccessHandler,
-                                            GoogleOAuth2FailureHandler googleFailureHandler)
+    SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                            GoogleOAuth2SuccessHandler googleSuccessHandler,
+                                            GoogleOAuth2FailureHandler googleFailureHandler,
+                                            IntentosLogin intentosLogin)
             throws Exception {
         ProblemAuthenticationEntryPoint authenticationEntryPoint =
                 new ProblemAuthenticationEntryPoint();
@@ -181,12 +190,16 @@ public class SecurityConfig {
                 .headers(headers -> headers
                         .addHeaderWriter(new StaticHeadersWriter("Referrer-Policy", "no-referrer")))
                 // Filtros propios antes de la comprobación de autorización:
-                // límite de tamaño de cuerpo (413), rate limit por IP y CSRF
-                // por cabecera en los endpoints con cookie. El de cuerpo va
-                // PRIMERO: se rechaza el payload antes de contar el rate limit.
+                // límite de tamaño de cuerpo (413), rate limit por IP, CSRF
+                // por cabecera en los endpoints con cookie y la protección de
+                // login por cuenta/par (#10/#5). El de cuerpo va PRIMERO: se
+                // rechaza el payload antes de contar el rate limit y antes de
+                // que el filtro de login lea el cuerpo para extraer el email.
                 .addFilterBefore(new BodySizeLimitFilter(), AuthorizationFilter.class)
                 .addFilterBefore(new CookieEndpointCsrfFilter(), AuthorizationFilter.class)
-                .addFilterBefore(new AuthRateLimitFilter(authProperties), AuthorizationFilter.class);
+                .addFilterBefore(new AuthRateLimitFilter(authProperties), AuthorizationFilter.class)
+                .addFilterBefore(new AccountRateLimitFilter(intentosLogin, loginProteccionProperties),
+                        AuthorizationFilter.class);
 
         return http.build();
     }
