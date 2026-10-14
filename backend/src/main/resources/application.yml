@@ -100,7 +100,7 @@ management:
       exposure:
         # Sólo /actuator/health es anónimo; info, metrics y prometheus exigen
         # rol ADMIN (SecurityConfig, issue #25). En prod la lista se recorta a
-        # health,info (application-prod.yml) y se reabre con
+        # SOLO health (application-prod.yml, issue #6) y se reabre con
         # MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE si hace falta scrapear.
         include: health,info,metrics,prometheus
   # Export a Prometheus (issue #25): la clave POR REGISTRY es la que decide.
@@ -149,6 +149,41 @@ auth:
     # (el 202 no espera a Brevo); true = envío en línea, sólo para tests
     # (application-test.yml) que verifican el puerto con un mock.
     sync: ${AUTH_PASSWORD_RESET_SYNC:false}
+  # ---------------------------------------------------------------------------
+  # issue #10 — Have I Been Pwned (pwned passwords). En registro y
+  # restablecimiento de contraseña se comprueba si el password aparece en
+  # filtraciones públicas, vía protocolo de k-anonymity (SÓLO sale el prefijo
+  # de 5 caracteres del SHA-1; sin API key). Si HIBP no responde en 3 s se
+  # deja pasar el password (fail open + log.warn): la disponibilidad del
+  # registro no depende de un tercero. El perfil de test lo apaga para que la
+  # suite nunca salga a la red (application-test.yml). Desactivable con
+  # AUTH_HIBP_ENABLED=false.
+  # ---------------------------------------------------------------------------
+  hibp:
+    enabled: ${AUTH_HIBP_ENABLED:true}
+  # ---------------------------------------------------------------------------
+  # Issues #10 y #5 — protección del login en DOS dimensiones, además del rate
+  # limit por IP (AuthRateLimitFilter, que se mantiene: son capas):
+  #   * backoff por CUENTA (#10): tras N fallos consecutivos (da igual la IP),
+  #     cada fallo adicional bloquea esa cuenta 1, 2, 4, 8... minutos (tope
+  #     configurable); un acierto resetea el contador. La 429 lleva
+  #     Retry-After.
+  #   * ventana por par sha256(IP+email) (#5): P intentos/minuto por
+  #     combinación; un atacante con muchas IPs no concentra la fuerza bruta
+  #     en UNA cuenta y una IP de NAT no castiga a las otras cuentas.
+  # En memoria (Caffeine), best-effort para una instancia. Apagable con
+  # AUTH_LOGIN_PROTECTION_ENABLED=false; el perfil de test lo apaga y las
+  # clases dedicadas lo reactivan con límites bajos.
+  # ---------------------------------------------------------------------------
+  login:
+    enabled: ${AUTH_LOGIN_PROTECTION_ENABLED:true}
+    fallos-antes-de-backoff: ${AUTH_LOGIN_FALLOS_BACKOFF:5}
+    backoff-inicial: ${AUTH_LOGIN_BACKOFF_INICIAL:1m}
+    factor-backoff: ${AUTH_LOGIN_BACKOFF_FACTOR:2}
+    backoff-tope: ${AUTH_LOGIN_BACKOFF_TOPE:15m}
+    # Vida del contador en caché; debe ser MAYOR que backoff-tope.
+    ventana-fallos: ${AUTH_LOGIN_VENTANA_FALLOS:30m}
+    pares-por-minuto: ${AUTH_LOGIN_PARES_POR_MINUTO:5}
   rate-limit:
     login-per-minute: ${AUTH_RATE_LOGIN_PER_MINUTE:10}
     register-per-minute: ${AUTH_RATE_REGISTER_PER_MINUTE:5}
@@ -188,6 +223,17 @@ manti:
   cors:
     # Allowlist explícita (nunca '*'): separada por comas.
     allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000}
+  # ---------------------------------------------------------------------------
+  # issue #9 — HSTS (Strict-Transport-Security). Apagado fuera de prod: en
+  # local se sirve por http:// y la cabecera sería contraproducente. El perfil
+  # prod la activa (application-prod.yml) con includeSubDomains y un año de
+  # max-age tunneable por HSTS_MAX_AGE_SEGUNDOS. Spring Security sólo la
+  # emite si la petición es segura (X-Forwarded-Proto https vía proxy).
+  # ---------------------------------------------------------------------------
+  seguridad:
+    hsts:
+      enabled: ${HSTS_ENABLED:false}
+      max-age-segundos: ${HSTS_MAX_AGE_SEGUNDOS:31536000}
   # ---------------------------------------------------------------------------
   # FASE 7 (issue #27) — caché Caffeine del COUNT totalElements del listado
   # público de inmuebles (ConteoInmueblesCache). TTL corto como red de

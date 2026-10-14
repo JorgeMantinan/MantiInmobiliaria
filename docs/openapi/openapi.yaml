@@ -341,6 +341,9 @@ paths:
       tags:
       - Auth
       summary: Registra un usuario y le devuelve la sesión (auto-login)
+      description: 'El password se comprueba contra las filtraciones públicas de Have I Been
+        Pwned (k-anonymity, issue #10): si aparece, se responde 400 con `errors[0].field =
+        password`.'
       operationId: registrar
       requestBody:
         content:
@@ -356,7 +359,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
         '400':
-          description: Validación fallida (ProblemDetail)
+          description: Validación fallida o contraseña comprometida en filtraciones públicas
+            (ProblemDetail)
           content:
             '*/*':
               schema:
@@ -429,9 +433,11 @@ paths:
       tags:
       - Auth
       summary: Restablece la contraseña con el token del email
-      description: 'Canjea el token de un solo uso: guarda la contraseña nueva con BCrypt, invalida el token y revoca TODA
-        la familia de refresh tokens del usuario (las sesiones abiertas quedan fuera). Rate limit: 10 peticiones/hora por
-        IP.'
+      description: 'Canjea el token de un solo uso: guarda la contraseña nueva con BCrypt, invalida
+        el token y revoca TODA la familia de refresh tokens del usuario (las sesiones abiertas
+        quedan fuera). Si la contraseña nueva aparece en filtraciones públicas (HIBP, issue #10)
+        se responde 400 con `errors[0].field = password` y el token sigue vigente. Rate limit:
+        10 peticiones/hora por IP.'
       operationId: restablecerPassword
       requestBody:
         content:
@@ -443,7 +449,8 @@ paths:
         '204':
           description: Contraseña actualizada; sesión cerrada
         '400':
-          description: Token inválido, caducado o ya usado, o validación fallida (ProblemDetail)
+          description: Token inválido, caducado o ya usado, validación fallida o contraseña comprometida
+            (ProblemDetail)
           content:
             '*/*':
               schema:
@@ -583,6 +590,9 @@ paths:
       tags:
       - Auth
       summary: Autentica con email y password
+      description: 'Además del rate limit por IP, el login aplica backoff exponencial por cuenta
+        tras fallos consecutivos (issue #10) y una ventana por la combinación IP+email (issue
+        #5); ambas responden 429 con Retry-After.'
       operationId: login
       requestBody:
         content:
@@ -604,10 +614,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
         '429':
-          description: Demasiados intentos (rate limit)
+          description: Demasiados intentos (rate limit por IP, backoff de la cuenta o ventana
+            IP+email)
           headers:
             Retry-After:
-              description: Segundos hasta liberar una petición en la ventana de rate limit
+              description: Segundos hasta liberar una petición en la ventana de rate limit o
+                hasta que expire el backoff de la cuenta
               schema:
                 type: string
           content:
