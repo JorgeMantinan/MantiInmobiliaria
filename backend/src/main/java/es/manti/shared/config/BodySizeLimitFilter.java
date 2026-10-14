@@ -57,7 +57,7 @@ public class BodySizeLimitFilter extends OncePerRequestFilter {
         }
         String contentLength = request.getHeader(HttpHeaders.CONTENT_LENGTH);
         if (contentLength != null && excede(contentLength)) {
-            ProblemResponseWriter.write(response, HttpStatus.PAYLOAD_TOO_LARGE,
+            ProblemResponseWriter.write(response, HttpStatus.CONTENT_TOO_LARGE,
                     "payload-too-large", "Cuerpo demasiado grande",
                     "El cuerpo de la petición supera el máximo permitido (256 KiB)",
                     request.getRequestURI());

@@ -49,6 +49,10 @@ public class OpenApiConfig {
      * El esquema se enriquece post-generación, sin tocar las anotaciones de los
      * controllers.</p>
      */
+    // getSchemas() de Swagger devuelve valores crudos: se suprime aquí para no
+    // propagar el tipo raw a todo el customizer (los dos únicos usos son este
+    // fichero).
+    @SuppressWarnings("rawtypes")
     @Bean
     OpenApiCustomizer problemDetailConErrores() {
         return openApi -> {

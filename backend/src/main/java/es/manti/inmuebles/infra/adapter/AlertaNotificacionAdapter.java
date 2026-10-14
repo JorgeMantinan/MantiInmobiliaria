@@ -35,6 +35,7 @@ public class AlertaNotificacionAdapter implements AlertaNotificacionRepository {
     private final EntityManager entityManager;
 
     @Override
+    @SuppressWarnings("unchecked") // createNativeQuery con Object[].class: el cast lo pone JPA
     public Map<Long, String> emailsDeUsuarios(Collection<Long> usuarioIds) {
         if (usuarioIds.isEmpty()) {
             return Map.of();

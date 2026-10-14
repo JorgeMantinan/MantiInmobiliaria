@@ -180,7 +180,7 @@ class SwipeServiceTest {
         Long usuario = usuario();
 
         ParametroInvalidoException fueraDeRango = catchThrowableOfType(
-                () -> service.deck(usuario, null, 0), ParametroInvalidoException.class);
+                ParametroInvalidoException.class, () -> service.deck(usuario, null, 0));
         assertThat(fueraDeRango).isNotNull();
         assertThat(fueraDeRango.parametro()).isEqualTo("limit");
         assertThatThrownBy(() -> service.deck(usuario, null, 51))

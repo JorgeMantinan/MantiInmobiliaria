@@ -35,7 +35,7 @@ class BodySizeLimitFilterTest {
                         .content("""
                                 {"email":"ana@example.com","password":"clave-incorrecta-1"}
                                 """))
-                .andExpect(status().isPayloadTooLarge())
+                .andExpect(status().isContentTooLarge())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.status").value(413))
                 .andExpect(jsonPath("$.type")
@@ -48,7 +48,7 @@ class BodySizeLimitFilterTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .header(HttpHeaders.CONTENT_LENGTH, "999999")
                         .content("{}"))
-                .andExpect(status().isPayloadTooLarge())
+                .andExpect(status().isContentTooLarge())
                 .andExpect(jsonPath("$.type")
                         .value("https://api.manti.dev/problems/payload-too-large"));
     }
@@ -61,7 +61,7 @@ class BodySizeLimitFilterTest {
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(cuerpoGrande))
-                .andExpect(status().isPayloadTooLarge())
+                .andExpect(status().isContentTooLarge())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.status").value(413))
                 .andExpect(jsonPath("$.type")

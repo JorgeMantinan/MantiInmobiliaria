@@ -81,7 +81,7 @@ public class TelegramDiagnosticoAdapter implements TelegramDiagnosticoPort {
         }
         if (!raiz.path("ok").asBoolean(false)) {
             throw NotificacionException.definitiva("Telegram devolvió ok=false: "
-                    + raiz.path("description").asText("sin descripción"));
+                    + raiz.path("description").asString("sin descripción"));
         }
         Map<String, ChatVisto> porChat = new LinkedHashMap<>();
         for (JsonNode actualizacion : raiz.path("result")) {
@@ -89,12 +89,12 @@ public class TelegramDiagnosticoAdapter implements TelegramDiagnosticoPort {
                     ? actualizacion.get("message")
                     : actualizacion.path("channel_post");
             JsonNode chat = mensaje.path("chat");
-            String chatId = chat.path("id").asText();
+            String chatId = chat.path("id").asString();
             if (chatId.isBlank()) {
                 continue;
             }
-            String tipo = chat.path("type").asText("desconocido");
-            String muestra = recortar(mensaje.path("text").asText(""));
+            String tipo = chat.path("type").asString("desconocido");
+            String muestra = recortar(mensaje.path("text").asString(""));
             ChatVisto previo = porChat.get(chatId);
             if (previo == null || (previo.textoMuestra().isBlank() && !muestra.isBlank())) {
                 porChat.put(chatId, new ChatVisto(chatId, tipo, muestra));
