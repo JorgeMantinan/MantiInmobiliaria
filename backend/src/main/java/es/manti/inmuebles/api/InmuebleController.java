@@ -10,6 +10,7 @@ import es.manti.inmuebles.domain.EstadoInmueble;
 import es.manti.inmuebles.domain.TipoInmueble;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -68,10 +69,20 @@ public class InmuebleController {
                     + "La paginación es keyset: pase `nextCursor` como `cursor` para la página siguiente. "
                     + "`limit` se acota a 1..50 (20 por defecto).")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Página de inmuebles"),
+            @ApiResponse(responseCode = "200", description = "Página de inmuebles "
+                    + "(cabecera `ETag` débil para revalidación)",
+                    headers = @Header(name = "ETag",
+                            description = "ETag débil del body",
+                            schema = @Schema(type = "string", example = "W/\"7a3b2c1d\""))),
+            @ApiResponse(responseCode = "304", description = "El cliente envió "
+                    + "`If-None-Match` y el body no cambió (sin cuerpo)"),
             @ApiResponse(responseCode = "400", description = "Cursor, sort, rango de filtros (precioMin>precioMax, "
                     + "precios negativos, habitacionesMin<0) o valor de parámetro no admitido "
                     + "(p. ej. estado=XYZ, limit=abc): ProblemDetail con errors:[{field, message}]",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "429", description = "Demasiadas peticiones (rate limit por IP; "
+                    + "issue #22 — el listado es anónimo y sin límite un cliente podría forzar "
+                    + "COUNT + ILIKE en cada request)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     @SecurityRequirements   // endpoint público: security: [] en la spec
     public ResponseEntity<InmueblePage> listar(
@@ -106,7 +117,13 @@ public class InmuebleController {
     @Operation(summary = "Detalle completo de un inmueble",
             description = "404 si no existe o si fue eliminado (soft-delete).")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Inmueble encontrado"),
+            @ApiResponse(responseCode = "200", description = "Inmueble encontrado "
+                    + "(cabecera `ETag` débil para revalidación)",
+                    headers = @Header(name = "ETag",
+                            description = "ETag débil del body",
+                            schema = @Schema(type = "string", example = "W/\"7a3b2c1d\""))),
+            @ApiResponse(responseCode = "304", description = "El cliente envió "
+                    + "`If-None-Match` y el body no cambió (sin cuerpo)"),
             @ApiResponse(responseCode = "404", description = "Inexistente o eliminado (ProblemDetail)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     @SecurityRequirements   // endpoint público: security: [] en la spec

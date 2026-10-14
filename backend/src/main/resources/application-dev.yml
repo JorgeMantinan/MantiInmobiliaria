@@ -15,14 +15,20 @@ spring:
     out-of-order: true
   jpa:
     properties:
-      # FASE 7 (issue #31) — sólo DEV: al cierre de cada sesión Hibernate
-      # imprime queries, tiempo de carga/flush y statements (INFO), que es lo
-      # que hace falta para cazar N+1 sin añadir ruido. Se decidió NO activar
-      # también org.hibernate.SQL=DEBUG: imprimiría cada SELECT completo y el
-      # conteo/tiempos de generate_statistics ya orientan; si un día se
-      # necesita la query concreta se sube puntualmente el logger.
+      # FASE P2 (issue #32) — SÓLO DEV: dos interruptores de diagnóstico para
+      # cazar N+1 y queries lentas sin tocar prod (application-prod.yml no
+      # declara ninguno de los dos):
+      #   * generate_statistics: al cierre de cada sesión Hibernate imprime
+      #     queries, tiempo de carga/flush y statements (INFO);
+      #   * org.hibernate.SQL=DEBUG: el SELECT COMPLETO de cada query. Se pide
+      #     explícitamente en el issue #32 (antes se había decidido no
+      #     activarlo por ruido); con él se puede pegar la query tal cual en
+      #     EXPLAIN (ANALYZE, BUFFERS) de PostgreSQL.
       hibernate:
         generate_statistics: true
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
 
 manti:
   scheduling:

@@ -110,6 +110,9 @@ public class AuthController {
             @ApiResponse(responseCode = "401", description = "Refresh token inválido o caducado",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "403", description = "Falta la cabecera X-Requested-With",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "429", description = "Demasiadas peticiones (rate limit por IP; "
+                    + "issue #17)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     public ResponseEntity<AuthResponse> refrescar(HttpServletRequest request) {
         String token = leerCookieSesion(request);
@@ -168,6 +171,9 @@ public class AuthController {
             @ApiResponse(responseCode = "400", description = "Código ausente o inválido (ProblemDetail)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "401", description = "Código inválido o caducado",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "429", description = "Demasiadas peticiones (rate limit por IP; "
+                    + "issue #17)",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
     public ResponseEntity<AuthResponse> canjearCodigoGoogle(
             @Valid @RequestBody OAuth2TokenRequest body) {

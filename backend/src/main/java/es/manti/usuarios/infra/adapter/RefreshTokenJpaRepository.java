@@ -11,10 +11,25 @@ import java.util.Optional;
 /** Repositorio Spring Data JPA de la tabla {@code refresh_tokens}. */
 public interface RefreshTokenJpaRepository extends JpaRepository<RefreshToken, Long> {
 
-    Optional<RefreshToken> findByTokenHash(String tokenHash);
+    /**
+     * Issue #31 — {@code JOIN FETCH} del usuario: {@code validarYRotar} lo lee
+     * SIEMPRE (id, activo, email), así que el {@code @ManyToOne(LAZY)} era un
+     * segundo SELECT en cada refresh; con el fetch, un refresh = UN SELECT.
+     * Sin él, además, el usuario llegaba como proxy que sólo se resolvía dentro
+     * de la transacción.
+     */
+    @Query("SELECT t FROM RefreshToken t JOIN FETCH t.usuario WHERE t.tokenHash = :tokenHash")
+    Optional<RefreshToken> findByTokenHash(@Param("tokenHash") String tokenHash);
 
+    /**
+     * Issue #31 — un UPDATE por JPQL NO pasa por {@code @UpdateTimestamp} de la
+     * entidad (Hibernate sólo lo dispara al persistir entidades), así que sin
+     * esto la revocación masiva dejaba {@code updated_at} congelado en la fecha
+     * del login. {@code CURRENT_TIMESTAMP} usa el reloj del SERVIDOR, el mismo
+     * que escribe el resto de columnas.
+     */
     @Modifying
-    @Query("UPDATE RefreshToken t SET t.revoked = true "
+    @Query("UPDATE RefreshToken t SET t.revoked = true, t.updatedAt = CURRENT_TIMESTAMP "
             + "WHERE t.usuario.id = :usuarioId AND t.revoked = false")
     long revocarTodosDeUsuario(@Param("usuarioId") Long usuarioId);
 
