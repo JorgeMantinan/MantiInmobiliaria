@@ -52,4 +52,48 @@ class AuthPropertiesValidacionTest {
         assertThatThrownBy(sinCookie::validarConfiguracion)
                 .isInstanceOf(IllegalStateException.class);
     }
+
+    // ------------------------------------------------------------------
+    // Invariantes del prefijo __Host- (revisión seguridad PR #102): el
+    // navegador descarta en silencio la cookie incumplidora y el síntoma en
+    // prod sería "refresh roto" sin error al arrancar.
+    // ------------------------------------------------------------------
+
+    private static AuthProperties conCookieHost(String nombre, String path, boolean secure) {
+        // Lax: aisla la validación del prefijo __Host- de la de SameSite.
+        return new AuthProperties(
+                null,
+                new AuthProperties.Cookie(nombre, path, "Lax", secure),
+                null,
+                null);
+    }
+
+    @Test
+    void prefijoHost_sinSecure_fallaAlArrancar() {
+        assertThatThrownBy(() -> conCookieHost("__Host-refresh_token", "/", false).validarConfiguracion())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("__Host-")
+                .hasMessageContaining("COOKIE_SECURE");
+    }
+
+    @Test
+    void prefijoHost_conPathDistintoDeSlash_fallaAlArrancar() {
+        assertThatThrownBy(() -> conCookieHost("__Host-refresh_token", "/api/v1/auth", true)
+                        .validarConfiguracion())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("__Host-")
+                .hasMessageContaining("Path");
+    }
+
+    @Test
+    void prefijoHost_conSecureYPathSlash_esValido() {
+        assertThatCode(() -> conCookieHost("__Host-refresh_token", "/", true).validarConfiguracion())
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void sinPrefijoHost_noExigeSecureNiPath() {
+        assertThatCode(() -> conCookieHost("refresh_token", "/api/v1/auth", false).validarConfiguracion())
+                .doesNotThrowAnyException();
+    }
 }

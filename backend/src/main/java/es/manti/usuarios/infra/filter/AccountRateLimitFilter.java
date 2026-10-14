@@ -85,6 +85,18 @@ public class AccountRateLimitFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
+        // RFC 8259: JSON se intercambia SIEMPRE en UTF-8. Un charset distinto
+        // en el Content-Type haría que el filtro (UTF-8 fijo) y el converter
+        // de Spring (honra el charset) vieran strings distintos — divergencia
+        // que evadiría la ventana por par con emails no-ASCII (revisión
+        // seguridad PR #102). Sólo se admite UTF-8 o ausente (default).
+        if (!esUtf8(request.getContentType())) {
+            ProblemResponseWriter.write(response, HttpStatus.BAD_REQUEST,
+                    "cuerpo-invalido", "Cuerpo de la petición inválido",
+                    "El Content-Type del login debe ser application/json (UTF-8)",
+                    request.getRequestURI());
+            return;
+        }
         byte[] cuerpo = leerCuerpoAcotado(request);
         if (cuerpo == null) {
             // Cuerpo ilegible o demasiado grande para un login: 400 sin llegar
@@ -182,6 +194,21 @@ public class AccountRateLimitFilter extends OncePerRequestFilter {
         }
         long minutos = (segundos + 59) / 60;
         return minutos <= 1 ? "un minuto" : minutos + " minutos";
+    }
+
+    /** {@code Content-Type} sin charset o con UTF-8 (RFC 8259). */
+    private static boolean esUtf8(String contentType) {
+        if (contentType == null) {
+            return true;
+        }
+        for (String parte : contentType.split(";")) {
+            String limpia = parte.trim();
+            if (limpia.toLowerCase(java.util.Locale.ROOT).startsWith("charset=")) {
+                String charset = limpia.substring("charset=".length()).trim();
+                return "utf-8".equalsIgnoreCase(charset) || "utf8".equalsIgnoreCase(charset);
+            }
+        }
+        return true;
     }
 
     /**

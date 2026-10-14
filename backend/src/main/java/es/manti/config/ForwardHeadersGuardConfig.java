@@ -19,8 +19,9 @@ import org.springframework.stereotype.Component;
  *
  * <p>La variable {@code FORWARD_HEADERS_STRATEGY} sin definir es VÁLIDA: el
  * perfil prod la resuelve a {@code framework} por defecto
- * ({@code application-prod.yml}); la guarda sólo rechaza el {@code none}
- * explícito.</p>
+ * ({@code application-prod.yml}); la guarda exige un valor efectivo dentro
+ * del allowlist {@code framework}/{@code native} — {@code none}, la cadena
+ * vacía y cualquier typo revientan el arranque (revisión seguridad PR #102).</p>
  */
 @Slf4j
 @Component
