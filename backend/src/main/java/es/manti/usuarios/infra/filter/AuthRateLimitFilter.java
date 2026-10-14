@@ -31,7 +31,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>Nota despliegue: la IP se toma de {@code remoteAddr}; si el backend va
  * detrás de un reverse proxy hay que activar
  * {@code server.forward-headers-strategy} para que la IP real llegue en
- * {@code X-Forwarded-For}. Límite best-effort pensado para una sola instancia.</p>
+ * {@code X-Forwarded-For}. OJO: el proxy debe SOBRESCRIBIR el header (Vercel
+ * lo hace); si lo añadiera a los existentes, un atacante inyectando
+ * {@code X-Forwarded-For} ganaría ventana nueva por petición — en ese caso
+ * fijar el header en el proxy o {@code FORWARD_HEADERS_STRATEGY=none}.
+ * Límite best-effort pensado para una sola instancia.</p>
  */
 public class AuthRateLimitFilter extends OncePerRequestFilter {
 
@@ -70,7 +74,10 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         }
         // La clave usa la ruta normalizada: si usara la cruda, cada
         // variante ";x=1", "%6C..." tendría su propia ventana y se evade el límite.
-        String clave = ruta + '|' + ipDe(request);
+        // Además el id de ruta se colapsa a {id}: si no, PATCH/DELETE
+        // /api/v1/alertas/7 y /8 tendrían ventanas INDEPENDIENTES (N ids = N
+        // ventanas = límite inexistente) y cada id sería una entrada del mapa.
+        String clave = ruta.replaceFirst("/\\d+$", "/{id}") + '|' + ipDe(request);
         long esperaMs = msDeEspera(clave, limite);
         if (esperaMs > 0) {
             // Segundos enteros hasta liberar la primera plaza de la ventana

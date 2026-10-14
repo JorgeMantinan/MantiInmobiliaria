@@ -19,13 +19,17 @@ import java.util.OptionalLong;
  * la MENOR marca —no la mayor— porque una alerta con marca reciente no debe
  * tapar a otra con marca antigua y pendientes.</p>
  *
- * <p><b>Evidencia de las queries</b> (reutilizadas del issue #96, ya medidas
- * con EXPLAIN en el PR #97): {@code listarNuevosDesde} es un range scan por
- * la PK ({@code i.id > :desdeId ORDER BY i.id ASC LIMIT n}, sin Sort ni
- * OFFSET); {@code minimaMarcaActiva} recorre sólo el índice parcial
- * {@code idx_alertas_busqueda_activas (id) WHERE activa}; el lote
- * {@code activasDesde} usa el mismo índice y se bloquea
- * {@code FOR UPDATE SKIP LOCKED} (multi-instancia).</p>
+ * <p><b>Evidencia de las queries</b>: {@code listarNuevosDesde} es un range
+ * scan por la PK por construcción ({@code i.id > :desdeId ORDER BY i.id ASC
+ * LIMIT n}, sin Sort ni OFFSET). Las dos de este PR ({@code minimaMarcaActiva},
+ * {@code activasDesde}) barrerían sólo el índice parcial
+ * {@code idx_alertas_busqueda_activas (id) WHERE activa} para la selección de
+ * activas, pero {@code MIN(ultimo_inmueble_avisado_id)} NO puede resolver en
+ * ese índice (Min/Max exige la columna agregada): hoy la tabla es pequeña y
+ * la pasada es cada 15 min, así que el coste es irrelevante; si el parque de
+ * alertas crece, añadir un índice {@code (ultimo_inmueble_avisado_id) WHERE
+ * activa}. {@code activasDesde} se bloquea con {@code FOR UPDATE SKIP LOCKED}
+ * (multi-instancia).</p>
  *
  * <p>Esta clase NO lleva {@code @Transactional}: sólo orquesta. La
  * transaccionalidad vive en cada lote (corto) y cada lote es independiente —
@@ -47,6 +51,12 @@ public class AlertaEvaluacionService {
         this.alertas = alertas;
         this.inmuebles = inmuebles;
         this.loteService = loteService;
+        if (tamanoLote < 1) {
+            // ALERTAS_LOTE=0 haría fallar PageRequest.of(0, 0) en cada
+            // pasada y el job moriría en silencio cada 15 min.
+            throw new IllegalStateException(
+                    "manti.alertas.lote debe ser >= 1 (recibido: " + tamanoLote + ")");
+        }
         this.tamanoLote = tamanoLote;
     }
 

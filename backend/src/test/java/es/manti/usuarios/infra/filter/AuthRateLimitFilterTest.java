@@ -62,10 +62,18 @@ class AuthRateLimitFilterTest {
 
         assertThat(filtrar(filter, chain, "PATCH", "/api/v1/alertas/7").getStatus()).isEqualTo(200);
         assertThat(filtrar(filter, chain, "PATCH", "/api/v1/alertas/7").getStatus()).isEqualTo(429);
+    }
 
-        // El DELETE de otra ruta tiene SU propia ventana (clave ruta+IP).
+    @Test
+    void alertas_idsDistintosCompartenLaMismaVentana() throws Exception {
+        AuthRateLimitFilter filter = filtro(2);
+        FilterChain chain = mock(FilterChain.class);
+
+        // La clave colapsa el id a {id}: sin eso, N ids = N ventanas y el
+        // límite de escrituras se bypasaría con ids distintos.
+        assertThat(filtrar(filter, chain, "PATCH", "/api/v1/alertas/7").getStatus()).isEqualTo(200);
         assertThat(filtrar(filter, chain, "DELETE", "/api/v1/alertas/8").getStatus()).isEqualTo(200);
-        assertThat(filtrar(filter, chain, "DELETE", "/api/v1/alertas/8").getStatus()).isEqualTo(429);
+        assertThat(filtrar(filter, chain, "PATCH", "/api/v1/alertas/9").getStatus()).isEqualTo(429);
     }
 
     @Test
