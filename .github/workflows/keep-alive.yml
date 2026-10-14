@@ -1,13 +1,23 @@
-# Mantiene despierto el contenedor del backend en Vercel (Container Images
-# hace scale-to-zero tras ~5 min sin peticiones; cada arranque en frío cuesta
-# ~40 s de cold start que el usuario paga en la primera carga). Un healthcheck
-# cada 5 min entra de lleno en la cuota Hobby (memory-time) y evita el
-# "comprobando conexion" de más de un segundo.
+# Mantiene despierto el contenedor del backend en Vercel (Containers hace
+# scale-to-zero tras ~5 min sin peticiones; cada arranque en frío cuesta ~40 s
+# — medido el 2026-10-13: /actuator/health 40.3 s en frío vs 99 ms caliente;
+# el usuario lo nota como "la web tarda un montón al empezar").
+#
+# Cadencia cada 2 min para que SIEMPRE haya un ping por debajo del timeout de
+# sueño aunque GitHub retrase alguna ejecución del cron (los schedules se
+# retrasan con frecuencia bajo carga; con */5 un solo retraso ya permitía el
+# apagado). En repos públicos los Actions son gratis, así que el coste es nulo.
+#
+# Complemento externo recomendado: UptimeRobot (gratis, 5 min) apuntando al
+# mismo /actuator/health — red de seguridad si GitHub retrasa VARIAS
+# ejecuciones seguidas, y monitorización real de la producción. Sólo con
+# UptimeRobot gratis NO basta: su intervalo mínimo (5 min) empata con el
+# timeout de sueño y quedan carreras.
 name: keep-alive-api
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/2 * * * *"
   workflow_dispatch:
 
 permissions:
