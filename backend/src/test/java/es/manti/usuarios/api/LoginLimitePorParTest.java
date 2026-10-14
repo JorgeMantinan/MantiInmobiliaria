@@ -96,6 +96,53 @@ class LoginLimitePorParTest {
     }
 
     // ------------------------------------------------------------------
+    // Regresión de la revisión de seguridad del PR #102: la extracción del
+    // email con regex sobre el crudo se evadía con escapes unicode o claves
+    // duplicadas del JSON. El filtro debe ver EXACTAMENTE lo que ve Jackson.
+    // ------------------------------------------------------------------
+
+    @Test
+    void login_emailConEscapeUnicode_comparteLaMismaVentana() throws Exception {
+        String email = emailNuevo();
+        // Clave "email" escrita con escape unicode del JSON (e = 'e'):
+        // Jackson la decodifica a "email", la regex vieja no la encontraba.
+        String claveEscapada = "\\" + "u0065mail";
+        String payload = "{\"" + claveEscapada + "\":\"" + email
+                + "\",\"password\":\"clave-incorrecta-1\"}";
+
+        loginCrudo("3.3.3.3", payload).andExpect(status().isUnauthorized());
+        loginCrudo("3.3.3.3", payload).andExpect(status().isUnauthorized());
+        // Tercera: la ventana por par sigue contando (el escape no crea una
+        // clave de caché distinta).
+        loginCrudo("3.3.3.3", payload).andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    void login_emailComoClaveDuplicada_contabilizaContraLaUltima() throws Exception {
+        String victima = emailNuevo();
+        String decoy = emailNuevo();
+        // Jackson resuelve la ÚLTIMA clave: el login real es contra "victima".
+        String payload = "{\"email\":\"" + decoy + "\",\"email\":\"" + victima
+                + "\",\"password\":\"clave-incorrecta-1\"}";
+
+        loginCrudo("4.4.4.4", payload).andExpect(status().isUnauthorized());
+        loginCrudo("4.4.4.4", payload).andExpect(status().isUnauthorized());
+        // Tercera contra la víctima: 429 (la ventana se acumuló con la
+        // ÚLTIMA clave, igual que la autenticación).
+        loginCrudo("4.4.4.4", payload).andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    void login_sinCampoEmail_devuelve400DesdeElFiltro() throws Exception {
+        mockMvc.perform(post(LOGIN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"password\":\"clave-incorrecta-1\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value(
+                        "https://api.manti.dev/problems/validacion-fallida"));
+    }
+
+    // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
 
@@ -106,6 +153,17 @@ class LoginLimitePorParTest {
                 .content("""
                         {"email":"%s","password":"clave-incorrecta-1"}
                         """.formatted(email))
+                .with(request -> {
+                    request.setRemoteAddr(ip);
+                    return request;
+                }));
+    }
+
+    /** Login con payload JSON crudo (escapes y claves duplicadas). */
+    private ResultActions loginCrudo(String ip, String payload) throws Exception {
+        return mockMvc.perform(post(LOGIN)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payload)
                 .with(request -> {
                     request.setRemoteAddr(ip);
                     return request;

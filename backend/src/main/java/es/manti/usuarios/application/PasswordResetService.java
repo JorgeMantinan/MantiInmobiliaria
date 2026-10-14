@@ -72,13 +72,15 @@ public class PasswordResetService {
     private final PasswordResetProperties properties;
     private final PasswordComprometidoPort passwordComprometido;
     private final TransactionTemplate transaccion;
+    private final IntentosLogin intentosLogin;
 
     public PasswordResetService(UsuarioRepository usuarios, PasswordResetTokenRepository tokens,
                                 RefreshTokenService refreshTokens, PasswordEncoder passwordEncoder,
                                 PasswordResetEmailSender sender, ApplicationEventPublisher eventos,
                                 PasswordResetProperties properties,
                                 PasswordComprometidoPort passwordComprometido,
-                                TransactionTemplate transaccion) {
+                                TransactionTemplate transaccion,
+                                IntentosLogin intentosLogin) {
         this.usuarios = usuarios;
         this.tokens = tokens;
         this.refreshTokens = refreshTokens;
@@ -88,6 +90,7 @@ public class PasswordResetService {
         this.properties = properties;
         this.passwordComprometido = passwordComprometido;
         this.transaccion = transaccion;
+        this.intentosLogin = intentosLogin;
     }
 
     /**
@@ -215,6 +218,11 @@ public class PasswordResetService {
                     usuarioId, revocados);
             return null;
         });
+        // Escape del lockout-DoS (revisión PR #102): el backoff de login es
+        // memoria y sólo lo resetea un login correcto — que el bloqueo impide.
+        // Un canje exitoso demuestra control de la bandeja, así que limpia el
+        // backoff y la víctima puede volver a entrar.
+        intentosLogin.registrarAcierto(token.getUsuario().getEmail());
     }
 
     private static String generar() {

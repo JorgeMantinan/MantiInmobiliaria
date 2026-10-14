@@ -11,6 +11,7 @@ import java.net.SocketTimeoutException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 /**
@@ -64,12 +65,22 @@ class HibpPasswordAdapterTest {
     }
 
     @Test
-    void estaComprometido_hibpResponde500_failOpenDevuelveFalse() {
+    void estaComprometido_timeoutDeRed_failOpenDevuelveFalse() {
         server.expect(requestTo(HibpPasswordAdapter.URL_RANGO + "5BAA6"))
                 .andRespond(withException(new SocketTimeoutException("read timed out")));
 
         assertThat(adapter.estaComprometido("password"))
                 .as("fail open: un tercero caído no puede bloquear el registro")
+                .isFalse();
+    }
+
+    @Test
+    void estaComprometido_hibpResponde500_failOpenDevuelveFalse() {
+        server.expect(requestTo(HibpPasswordAdapter.URL_RANGO + "5BAA6"))
+                .andRespond(withServerError());
+
+        assertThat(adapter.estaComprometido("password"))
+                .as("fail open también ante 5xx (la rama más probable en prod: 429/5xx de HIBP)")
                 .isFalse();
     }
 

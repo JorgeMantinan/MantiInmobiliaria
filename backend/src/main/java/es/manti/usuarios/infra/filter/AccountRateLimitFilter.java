@@ -14,6 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.filter.OncePerRequestFilter;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -22,8 +24,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Segunda y tercera capa de protección del LOGIN, complementarias al rate
@@ -49,8 +49,14 @@ import java.util.regex.Pattern;
  * <p>El email se extrae del cuerpo JSON con un tope de lectura de 8 KiB: un
  * login real ocupa &lt; 1 KiB, así que un cuerpo mayor se rechaza con 400
  * antes de gastar memoria (y no puede evadir la protección rellenando el
- * payload). Si el email no se puede extraer, la petición sigue su curso: la
- * validación del controlador responde 400 igualmente.</p>
+ * payload). La extracción usa el MISMO {@code ObjectMapper} que
+ * {@code @RequestBody}: escapes unicode del JSON y claves duplicadas
+ * resuelven exactamente igual que en el controlador, de modo que la vista del
+ * filtro y la del login coinciden siempre (revisión de seguridad PR #102: una
+ * regex sobre el crudo se evadía con la clave "email" escrita como
+ * {@code em} + {@code il} vía escape, o con claves duplicadas).
+ * JSON ilegible o campo email ausente/no textual → 400 desde el filtro: el
+ * login no puede autenticar sin email, así que no se pierde comportamiento.</p>
  */
 @Slf4j
 public class AccountRateLimitFilter extends OncePerRequestFilter {
@@ -60,21 +66,15 @@ public class AccountRateLimitFilter extends OncePerRequestFilter {
     /** Un login real (&lt; 1 KiB) queda muy por debajo; el exceso es abuso. */
     static final int MAX_CUERPO_BYTES = 8_192;
 
-    /**
-     * Primera ocurrencia de {@code "email":"..."} del JSON. Los comillas y
-     * barras dentro de un valor JSON válido SIEMPRE vienen escapadas
-     * ({@code \"}), de modo que una password que contenga la cadena
-     * <code>"email":"x"</code> no puede secuestrar la extracción.
-     */
-    private static final Pattern EMAIL_EN_JSON =
-            Pattern.compile("\"email\"\\s*:\\s*\"([^\"]{1,255})\"");
-
     private final IntentosLogin intentos;
     private final LoginProteccionProperties properties;
+    private final ObjectMapper objectMapper;
 
-    public AccountRateLimitFilter(IntentosLogin intentos, LoginProteccionProperties properties) {
+    public AccountRateLimitFilter(IntentosLogin intentos, LoginProteccionProperties properties,
+                                  ObjectMapper objectMapper) {
         this.intentos = intentos;
         this.properties = properties;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -96,11 +96,24 @@ public class AccountRateLimitFilter extends OncePerRequestFilter {
                     request.getRequestURI());
             return;
         }
-        String email = extraerEmail(cuerpo);
-        if (email == null) {
-            // Sin email extraíble: la validación del controlador responderá
-            // 400; no hay nada que proteger todavía.
-            filterChain.doFilter(new CuerpoCacheado(request, cuerpo), response);
+        String email;
+        try {
+            JsonNode nodo = objectMapper.readTree(cuerpo);
+            JsonNode emailNode = nodo == null ? null : nodo.get("email");
+            email = (emailNode != null && emailNode.isString()) ? emailNode.asString() : null;
+        } catch (RuntimeException e) {
+            // Jackson 3 lanza excepciones unchecked: JSON ilegible.
+            log.debug("Login con JSON ilegible en el filtro de cuenta: {}", e.getMessage());
+            email = null;
+        }
+        if (email == null || email.isBlank()) {
+            // Sin email canónico: el login no puede autenticar (el
+            // controlador respondería 400 por validación) y no hay cuenta que
+            // proteger ni contabilizar.
+            ProblemResponseWriter.write(response, HttpStatus.BAD_REQUEST,
+                    "validacion-fallida", "Validación fallida",
+                    "El campo email es obligatorio",
+                    request.getRequestURI());
             return;
         }
         long esperaCuenta = intentos.esperaBloqueoMs(email);
@@ -161,11 +174,6 @@ public class AccountRateLimitFilter extends OncePerRequestFilter {
             log.debug("Login con cuerpo ilegible ({}); se deja pasar al controlador", e.getMessage());
             return null;
         }
-    }
-
-    private static String extraerEmail(byte[] cuerpo) {
-        Matcher matcher = EMAIL_EN_JSON.matcher(new String(cuerpo, StandardCharsets.UTF_8));
-        return matcher.find() ? matcher.group(1) : null;
     }
 
     private static String tiempoLegible(long segundos) {

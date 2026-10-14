@@ -33,7 +33,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "auth.login.enabled=true",
         "auth.login.fallos-antes-de-backoff=3",
         "auth.login.backoff-inicial=2m",
-        "auth.login.pares-por-minuto=1000"
+        "auth.login.pares-por-minuto=1000",
+        "manti.notificaciones.enabled=true"
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -41,12 +42,17 @@ class LoginBackoffTest {
 
     private static final String LOGIN = "/api/v1/auth/login";
     private static final String PASSWORD = "secreto123";
+    private static final java.util.regex.Pattern TOKEN_EN_ENLACE =
+            java.util.regex.Pattern.compile("token=([A-Za-z0-9_-]+)");
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private es.manti.shared.notificaciones.EmailNotificadorPort correo;
 
     @AfterEach
     void limpiarUsuariosCreados() {
@@ -131,6 +137,51 @@ class LoginBackoffTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    /**
+     * Escape del lockout-DoS (revisión seguridad PR #102): un atacante que
+     * conozca el email puede mantener la cuenta bloqueada indefinidamente con
+     * un fallo cada backoff-tope. Un canje exitoso de reset limpia el backoff,
+     * así que la víctima recupera el acceso sin esperar al atacante.
+     */
+    @Test
+    void resetExitoso_limpiaElBackoffDeLaCuenta() throws Exception {
+        String email = registrarUsuario();
+        for (int i = 0; i < 3; i++) {
+            loginConPasswordIncorrecta(email).andExpect(status().isUnauthorized());
+        }
+        // Cuenta bloqueada: ni la password actual entra.
+        mockMvc.perform(post(LOGIN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"%s"}
+                                """.formatted(email, PASSWORD)))
+                .andExpect(status().isTooManyRequests());
+
+        // Reset completo (forgot → token del email mockeado → reset).
+        mockMvc.perform(post("/api/v1/auth/password/forgot")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s"}
+                                """.formatted(email)))
+                .andExpect(status().isAccepted());
+        String token = tokenDelEnlace();
+        String passwordNueva = "claveNueva456";
+        mockMvc.perform(post("/api/v1/auth/password/reset")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"token":"%s","password":"%s"}
+                                """.formatted(token, passwordNueva)))
+                .andExpect(status().isNoContent());
+
+        // El backoff quedó limpio: la password NUEVA entra a la primera.
+        mockMvc.perform(post(LOGIN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"%s"}
+                                """.formatted(email, passwordNueva)))
+                .andExpect(status().isOk());
+    }
+
     // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
@@ -152,5 +203,20 @@ class LoginBackoffTest {
                                 """.formatted(email, PASSWORD)))
                 .andExpect(status().isCreated());
         return email;
+    }
+
+    /** Extrae el token del último enlace enviado por el correo mockeado. */
+    private String tokenDelEnlace() {
+        org.mockito.ArgumentCaptor<String> html =
+                org.mockito.ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(correo).enviar(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                html.capture());
+        java.util.regex.Matcher matcher = TOKEN_EN_ENLACE.matcher(html.getValue());
+        org.assertj.core.api.Assertions.assertThat(matcher.find())
+                .as("el email de reset debe contener token=<opaco>")
+                .isTrue();
+        return matcher.group(1);
     }
 }

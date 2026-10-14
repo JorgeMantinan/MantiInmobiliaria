@@ -75,7 +75,34 @@ public record AuthProperties(
             default -> throw new IllegalStateException(
                     "auth.cookie.same-site inválido: '" + sameSite + "' (valores: Lax, Strict, None)");
         }
+        validarPrefijoHost();
         validarRateLimit();
+    }
+
+    /**
+     * Fail-fast de los invariantes del prefijo {@code __Host-} (revisión
+     * seguridad PR #102): el navegador descarta en silencio una cookie
+     * {@code __Host-*} sin {@code Secure} o con {@code Path} distinto de
+     * {@code /}, y el síntoma sería "refresh roto en prod" sin ningún error
+     * al arrancar.
+     */
+    private void validarPrefijoHost() {
+        if (cookie() == null || cookie().name() == null
+                || !cookie().name().startsWith("__Host-")) {
+            return;
+        }
+        if (!cookie().secure()) {
+            throw new IllegalStateException(
+                    "COOKIE_SECURE=false es incompatible con el prefijo __Host- de '"
+                            + cookie().name() + "': el navegador descartará la cookie y el "
+                            + "refresh quedará roto. Defina COOKIE_SECURE=true o quite el prefijo.");
+        }
+        if (!"/".equals(cookie().path())) {
+            throw new IllegalStateException(
+                    "COOKIE_PATH='" + cookie().path() + "' es incompatible con el prefijo "
+                            + "__Host- de '" + cookie().name() + "': el navegador exige Path=/. "
+                            + "Defina COOKIE_PATH=/ o quite el prefijo.");
+        }
     }
 
     /**

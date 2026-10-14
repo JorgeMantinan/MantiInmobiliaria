@@ -33,16 +33,20 @@ public class ForwardHeadersGuardConfig {
     @PostConstruct
     void validarForwardHeadersEnProd() {
         String estrategia = environment.getProperty("server.forward-headers-strategy", "");
-        if ("none".equalsIgnoreCase(estrategia.trim())) {
+        // Allowlist estricta (revisión PR #102): el filtro de forward headers
+        // SÓLO se registra con el valor exacto "framework"; "" (env vacía),
+        // "none" y cualquier typo dejan remoteAddr apuntando al proxy — el
+        // efecto es el mismo que "none", así que se rechazan todos.
+        String normalizada = estrategia.trim();
+        if (!"framework".equalsIgnoreCase(normalizada) && !"native".equalsIgnoreCase(normalizada)) {
             throw new IllegalStateException(
-                    "FORWARD_HEADERS_STRATEGY=none NO es válido en el perfil prod: el backend va "
-                            + "detrás del proxy de Vercel y sin ForwardedHeaderFilter el rate limit "
-                            + "por IP ve la IP del proxy (todas las peticiones comparten ventana) y "
-                            + "el flag X-Forwarded-Proto se pierde. Quite la variable (el default "
-                            + "del perfil prod es 'framework') o use 'framework'/'native' según "
-                            + "quién termine el TLS.");
+                    "server.forward-headers-strategy='" + estrategia + "' NO es válido en el "
+                            + "perfil prod (valores: framework, native). El backend va detrás del "
+                            + "proxy de Vercel y sin ForwardedHeaderFilter el rate limit por IP "
+                            + "ve la IP del proxy (todas las peticiones comparten ventana) y el "
+                            + "flag X-Forwarded-Proto se pierde. Quite la variable (el default "
+                            + "del perfil prod es 'framework').");
         }
-        log.info("Forward headers en prod: server.forward-headers-strategy={}",
-                estrategia.isBlank() ? "(default del perfil: framework)" : estrategia);
+        log.info("Forward headers en prod: server.forward-headers-strategy={}", normalizada);
     }
 }

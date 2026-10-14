@@ -74,6 +74,7 @@ public class SecurityConfig {
     private final CorsProperties corsProperties;
     private final LoginProteccionProperties loginProteccionProperties;
     private final HstsProperties hstsProperties;
+    private final tools.jackson.databind.ObjectMapper objectMapper;
 
     /**
      * Firewall con {@code ;} permitido SÓLO bajo {@code /api/v1/auth/}:
@@ -218,8 +219,8 @@ public class SecurityConfig {
                 .addFilterBefore(new BodySizeLimitFilter(), AuthorizationFilter.class)
                 .addFilterBefore(new CookieEndpointCsrfFilter(), AuthorizationFilter.class)
                 .addFilterBefore(new AuthRateLimitFilter(authProperties), AuthorizationFilter.class)
-                .addFilterBefore(new AccountRateLimitFilter(intentosLogin, loginProteccionProperties),
-                        AuthorizationFilter.class);
+                .addFilterBefore(new AccountRateLimitFilter(intentosLogin, loginProteccionProperties,
+                        objectMapper), AuthorizationFilter.class);
 
         return http.build();
     }
