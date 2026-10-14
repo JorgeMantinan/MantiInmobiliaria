@@ -98,7 +98,7 @@ class RefreshTokenRepositoryTest {
     /** Segunda pasada: sólo cuenta los que seguían activos y sigue idempotente. */
     @Test
     void revocarTodosDeUsuario_conAlgunoYaRevocado_noLosVuelveAContar() {
-        String activo = insertarToken("activo");
+        insertarToken("activo");
         String yaRevocado = insertarToken("ya-revocado");
         jdbc.update("UPDATE refresh_tokens SET revoked = true WHERE token_hash = ?", yaRevocado);
 

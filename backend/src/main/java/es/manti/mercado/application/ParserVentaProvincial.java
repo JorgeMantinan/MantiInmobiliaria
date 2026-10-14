@@ -86,8 +86,10 @@ public class ParserVentaProvincial {
      * @throws FuenteMivauNoDisponibleException si el fichero es ilegible o supera el techo de filas
      */
     public List<FilaPrecio> parsear(Reader lector) {
-        BufferedReader buffer = lector instanceof BufferedReader yaBufferizado
-                ? yaBufferizado
+        // Sin pattern variable: el Reader es del CALLER (no se cierra aquí) y
+        // el binding de JDT lo marcaría como resource leak.
+        BufferedReader buffer = lector instanceof BufferedReader
+                ? (BufferedReader) lector
                 : new BufferedReader(lector);
 
         List<FilaPrecio> filas = new ArrayList<>();

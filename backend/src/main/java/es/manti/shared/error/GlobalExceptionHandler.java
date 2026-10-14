@@ -80,7 +80,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(PayloadTooLargeException.class)
     public ProblemDetail cuerpoDemasiadoGrande(HttpServletRequest request) {
-        return Problems.crear(HttpStatus.PAYLOAD_TOO_LARGE, "payload-too-large",
+        return Problems.crear(HttpStatus.CONTENT_TOO_LARGE, "payload-too-large",
                 "Cuerpo demasiado grande",
                 "El cuerpo de la petición supera el máximo permitido (256 KiB)", request);
     }

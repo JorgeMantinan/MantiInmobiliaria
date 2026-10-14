@@ -1,7 +1,6 @@
 package es.manti.inmuebles;
 
 import es.manti.inmuebles.application.AlertaEvaluacionService;
-import es.manti.inmuebles.infra.adapter.AlertaBusquedaJpaRepository;
 import es.manti.profesionales.domain.DestinatarioNotificacion;
 import es.manti.profesionales.infra.adapter.NotificacionOutboxJpaRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -40,9 +39,6 @@ class AlertaEvaluacionTest {
 
     @Autowired
     private JdbcTemplate jdbc;
-
-    @Autowired
-    private AlertaBusquedaJpaRepository alertasJpa;
 
     @Autowired
     private NotificacionOutboxJpaRepository outboxJpa;

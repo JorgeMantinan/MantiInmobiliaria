@@ -464,13 +464,11 @@ class InmuebleApiTest {
         return resultado.getResponse().getContentAsString();
     }
 
-    @SuppressWarnings("unchecked")
     private static List<Long> idsDe(String json) {
         List<Number> ids = JsonPath.read(json, "$.content[*].id");
         return ids.stream().map(Number::longValue).toList();
     }
 
-    @SuppressWarnings("unchecked")
     private static List<BigDecimal> preciosDe(String json) {
         List<Number> precios = JsonPath.read(json, "$.content[*].precio");
         return precios.stream().map(p -> new BigDecimal(String.valueOf(p))).toList();

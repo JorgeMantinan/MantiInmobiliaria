@@ -429,7 +429,6 @@ class SwipeApiTest {
     }
 
     /** JsonPath devuelve Integer para enteros pequeños: se normaliza a long. */
-    @SuppressWarnings("unchecked")
     private static List<Long> idsDe(String json) {
         List<Number> ids = JsonPath.read(json, "$.content[*].id");
         return ids.stream().map(Number::longValue).toList();

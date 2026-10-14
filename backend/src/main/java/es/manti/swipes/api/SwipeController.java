@@ -4,7 +4,6 @@ import es.manti.swipes.api.dto.SwipeMapper;
 import es.manti.swipes.api.dto.SwipePage;
 import es.manti.swipes.api.dto.SwipeRequest;
 import es.manti.swipes.api.dto.SwipeResponse;
-import es.manti.swipes.application.ListadoSwipe;
 import es.manti.swipes.application.SwipeResultado;
 import es.manti.swipes.application.SwipeService;
 import es.manti.swipes.domain.SesionInvalidaException;
